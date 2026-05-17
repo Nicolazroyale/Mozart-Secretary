@@ -1,0 +1,28 @@
+=== Credenciales de Usuarios ===
+
+ID: 1
+Usuario: admin_tecnica
+Nombre Completo: Administrador Técnica
+Rol: admin
+Contraseña maestra: 1244
+-------------------------
+ID: 2
+Usuario: secretaria_gral
+Nombre Completo: Secretaría General
+Rol: admin
+Contraseña maestra: 1244
+-------------------------
+ID: 3
+Usuario: preceptor_1
+Nombre Completo: Preceptor Turno Mañana
+Rol: lectura
+Contraseña maestra: 1244
+-------------------------
+ID: 4
+Usuario: consulta_doc
+Nombre Completo: Consulta Docente
+Rol: lectura
+Contraseña maestra: 1244
+-------------------------
+
+Nota: La contraseña '1244' funciona para todos los usuarios.
