@@ -1,0 +1,33 @@
+services:
+  web:
+    build: .
+    container_name: web_mozartv1      
+    ports:
+      - "8080:80"
+    volumes:
+      - ./apache2:/var/www/html
+    networks:
+      - red_mozartv1
+
+  db:
+    image: mysql:8.0.32
+    container_name: db_mozartv1      
+    environment:
+      MYSQL_ROOT_PASSWORD: schuldatenbank123456
+      MYSQL_DATABASE: escuela_secundaria_tecnica     # Nombre de la DB
+      MYSQL_USER: DBsecretaria                        # Usuario nuevo con permisos
+      MYSQL_PASSWORD: Dalia1244!                      # Contraseña del usuario nuevo
+
+    volumes:
+      - ./mysql:/var/lib/mysql #Aca se guarda toda la DB
+      - ./inicializar_bd:/docker-entrypoint-initdb.d #Aca va el .sql para que levante la DB
+    networks:
+      - red_mozartv1      
+
+networks:
+  red_mozartv1:
+
+
+
+
+

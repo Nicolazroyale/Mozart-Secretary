@@ -1,0 +1,9 @@
+# Base de datos (datos locales)
+mysql/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
