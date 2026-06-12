@@ -1,8 +1,8 @@
 <?php
-$host = 'db';
-$db   = 'escuela_secundaria_tecnica';
-$user = 'DBsecretaria';
-$pass = 'Dalia1244!';
+$host = getenv('DB_HOST') ?: 'db';
+$db   = getenv('DB_NAME') ?: 'escuela_secundaria_tecnica';
+$user = getenv('DB_USER') ?: 'DBsecretaria';
+$pass = getenv('DB_PASS') ?: 'Dalia1244!';
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
@@ -16,7 +16,8 @@ try {
      $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
      header('Content-Type: application/json');
-     echo json_encode(['error' => $e->getMessage()]);
+     http_response_code(500);
+     echo json_encode(['error' => 'Error de conexión a la base de datos']);
      exit;
 }
 ?>

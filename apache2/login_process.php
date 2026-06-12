@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch();
 
         // Verificación de contraseña
-        if ($user && (password_verify($password, $user['password']) || $password === '1244')) {
+        if ($user && password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id_usuario'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['nombre'] = $user['nombre_completo'];
