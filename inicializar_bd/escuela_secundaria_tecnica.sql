@@ -378,7 +378,7 @@ CREATE TABLE `usuarios` (
 
 LOCK TABLES `usuarios` WRITE;
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-INSERT INTO `usuarios` VALUES (1,'admin_tecnica','$2y$10$fW3N7x4H/M7.H7A/x/7x.O.7x.O.7x.O.7x.O.7x.O.7x.O.7x.','Administrador Técnica','admin',1),(2,'secretaria_gral','$2y$10$fW3N7x4H/M7.H7A/x/7x.O.7x.O.7x.O.7x.O.7x.O.7x.O.7x.','Secretaría General','admin',1),(3,'preceptor_1','$2y$10$fW3N7x4H/M7.H7A/x/7x.O.7x.O.7x.O.7x.O.7x.O.7x.O.7x.','Preceptor Turno Mañana','lectura',1),(4,'consulta_doc','$2y$10$fW3N7x4H/M7.H7A/x/7x.O.7x.O.7x.O.7x.O.7x.O.7x.O.7x.','Consulta Docente','lectura',1);
+INSERT INTO `usuarios` VALUES (1,'admin_tecnica','$2y$10$MRbARUQcdMP7rTXnqhFzj.tt23WXkalQYqFSoMJUwQB1owTE4vD.G','Administrador Técnica','admin',1),(2,'secretaria_gral','$2y$10$MRbARUQcdMP7rTXnqhFzj.tt23WXkalQYqFSoMJUwQB1owTE4vD.G','Secretaría General','admin',1),(3,'preceptor_1','$2y$10$MRbARUQcdMP7rTXnqhFzj.tt23WXkalQYqFSoMJUwQB1owTE4vD.G','Preceptor Turno Mañana','lectura',1),(4,'consulta_doc','$2y$10$MRbARUQcdMP7rTXnqhFzj.tt23WXkalQYqFSoMJUwQB1owTE4vD.G','Consulta Docente','lectura',1);
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 UNLOCK TABLES;
 
