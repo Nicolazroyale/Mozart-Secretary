@@ -11,3 +11,13 @@ Thumbs.db
 # Logs
 *.log
 release.sh
+
+# Dependencies
+vendor/
+node_modules/
+
+# Composer
+composer.lock
+
+# npm
+package-lock.json
