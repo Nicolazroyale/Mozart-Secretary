@@ -1,8 +1,8 @@
 <?php
-$host = 'db';
-$db   = 'escuela_secundaria_tecnica';
-$user = 'DBsecretaria';
-$pass = 'Dalia1244!';
+$host = getenv('DB_HOST') ?: 'db';
+$db   = getenv('DB_NAME') ?: 'escuela_secundaria_tecnica';
+$user = getenv('DB_USER') ?: 'DBsecretaria';
+$pass = getenv('DB_PASS') ?: 'Dalia1244!';
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";

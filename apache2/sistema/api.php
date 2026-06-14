@@ -286,14 +286,31 @@ try {
             exit;
         }
 
-        // Caso normal para el resto de tablas
-        $keys = array_keys($input);
+        // Whitelist of allowed fields per table to prevent SQL injection via column names
+        $allowed_fields_map = [
+            'docentes' => ['apellido', 'nombre', 'dni', 'fecha_inscripcion', 'situacion_revista', 'telefono', 'email', 'activo'],
+            'cursos'   => ['anio', 'division', 'turno', 'ciclo', 'jornada'],
+            'materias' => ['nombre'],
+        ];
+
+        $allowed_fields = $allowed_fields_map[$real_table] ?? [];
+        if (empty($allowed_fields)) {
+            echo json_encode(['error' => 'Operación no permitida para esta tabla']);
+            exit;
+        }
+
+        $valid_fields = array_intersect_key($input, array_flip($allowed_fields));
+        if (empty($valid_fields)) {
+            echo json_encode(['error' => 'No se proporcionaron campos válidos']);
+            exit;
+        }
+        $keys = array_keys($valid_fields);
         $cols = implode(',', $keys);
         $placeholders = implode(',', array_fill(0, count($keys), '?'));
         
         $sql = "INSERT INTO $real_table ($cols) VALUES ($placeholders)";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute(array_values($input));
+        $stmt->execute(array_values($valid_fields));
         
         echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
     }
@@ -316,9 +333,28 @@ try {
         $id_col = ($real_table === 'alumnos') ? 'id_alumno' : "id_$real_table";
         if ($real_table === 'materias') $id_col = 'id_materia';
 
+        // Whitelist of allowed fields per table to prevent SQL injection via column names
+        $allowed_fields_map = [
+            'docentes' => ['apellido', 'nombre', 'dni', 'fecha_inscripcion', 'situacion_revista', 'telefono', 'email', 'activo'],
+            'cursos'   => ['anio', 'division', 'turno', 'ciclo', 'jornada'],
+            'materias' => ['nombre'],
+        ];
+
+        $allowed_fields = $allowed_fields_map[$real_table] ?? [];
+        if (empty($allowed_fields)) {
+            echo json_encode(['error' => 'Operación no permitida para esta tabla']);
+            exit;
+        }
+
+        $valid_input = array_intersect_key($input, array_flip($allowed_fields));
+        if (empty($valid_input)) {
+            echo json_encode(['error' => 'No se proporcionaron campos válidos']);
+            exit;
+        }
+
         $set_parts = [];
         $params = [];
-        foreach ($input as $key => $value) {
+        foreach ($valid_input as $key => $value) {
             $set_parts[] = "$key = ?";
             $params[] = $value;
         }

@@ -1,12 +1,18 @@
 <?php
 /**
  * SCRIPT DE CARGA DE DATOS COMPLETO (SEEDER)
+ * IMPORTANT: This script should only be run from the command line.
  */
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    echo 'Acceso denegado';
+    exit;
+}
 
-$host = 'localhost';
-$db   = 'escuela_secundaria_tecnica';
-$user = 'DBsecretaria';
-$pass = 'Dalia1244!';
+$host = getenv('DB_HOST') ?: 'localhost';
+$db   = getenv('DB_NAME') ?: 'escuela_secundaria_tecnica';
+$user = getenv('DB_USER') ?: 'DBsecretaria';
+$pass = getenv('DB_PASS') ?: 'Dalia1244!';
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";

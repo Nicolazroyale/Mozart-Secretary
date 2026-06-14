@@ -1,6 +1,9 @@
 # Base de datos (datos locales)
 mysql/
 
+# Environment files with secrets
+.env
+
 # Archivos del sistema
 .DS_Store
 Thumbs.db

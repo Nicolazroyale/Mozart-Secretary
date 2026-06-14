@@ -389,20 +389,27 @@ try {
             exit;
         }
 
-        if ($table === 'docentes') {
-            // Validar campos válidos para la tabla docentes
-            $allowed_fields = ['apellido', 'nombre', 'dni', 'fecha_inscripcion', 'situacion_revista', 'telefono', 'email', 'activo'];
-            $valid_fields = array_intersect_key($input, array_flip($allowed_fields));
-            $keys = array_keys($valid_fields);
-            $cols = implode(',', $keys);
-            $placeholders = implode(',', array_fill(0, count($keys), '?'));
-            $values = array_values($valid_fields);
-        } else {
-            $keys = array_keys($input);
-            $cols = implode(',', $keys);
-            $placeholders = implode(',', array_fill(0, count($keys), '?'));
-            $values = array_values($input);
+        // Whitelist of allowed fields per table to prevent SQL injection via column names
+        $allowed_fields_map = [
+            'docentes' => ['apellido', 'nombre', 'dni', 'fecha_inscripcion', 'situacion_revista', 'telefono', 'email', 'activo'],
+            'cursos'   => ['anio', 'division', 'turno', 'ciclo', 'jornada'],
+        ];
+
+        $allowed_fields = $allowed_fields_map[$real_table] ?? [];
+        if (empty($allowed_fields)) {
+            echo json_encode(['error' => 'Operación no permitida para esta tabla']);
+            exit;
         }
+
+        $valid_fields = array_intersect_key($input, array_flip($allowed_fields));
+        if (empty($valid_fields)) {
+            echo json_encode(['error' => 'No se proporcionaron campos válidos']);
+            exit;
+        }
+        $keys = array_keys($valid_fields);
+        $cols = implode(',', $keys);
+        $placeholders = implode(',', array_fill(0, count($keys), '?'));
+        $values = array_values($valid_fields);
         
         $sql = "INSERT INTO $real_table ($cols) VALUES ($placeholders)";
         $stmt = $pdo->prepare($sql);
@@ -565,9 +572,27 @@ try {
             $id_col = "id_$real_table";
         }
 
+        // Whitelist of allowed fields per table to prevent SQL injection via column names
+        $allowed_fields_map = [
+            'docentes' => ['apellido', 'nombre', 'dni', 'fecha_inscripcion', 'situacion_revista', 'telefono', 'email', 'activo'],
+            'cursos'   => ['anio', 'division', 'turno', 'ciclo', 'jornada'],
+        ];
+
+        $allowed_fields = $allowed_fields_map[$real_table] ?? [];
+        if (empty($allowed_fields)) {
+            echo json_encode(['error' => 'Operación no permitida para esta tabla']);
+            exit;
+        }
+
+        $valid_input = array_intersect_key($input, array_flip($allowed_fields));
+        if (empty($valid_input)) {
+            echo json_encode(['error' => 'No se proporcionaron campos válidos']);
+            exit;
+        }
+
         $set_parts = [];
         $params = [];
-        foreach ($input as $key => $value) {
+        foreach ($valid_input as $key => $value) {
             $set_parts[] = "$key = ?";
             $params[] = $value;
         }
