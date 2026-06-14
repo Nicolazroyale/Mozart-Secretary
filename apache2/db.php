@@ -15,9 +15,10 @@ $options = [
 try {
      $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
+     error_log('Error de conexión a base de datos: ' . $e->getMessage());
      header('Content-Type: application/json');
-     http_response_code(500);
-     echo json_encode(['error' => 'Error de conexión a la base de datos']);
+     http_response_code(503);
+     echo json_encode(['error' => 'No se pudo conectar a la base de datos']);
      exit;
 }
 ?>

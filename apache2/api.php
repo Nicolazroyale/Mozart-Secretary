@@ -28,6 +28,7 @@ $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 0; // 0 significa sin lí
 $allowed_tables = ['estudiantes', 'docentes', 'cursos', 'lista_cursos', 'search', 'nomina', 'docentes_por_curso', 'docente_cursos'];
 
 if (!in_array($table, $allowed_tables)) {
+    http_response_code(400);
     echo json_encode(['error' => 'Tabla no permitida']);
     exit;
 }
@@ -50,6 +51,7 @@ try {
         switch ($table) {
             case 'nomina':
                 if (!$id) {
+                    http_response_code(400);
                     echo json_encode(['error' => 'ID de curso requerido']);
                     exit;
                 }
@@ -122,6 +124,7 @@ try {
                 break;
             case 'docentes_por_curso':
                 if (!$id) {
+                    http_response_code(400);
                     echo json_encode(['error' => 'ID de curso requerido']);
                     exit;
                 }
@@ -145,6 +148,7 @@ try {
                 exit;
             case 'docente_cursos':
                 if (!$id) {
+                    http_response_code(400);
                     echo json_encode(['error' => 'ID de docente requerido']);
                     exit;
                 }
@@ -267,12 +271,14 @@ try {
     elseif ($method === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true);
         if (!$input) {
+            http_response_code(400);
             echo json_encode(['error' => 'Datos inválidos']);
             exit;
         }
 
         if ($table === 'docente_cursos') {
             if (!isset($input['id_docente']) || !isset($input['id_curso'])) {
+                http_response_code(400);
                 echo json_encode(['error' => 'ID de docente y curso requeridos']);
                 exit;
             }
@@ -376,8 +382,9 @@ try {
                 echo json_encode(['success' => true, 'id' => $id_alumno]);
             } catch (Exception $e) {
                 $pdo->rollBack();
-                error_log('Transaction error: ' . $e->getMessage());
-                echo json_encode(['error' => 'Error al procesar la operación']);
+                error_log('Error en transacción estudiantes POST: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Error en transacción: ' . $e->getMessage()]);
             }
             exit;
         }
@@ -412,11 +419,13 @@ try {
     }
     elseif ($method === 'PUT') {
         if (!$id) {
+            http_response_code(400);
             echo json_encode(['error' => 'ID requerido para actualizar']);
             exit;
         }
         $input = json_decode(file_get_contents('php://input'), true);
         if (!$input) {
+            http_response_code(400);
             echo json_encode(['error' => 'Datos inválidos']);
             exit;
         }
@@ -454,8 +463,9 @@ try {
                 echo json_encode(['success' => true]);
             } catch (Exception $e) {
                 $pdo->rollBack();
-                error_log('Transaction error: ' . $e->getMessage());
-                echo json_encode(['error' => 'Error al procesar la operación']);
+                error_log('Error en transacción docente_cursos PUT: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Error en transacción: ' . $e->getMessage()]);
             }
             exit;
         }
@@ -544,8 +554,9 @@ try {
                 echo json_encode(['success' => true]);
             } catch (Exception $e) {
                 $pdo->rollBack();
-                error_log('Update error: ' . $e->getMessage());
-                echo json_encode(['error' => 'Error al actualizar el registro']);
+                error_log('Error en actualización estudiantes PUT: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Error en actualización: ' . $e->getMessage()]);
             }
             exit;
         }
@@ -595,6 +606,7 @@ try {
     }
     elseif ($method === 'DELETE') {
         if (!$id) {
+            http_response_code(400);
             echo json_encode(['error' => 'ID requerido para eliminar']);
             exit;
         }
@@ -617,7 +629,7 @@ try {
     }
 
 } catch (\PDOException $e) {
+    error_log('Error de base de datos en api.php: ' . $e->getMessage());
     http_response_code(500);
-    error_log('Database error: ' . $e->getMessage());
-    echo json_encode(['error' => 'Error interno de base de datos']);
+    echo json_encode(['error' => 'Error interno del servidor']);
 }

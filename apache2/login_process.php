@@ -46,8 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'error' => 'Credenciales inválidas']);
         }
     } catch (PDOException $e) {
+        error_log('Error de base de datos en login: ' . $e->getMessage());
+        http_response_code(500);
         echo json_encode(['success' => false, 'error' => 'Error de base de datos']);
     }
 } else {
+    http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Método no permitido']);
 }
