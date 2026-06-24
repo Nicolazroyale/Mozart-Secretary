@@ -1,12 +1,6 @@
 # Base de datos (datos locales)
 mysql/
 
-<<<<<<< HEAD
-=======
-# Backups
-Backups/
-
->>>>>>> master
 # Environment files with secrets
 .env
 
@@ -27,7 +21,5 @@ composer.lock
 
 # npm
 package-lock.json
-<<<<<<< HEAD
-=======
 
->>>>>>> master
+.vscode/
