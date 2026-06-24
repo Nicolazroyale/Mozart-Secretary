@@ -25,7 +25,7 @@ if (!verificar_sesion()) {
             </div>
             <div style="display: flex; justify-content: flex-end;">
                 <div class="user-badge" style="background: #34495e; padding: 5px 15px; border-radius: 20px; font-size: 13px;">
-                    <span id="userNameDisplay"><?php echo $_SESSION['nombre']; ?></span> (<?php echo $_SESSION['rol']; ?>)
+                    <span id="userNameDisplay"><?php echo htmlspecialchars($_SESSION['nombre'], ENT_QUOTES, 'UTF-8'); ?></span> (<?php echo htmlspecialchars($_SESSION['rol'], ENT_QUOTES, 'UTF-8'); ?>)
                     <a href="logout.php" style="color: #e74c3c; margin-left: 10px; text-decoration: none; font-weight: bold;">Salir</a>
                 </div>
             </div>
@@ -65,7 +65,7 @@ if (!verificar_sesion()) {
 
 <script>
     // Pasar el rol de PHP a JS
-    window.userRole = "<?php echo $_SESSION['rol']; ?>";
+    window.userRole = "<?php echo htmlspecialchars($_SESSION['rol'], ENT_QUOTES, 'UTF-8'); ?>";
 </script>
 <script src="js/app.js" type="module"></script>
 <script src="js/ui.js" type="module"></script>

@@ -18,15 +18,31 @@ function handleSearchInput(query) {
     }
 
     searchTimeout = setTimeout(async () => {
-        const rol = 'todos';
-        const anio = '';
-        const turno = '';
-        
-        const url = `api.php?table=search&search=${encodeURIComponent(query)}&rol=${rol}&anio=${anio}&turno=${turno}`;
-        const response = await fetch(url);
-        const results = await response.json();
-        
-        displaySuggestions(results);
+        try {
+            const rol = 'todos';
+            const anio = '';
+            const turno = '';
+            
+            const url = `api.php?table=search&search=${encodeURIComponent(query)}&rol=${rol}&anio=${anio}&turno=${turno}`;
+            const response = await fetch(url);
+            if (!response.ok) {
+                console.error('Error en búsqueda:', response.status);
+                suggestionsBox.style.display = 'none';
+                return;
+            }
+            const results = await response.json();
+            
+            if (results.error) {
+                console.error('Error en búsqueda:', results.error);
+                suggestionsBox.style.display = 'none';
+                return;
+            }
+            
+            displaySuggestions(results);
+        } catch (error) {
+            console.error('Error en búsqueda:', error);
+            suggestionsBox.style.display = 'none';
+        }
     }, 300);
 }
 
@@ -71,11 +87,25 @@ async function triggerSearch() {
     
     if (query.length < 2 && rol === 'todos') return;
 
-    const url = `api.php?table=search&search=${encodeURIComponent(query)}&rol=${rol}&anio=${anio}&turno=${turno}`;
-    const response = await fetch(url);
-    const results = await response.json();
-    
-    mostrarResultadosBusqueda(results);
+    try {
+        const url = `api.php?table=search&search=${encodeURIComponent(query)}&rol=${rol}&anio=${anio}&turno=${turno}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            alert('Error al buscar: el servidor respondió con estado ' + response.status);
+            return;
+        }
+        const results = await response.json();
+        
+        if (results.error) {
+            alert('Error al buscar: ' + results.error);
+            return;
+        }
+        
+        mostrarResultadosBusqueda(results);
+    } catch (error) {
+        console.error('Error en búsqueda:', error);
+        alert('Error al conectar con el servidor');
+    }
 }
 
 function mostrarResultadosBusqueda(results) {
@@ -117,7 +147,14 @@ async function cargarVistaNomina() {
     VistaSeleccionada = "archivos";
     
     const cont = document.getElementById('contenido');
-    const cursos = await fetchDataTable("lista_cursos");
+    let cursos;
+    try {
+        cursos = await fetchDataTable("lista_cursos");
+    } catch (error) {
+        console.error('Error al cargar cursos:', error);
+        cont.innerHTML = '<p style="color:#e74c3c; padding:20px;">Error al cargar los cursos: ' + error.message + '</p>';
+        return;
+    }
     const opcionesCursos = cursos.map(c => `<option value="${c.id_curso}">${c.nombre}</option>`).join('');
 
     cont.innerHTML = `
@@ -153,8 +190,17 @@ async function actualizarNomina() {
     const container = document.getElementById('tabla-nomina-container');
     container.innerHTML = '<p style="text-align:center; padding:20px;">Cargando nómina...</p>';
 
-    const alumnos = await fetchDataTable("nomina", idCurso);
-    const docentes = await fetchDataTable("docentes_por_curso", idCurso);
+    let alumnos, docentes;
+    try {
+        [alumnos, docentes] = await Promise.all([
+            fetchDataTable("nomina", idCurso),
+            fetchDataTable("docentes_por_curso", idCurso)
+        ]);
+    } catch (error) {
+        console.error('Error al cargar nómina:', error);
+        container.innerHTML = '<p style="color:#e74c3c; text-align:center; padding:20px;">Error al cargar la nómina: ' + error.message + '</p>';
+        return;
+    }
 
     let htmlContent = `
         <div style="display:flex; justify-content: flex-end; margin-bottom: 10px; gap: 10px;">
@@ -255,35 +301,33 @@ function exportarNomina(formato) {
 }
 
 async function fetchDataTable(table, id = null) {
-    try {
-        let url = `api.php?table=${table}`;
-        if (id) url += `&id=${id}`;
-        console.log("Fetching URL:", url);
-        
-        const response = await fetch(url);
-        const data = await response.json();
-        console.log("Full API response:", data);
-        
-        if (data.error) {
-            console.error(data.error);
-            if (id) return null;
-            return [];
-        }
-        
-        if (id) {
-            return data; // For single record queries, return the data directly
-        }
-        
-        if (data.data) {
-            return Array.isArray(data.data) ? data.data : [];
-        }
-        
-        return Array.isArray(data) ? data : [];
-    } catch (error) {
-        console.error("Error fetching data:", error);
-        if (id) return null;
-        return [];
+    let url = `api.php?table=${table}`;
+    if (id) url += `&id=${id}`;
+    console.log("Fetching URL:", url);
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.error || `Error del servidor (${response.status})`);
     }
+    
+    const data = await response.json();
+    console.log("Full API response:", data);
+    
+    if (data.error) {
+        throw new Error(data.error);
+    }
+    
+    if (id) {
+        return data;
+    }
+    
+    if (data.data) {
+        return Array.isArray(data.data) ? data.data : [];
+    }
+    
+    return Array.isArray(data) ? data : [];
 }
 
 async function cargarEstudiantes(){
@@ -317,8 +361,13 @@ function cambiarModo(modo) {
 
 async function mostrarVista(){
     if(VistaSeleccionada === "archivos"){
-        const data = await fetchDataTable(tablaSeleccionada);
-        mostrarTabla(data, tablaSeleccionada);
+        try {
+            const data = await fetchDataTable(tablaSeleccionada);
+            mostrarTabla(data, tablaSeleccionada);
+        } catch (error) {
+            console.error('Error al cargar datos:', error);
+            document.getElementById('contenido').innerHTML = '<p style="color:#e74c3c; padding:20px;">Error al cargar datos: ' + error.message + '</p>';
+        }
     }
     else if(VistaSeleccionada === "subir"){
         await cargarFormulario();
@@ -354,7 +403,14 @@ function copyDomicilio(check, targetPrefix) {
 
 async function cargarFormulario(){
     let cont = document.getElementById("contenido");
-    const cursosDisponibles = await fetchDataTable("lista_cursos");
+    let cursosDisponibles;
+    try {
+        cursosDisponibles = await fetchDataTable("lista_cursos");
+    } catch (error) {
+        console.error('Error al cargar cursos:', error);
+        cont.innerHTML = '<p style="color:#e74c3c; padding:20px;">Error al cargar los cursos: ' + error.message + '</p>';
+        return;
+    }
     const opcionesCursos = cursosDisponibles.map(c => `<option value="${c.id_curso}">${c.nombre}</option>`).join('');
 
     if(tablaSeleccionada === "estudiantes"){
@@ -848,28 +904,26 @@ async function guardarNuevo(tipo) {
 
     try {
         if (tipo === 'docentes') {
-            // Save teacher first
             const response1 = await fetch(`api.php?table=${tipo}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            const result1 = await response1.json();
-            if (!result1.success) {
-                alert('Error: ' + result1.error);
+            const result1 = await response1.json().catch(() => ({}));
+            if (!response1.ok || !result1.success) {
+                alert('Error: ' + (result1.error || `Error del servidor (${response1.status})`));
                 return;
             }
             
-            // Now save courses
             const docenteId = result1.id;
             const response2 = await fetch(`api.php?table=docente_cursos&id=${docenteId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cursos: cursosSeleccionados })
             });
-            const result2 = await response2.json();
-            if (result2.error) {
-                alert('Error al guardar cursos: ' + result2.error);
+            const result2 = await response2.json().catch(() => ({}));
+            if (!response2.ok || result2.error) {
+                alert('Error al guardar cursos: ' + (result2.error || `Error del servidor (${response2.status})`));
                 return;
             }
             
@@ -881,12 +935,12 @@ async function guardarNuevo(tipo) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            const result = await response.json();
-            if (result.success) {
+            const result = await response.json().catch(() => ({}));
+            if (response.ok && result.success) {
                 alert('Registro guardado con éxito');
                 cambiarModo('archivos');
             } else {
-                alert('Error: ' + result.error);
+                alert('Error: ' + (result.error || `Error del servidor (${response.status})`));
             }
         }
     } catch (error) {
@@ -898,12 +952,19 @@ async function guardarNuevo(tipo) {
 async function editarRegistro(tipo, id) {
     console.log(`Cargando edición para ${tipo} con ID: ${id}`);
     
-    const data = await fetchDataTable(tipo, id);
-    console.log("Data received for edit:", data);
-    
-    if (!data) return alert("No se pudo cargar el registro");
+    let data, cursosDisponibles;
+    try {
+        data = await fetchDataTable(tipo, id);
+        console.log("Data received for edit:", data);
+        
+        if (!data) return alert("No se pudo cargar el registro");
 
-    const cursosDisponibles = await fetchDataTable("lista_cursos");
+        cursosDisponibles = await fetchDataTable("lista_cursos");
+    } catch (error) {
+        console.error('Error al cargar registro:', error);
+        alert('Error al cargar el registro: ' + error.message);
+        return;
+    }
     const opcionesCursos = (selectedId) => cursosDisponibles.map(c => `<option value="${c.id_curso}" ${selectedId == c.id_curso ? 'selected' : ''}>${c.nombre}</option>`).join('');
 
     const modal = document.createElement('div');
@@ -1114,8 +1175,15 @@ async function editarRegistro(tipo, id) {
             </div>
         `;
     } else if (tipo === 'docentes') {
-        const cursosDisponibles = await fetchDataTable("lista_cursos");
-        const cursosAsignados = await fetchDataTable("docente_cursos", id);
+        let cursosDisponiblesDoc, cursosAsignados;
+        try {
+            cursosDisponiblesDoc = await fetchDataTable("lista_cursos");
+            cursosAsignados = await fetchDataTable("docente_cursos", id);
+        } catch (error) {
+            console.error('Error al cargar cursos del docente:', error);
+            alert('Error al cargar datos de cursos: ' + error.message);
+            return;
+        }
         const cursosAsignadosSet = new Set(cursosAsignados || []);
         
         modal.innerHTML = `
@@ -1178,7 +1246,7 @@ async function editarRegistro(tipo, id) {
                         <div class="accordion-content">
                             <p style="margin-bottom:10px; color:#7f8c8d;">Selecciona los cursos donde este docente imparte clases:</p>
                             <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:10px;">
-                                ${cursosDisponibles.map(curso => `
+                                ${cursosDisponiblesDoc.map(curso => `
                                     <div style="display:flex; align-items:center; gap:8px; padding:8px; border:1px solid #ddd; border-radius:4px;">
                                         <input type="checkbox" id="curso-${curso.id_curso}" name="cursos" value="${curso.id_curso}" 
                                                ${cursosAsignadosSet.has(curso.id_curso) ? 'checked' : ''}>
@@ -1253,9 +1321,9 @@ async function guardarEdicion(tipo, id) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            const result1 = await response1.json();
-            if (result1.error) {
-                alert('Error al guardar datos: ' + result1.error);
+            const result1 = await response1.json().catch(() => ({}));
+            if (!response1.ok || result1.error) {
+                alert('Error al guardar datos: ' + (result1.error || `Error del servidor (${response1.status})`));
                 return;
             }
             
@@ -1267,9 +1335,9 @@ async function guardarEdicion(tipo, id) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cursos: cursosSeleccionados })
             });
-            const result2 = await response2.json();
-            if (result2.error) {
-                alert('Error al guardar cursos: ' + result2.error);
+            const result2 = await response2.json().catch(() => ({}));
+            if (!response2.ok || result2.error) {
+                alert('Error al guardar cursos: ' + (result2.error || `Error del servidor (${response2.status})`));
                 return;
             }
             
@@ -1283,14 +1351,14 @@ async function guardarEdicion(tipo, id) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            const result = await response.json();
-            if (result.success) {
+            const result = await response.json().catch(() => ({}));
+            if (response.ok && result.success) {
                 alert('Registro actualizado con éxito');
                 const modal = document.getElementById('modal-edicion');
                 if (modal) document.body.removeChild(modal);
                 mostrarVista();
             } else {
-                alert('Error: ' + result.error);
+                alert('Error: ' + (result.error || `Error del servidor (${response.status})`));
             }
         }
     } catch (error) {
@@ -1304,14 +1372,14 @@ async function eliminarRegistro(tipo, id) {
 
     try {
         const response = await fetch(`api.php?table=${tipo}&id=${id}`, { method: 'DELETE' });
-        const result = await response.json();
-        if (result.success) {
+        const result = await response.json().catch(() => ({}));
+        if (response.ok && result.success) {
             alert('Registro eliminado con éxito');
             const modal = document.getElementById('modal-edicion');
             if (modal) document.body.removeChild(modal);
             mostrarVista();
         } else {
-            alert('Error: ' + result.error);
+            alert('Error: ' + (result.error || `Error del servidor (${response.status})`));
         }
     } catch (error) {
         console.error('Error:', error);

@@ -15,7 +15,9 @@ $limit  = isset($_GET['limit']) ? (int)$_GET['limit'] : 0;
 $allowed_tables = ['estudiantes', 'docentes', 'cursos', 'lista_cursos', 'search', 'nomina', 'docentes_por_curso', 'docente_cursos'];
 
 if (!in_array($table, $allowed_tables)) {
-    json_error('Tabla no permitida');
+    http_response_code(400);
+    echo json_encode(['error' => 'Tabla no permitida']);
+    exit;
 }
 
 $real_table = resolve_table($table);
@@ -27,8 +29,33 @@ try {
         
         switch ($table) {
             case 'nomina':
-                if (!$id) json_error('ID de curso requerido');
-                json_success(query_nomina($pdo, $id));
+                if (!$id) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'ID de curso requerido']);
+                    exit;
+                }
+                
+                $query = "SELECT 
+                            a.id_alumno,
+                            a.apellido,
+                            a.nombre,
+                            a.dni,
+                            r.nombre as resp_nombre,
+                            r.apellido as resp_apellido,
+                            r.telefono_celular as resp_tel,
+                            (SELECT COUNT(*) FROM salud_alumno s 
+                             WHERE s.id_alumno = a.id_alumno 
+                             AND (s.asma=1 OR s.celiaquia=1 OR s.diabetes=1 OR s.obesidad=1 OR s.cardiopatia=1 OR s.alergias IS NOT NULL OR s.antecedentes_salud IS NOT NULL)) as alerta_salud
+                          FROM alumnos a
+                          LEFT JOIN alumno_responsable ar ON a.id_alumno = ar.id_alumno AND ar.es_principal = 1
+                          LEFT JOIN responsables r ON ar.id_responsable = r.id_responsable
+                          WHERE a.id_curso = ? AND a.activo = 1
+                          ORDER BY a.apellido ASC, a.nombre ASC";
+                
+                $stmt = $pdo->prepare($query);
+                $stmt->execute([$id]);
+                echo json_encode($stmt->fetchAll());
+                exit;
 
             case 'search':
                 $rol   = $_GET['rol'] ?? 'todos';
@@ -41,7 +68,11 @@ try {
                 break;
 
             case 'docentes_por_curso':
-                if (!$id) json_error('ID de curso requerido');
+                if (!$id) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'ID de curso requerido']);
+                    exit;
+                }
                 $query = "SELECT 
                             d.id_docente,
                             d.apellido,
@@ -61,7 +92,11 @@ try {
                 json_success($stmt->fetchAll());
 
             case 'docente_cursos':
-                if (!$id) json_error('ID de docente requerido');
+                if (!$id) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'ID de docente requerido']);
+                    exit;
+                }
                 $query = "SELECT id_curso FROM docente_materia_curso WHERE id_docente = ? AND activo = 1";
                 $stmt = $pdo->prepare($query);
                 $stmt->execute([$id]);
@@ -148,11 +183,17 @@ try {
     } 
     elseif ($method === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true);
-        if (!$input) json_error('Datos inválidos');
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Datos inválidos']);
+            exit;
+        }
 
         if ($table === 'docente_cursos') {
             if (!isset($input['id_docente']) || !isset($input['id_curso'])) {
-                json_error('ID de docente y curso requeridos');
+                http_response_code(400);
+                echo json_encode(['error' => 'ID de docente y curso requeridos']);
+                exit;
             }
             
             $countMaterias = $pdo->query("SELECT COUNT(*) FROM materias")->fetchColumn();
@@ -184,25 +225,52 @@ try {
                 json_success(['success' => true, 'id' => $id_alumno]);
             } catch (Exception $e) {
                 $pdo->rollBack();
-                json_error('Error en transacción: ' . $e->getMessage());
+                error_log('Error en transacción estudiantes POST: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Error en transacción: ' . $e->getMessage()]);
             }
         }
 
-        if ($table === 'docentes') {
-            $allowed_fields = ['apellido', 'nombre', 'dni', 'fecha_inscripcion', 'situacion_revista', 'telefono', 'email', 'activo'];
-            $valid_fields = array_intersect_key($input, array_flip($allowed_fields));
-            $new_id = generic_insert($pdo, $real_table, $valid_fields);
-            json_success(['success' => true, 'id' => $new_id]);
+        // Whitelist of allowed fields per table to prevent SQL injection via column names
+        $allowed_fields_map = [
+            'docentes' => ['apellido', 'nombre', 'dni', 'fecha_inscripcion', 'situacion_revista', 'telefono', 'email', 'activo'],
+            'cursos'   => ['anio', 'division', 'turno', 'ciclo', 'jornada'],
+        ];
+
+        $allowed_fields = $allowed_fields_map[$real_table] ?? [];
+        if (empty($allowed_fields)) {
+            echo json_encode(['error' => 'Operación no permitida para esta tabla']);
+            exit;
         }
 
-        $new_id = generic_insert($pdo, $real_table, $input);
-        json_success(['success' => true, 'id' => $new_id]);
+        $valid_fields = array_intersect_key($input, array_flip($allowed_fields));
+        if (empty($valid_fields)) {
+            echo json_encode(['error' => 'No se proporcionaron campos válidos']);
+            exit;
+        }
+        $keys = array_keys($valid_fields);
+        $cols = implode(',', $keys);
+        $placeholders = implode(',', array_fill(0, count($keys), '?'));
+        $values = array_values($valid_fields);
+        
+        $sql = "INSERT INTO $real_table ($cols) VALUES ($placeholders)";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($values);
+        
+        echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
     }
     elseif ($method === 'PUT') {
-        if (!$id) json_error('ID requerido para actualizar');
-
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID requerido para actualizar']);
+            exit;
+        }
         $input = json_decode(file_get_contents('php://input'), true);
-        if (!$input) json_error('Datos inválidos');
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Datos inválidos']);
+            exit;
+        }
 
         if ($table === 'docente_cursos') {
             $pdo->beginTransaction();
@@ -230,7 +298,9 @@ try {
                 json_success();
             } catch (Exception $e) {
                 $pdo->rollBack();
-                json_error('Error en transacción: ' . $e->getMessage());
+                error_log('Error en transacción docente_cursos PUT: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Error en transacción: ' . $e->getMessage()]);
             }
         }
 
@@ -245,20 +315,78 @@ try {
                 json_success();
             } catch (Exception $e) {
                 $pdo->rollBack();
-                json_error('Error en actualización: ' . $e->getMessage());
+                error_log('Error en actualización estudiantes PUT: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Error en actualización: ' . $e->getMessage()]);
             }
         }
 
-        generic_update($pdo, $real_table, $input, $id);
-        json_success();
+        // Caso normal para el resto de tablas
+        if ($real_table === 'alumnos') {
+            $id_col = 'id_alumno';
+        } elseif ($real_table === 'docentes') {
+            $id_col = 'id_docente';
+        } elseif ($real_table === 'materias') {
+            $id_col = 'id_materia';
+        } else {
+            $id_col = "id_$real_table";
+        }
+
+        // Whitelist of allowed fields per table to prevent SQL injection via column names
+        $allowed_fields_map = [
+            'docentes' => ['apellido', 'nombre', 'dni', 'fecha_inscripcion', 'situacion_revista', 'telefono', 'email', 'activo'],
+            'cursos'   => ['anio', 'division', 'turno', 'ciclo', 'jornada'],
+        ];
+
+        $allowed_fields = $allowed_fields_map[$real_table] ?? [];
+        if (empty($allowed_fields)) {
+            echo json_encode(['error' => 'Operación no permitida para esta tabla']);
+            exit;
+        }
+
+        $valid_input = array_intersect_key($input, array_flip($allowed_fields));
+        if (empty($valid_input)) {
+            echo json_encode(['error' => 'No se proporcionaron campos válidos']);
+            exit;
+        }
+
+        $set_parts = [];
+        $params = [];
+        foreach ($valid_input as $key => $value) {
+            $set_parts[] = "$key = ?";
+            $params[] = $value;
+        }
+        $params[] = $id;
+        
+        $sql = "UPDATE $real_table SET " . implode(',', $set_parts) . " WHERE $id_col = ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        
+        echo json_encode(['success' => true]);
     }
     elseif ($method === 'DELETE') {
-        if (!$id) json_error('ID requerido para eliminar');
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID requerido para eliminar']);
+            exit;
+        }
+        
+        if ($real_table === 'alumnos') {
+            $id_col = 'id_alumno';
+        } elseif ($real_table === 'docentes') {
+            $id_col = 'id_docente';
+        } elseif ($real_table === 'materias') {
+            $id_col = 'id_materia';
+        } else {
+            $id_col = "id_$real_table";
+        }
 
         generic_delete($pdo, $real_table, $id);
         json_success();
     }
 
 } catch (\PDOException $e) {
-    echo json_encode(['error' => $e->getMessage()]);
+    error_log('Error de base de datos en api.php: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['error' => 'Error interno del servidor']);
 }
