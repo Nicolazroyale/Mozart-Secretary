@@ -1,0 +1,37 @@
+services:
+  web:
+    build: .
+    container_name: web_mozartv1
+    ports:
+      - "8080:80"
+    volumes:
+      - ./apache2:/var/www/html
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-escuela_secundaria_tecnica}
+      DB_USER: ${DB_USER:-DBsecretaria}
+      DB_PASS: ${DB_PASS:-Dalia1244!}
+    networks:
+      - red_mozartv1
+
+  db:
+    image: mysql:8.0.32
+    container_name: db_mozartv1
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-schuldatenbank123456}
+      MYSQL_DATABASE: ${DB_NAME:-escuela_secundaria_tecnica}
+      MYSQL_USER: ${DB_USER:-DBsecretaria}
+      MYSQL_PASSWORD: ${DB_PASS:-Dalia1244!}
+    volumes:
+      - ./mysql:/var/lib/mysql #Aca se guarda toda la DB
+      - ./inicializar_bd:/docker-entrypoint-initdb.d #Aca va el .sql para que levante la DB
+    networks:
+      - red_mozartv1
+
+networks:
+  red_mozartv1:
+
+
+
+
+

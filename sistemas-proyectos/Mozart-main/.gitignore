@@ -1,0 +1,27 @@
+# Base de datos (datos locales)
+mysql/
+
+# Backups
+Backups/
+
+# Environment files with secrets
+.env
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+release.sh
+
+# Dependencies
+vendor/
+node_modules/
+
+# Composer
+composer.lock
+
+# npm
+package-lock.json
+
