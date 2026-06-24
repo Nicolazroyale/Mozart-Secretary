@@ -209,16 +209,28 @@ async function actualizarNomina() {
         </div>
     `;
 
+<<<<<<< HEAD
     // Sección de Profesores
     htmlContent += `
         <div style="margin-bottom:30px;">
             <h3 style="color:#2c3e50; border-bottom:2px solid #3498db; padding-bottom:5px; margin-bottom:15px;">
                 📚 Profesores del Curso
+=======
+    // Sección de Docentes
+    htmlContent += `
+        <div style="margin-bottom:30px;">
+            <h3 style="color:#2c3e50; border-bottom:2px solid #3498db; padding-bottom:5px; margin-bottom:15px;">
+                📚 Docentes del Curso
+>>>>>>> master
             </h3>
     `;
 
     if (!docentes || docentes.length === 0) {
+<<<<<<< HEAD
         htmlContent += `<p style="color:#7f8c8d; padding:10px;">No hay profesores asignados a este curso.</p>`;
+=======
+        htmlContent += `<p style="color:#7f8c8d; padding:10px;">No hay docentes asignados a este curso.</p>`;
+>>>>>>> master
     } else {
         htmlContent += `
             <table class="search-results-table">
@@ -471,9 +483,13 @@ async function cargarFormulario(){
                                 <select id="genero" onchange="handleGeneroChange(this)" required>
                                     <option value="No desea responder">Seleccionar...</option>
                                     <option value="Mujer">Mujer</option>
+<<<<<<< HEAD
                                     <option value="Mujer trans/travesti">Mujer trans/travesti</option>
                                     <option value="Varón">Varón</option>
                                     <option value="Varón trans/masculinidad trans">Varón trans/masculinidad trans</option>
+=======
+                                    <option value="Varón">Varón</option>
+>>>>>>> master
                                     <option value="No binario">No binario</option>
                                     <option value="Otra">Otra</option>
                                     <option value="No desea responder">No desea responder</option>

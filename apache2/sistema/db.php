@@ -21,4 +21,8 @@ try {
      echo json_encode(['error' => 'No se pudo conectar a la base de datos']);
      exit;
 }
+<<<<<<< HEAD
 ?>
+=======
+?>
+>>>>>>> master

@@ -1,6 +1,7 @@
 <?php
 require_once 'auth_config.php';
 require_once 'db.php';
+<<<<<<< HEAD
 require_once __DIR__ . '/shared/api_helpers.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -11,6 +12,31 @@ $id     = $_GET['id'] ?? '';
 $search = $_GET['search'] ?? '';
 $page   = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit  = isset($_GET['limit']) ? (int)$_GET['limit'] : 0;
+=======
+
+header('Content-Type: application/json');
+
+// Verificar sesión de forma robusta
+if (!verificar_sesion()) {
+    http_response_code(401);
+    echo json_encode(['error' => 'No autorizado o sesión expirada']);
+    exit;
+}
+
+$method = $_SERVER['REQUEST_METHOD'];
+
+// Verificar permisos de escritura para métodos que modifican datos
+if (in_array($method, ['POST', 'PUT', 'DELETE']) && $_SESSION['rol'] !== 'admin') {
+    http_response_code(403);
+    echo json_encode(['error' => 'No tiene permisos para realizar esta acción']);
+    exit;
+}
+$table = $_GET['table'] ?? '';
+$id = $_GET['id'] ?? '';
+$search = $_GET['search'] ?? '';
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 0; // 0 significa sin límite por defecto
+>>>>>>> master
 
 $allowed_tables = ['estudiantes', 'docentes', 'cursos', 'lista_cursos', 'search', 'nomina', 'docentes_por_curso', 'docente_cursos'];
 
@@ -20,7 +46,19 @@ if (!in_array($table, $allowed_tables)) {
     exit;
 }
 
+<<<<<<< HEAD
 $real_table = resolve_table($table);
+=======
+// Mapeo de nombres del frontend a tablas reales
+$table_map = [
+    'estudiantes' => 'alumnos',
+    'docentes'    => 'docentes',
+    'cursos'      => 'cursos',
+    'materias'    => 'materias'
+];
+
+$real_table = $table_map[$table] ?? $table;
+>>>>>>> master
 
 try {
     if ($method === 'GET') {
@@ -58,15 +96,60 @@ try {
                 exit;
 
             case 'search':
+<<<<<<< HEAD
                 $rol   = $_GET['rol'] ?? 'todos';
                 $anio  = $_GET['anio'] ?? '';
                 $turno = $_GET['turno'] ?? '';
                 json_success(query_search($pdo, $search, $rol, $anio, $turno));
+=======
+                $rol = $_GET['rol'] ?? 'todos';
+                $anio = $_GET['anio'] ?? '';
+                $turno = $_GET['turno'] ?? '';
+                
+                $results = [];
+                
+                // Búsqueda de Alumnos
+                if ($rol === 'todos' || $rol === 'alumno') {
+                    $sql = "SELECT id_alumno as id, CONCAT(apellido, ', ', nombre) as nombre, dni, 'alumno' as rol, id_curso 
+                            FROM alumnos 
+                            WHERE (apellido LIKE ? OR nombre LIKE ? OR dni LIKE ?)";
+                    $params = ["%$search%", "%$search%", "%$search%"];
+                    
+                    if ($anio || $turno) {
+                        $sql .= " AND id_curso IN (SELECT id_curso FROM cursos WHERE 1=1";
+                        if ($anio) { $sql .= " AND anio = ?"; $params[] = $anio; }
+                        if ($turno) { $sql .= " AND turno = ?"; $params[] = $turno; }
+                        $sql .= ")";
+                    }
+                    
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    $results = array_merge($results, $stmt->fetchAll());
+                }
+                
+                // Búsqueda de Profesores
+                if ($rol === 'todos' || $rol === 'profesor') {
+                    $sql = "SELECT id_docente as id, CONCAT(apellido, ', ', nombre) as nombre, dni, 'profesor' as rol, NULL as id_curso 
+                            FROM docentes 
+                            WHERE (apellido LIKE ? OR nombre LIKE ? OR dni LIKE ?)";
+                    $params = ["%$search%", "%$search%", "%$search%"];
+                    
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    $results = array_merge($results, $stmt->fetchAll());
+                }
+                
+                echo json_encode($results);
+                exit;
+>>>>>>> master
 
             case 'lista_cursos':
                 $query = "SELECT id_curso, CONCAT(anio, '°', division, '° (', ciclo, ') - ', turno) as nombre FROM cursos ORDER BY anio, division";
                 break;
+<<<<<<< HEAD
 
+=======
+>>>>>>> master
             case 'docentes_por_curso':
                 if (!$id) {
                     http_response_code(400);
@@ -89,8 +172,13 @@ try {
                           ORDER BY d.apellido, d.nombre";
                 $stmt = $pdo->prepare($query);
                 $stmt->execute([$id]);
+<<<<<<< HEAD
                 json_success($stmt->fetchAll());
 
+=======
+                echo json_encode($stmt->fetchAll());
+                exit;
+>>>>>>> master
             case 'docente_cursos':
                 if (!$id) {
                     http_response_code(400);
@@ -101,11 +189,54 @@ try {
                 $stmt = $pdo->prepare($query);
                 $stmt->execute([$id]);
                 $cursos = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+<<<<<<< HEAD
                 json_success($cursos);
 
             case 'estudiantes':
                 if ($id) {
                     $data = query_student_detail($pdo, $id);
+=======
+                echo json_encode($cursos);
+                exit;
+            case 'estudiantes':
+                if ($id) {
+                    // ... (sin cambios en la obtención por ID)
+                    $query = "SELECT a.*, 
+                              s.asma as salud_asma, s.celiaquia as salud_celiaquia, s.diabetes as salud_diabetes, 
+                              s.obesidad as salud_obesidad, s.cardiopatia as salud_cardiopatia, 
+                              s.otros_checklist as salud_otros_checklist, s.alergias as salud_alergias, 
+                              s.internaciones as salud_internaciones, s.antecedentes_salud as salud_antecedentes_salud,
+                              s.obra_social_nombre as salud_obra_social_nombre, s.obra_social_nro as salud_obra_social_nro,
+                              rj.apellido_nombre as rj_nombre, rj.tipo_doc as rj_tipo_doc, 
+                              rj.nro_doc as rj_nro_doc, rj.descripcion as rj_descripcion 
+                              FROM alumnos a 
+                              LEFT JOIN salud_alumno s ON a.id_alumno = s.id_alumno 
+                              LEFT JOIN restricciones_judiciales rj ON a.id_alumno = rj.id_alumno
+                              WHERE a.id_alumno = ?";
+                    $stmt = $pdo->prepare($query);
+                    $stmt->execute([$id]);
+                    $data = $stmt->fetch();
+
+                    if ($data) {
+                        $queryResp = "SELECT r.*, ar.es_principal 
+                                      FROM responsables r 
+                                      JOIN alumno_responsable ar ON r.id_responsable = ar.id_responsable 
+                                      WHERE ar.id_alumno = ? 
+                                      ORDER BY ar.es_principal DESC";
+                        $stmtResp = $pdo->prepare($queryResp);
+                        $stmtResp->execute([$id]);
+                        $resps = $stmtResp->fetchAll();
+                        
+                        foreach ($resps as $index => $r) {
+                            $num = $index + 1;
+                            foreach ($r as $key => $val) {
+                                if ($key !== 'es_principal') {
+                                    $data["resp{$num}_{$key}"] = $val;
+                                }
+                            }
+                        }
+                    }
+>>>>>>> master
                     echo json_encode($data);
                     exit;
                 } else {
@@ -132,7 +263,10 @@ try {
                     exit;
                 }
                 break;
+<<<<<<< HEAD
 
+=======
+>>>>>>> master
             case 'docentes':
                 if ($id) {
                     $query = "SELECT * FROM docentes WHERE id_docente = ?";
@@ -151,7 +285,10 @@ try {
                     exit;
                 }
                 break;
+<<<<<<< HEAD
 
+=======
+>>>>>>> master
             case 'cursos':
                 if ($id) {
                     $query = "SELECT * FROM cursos WHERE id_curso = ?";
@@ -160,7 +297,10 @@ try {
                     $query = "SELECT id_curso, CONCAT(anio, '°', division, '°') as nombre, turno as curso FROM cursos";
                 }
                 break;
+<<<<<<< HEAD
 
+=======
+>>>>>>> master
             case 'materias':
                 if ($id) {
                     $query = "SELECT * FROM materias WHERE id_materia = ?";
@@ -196,26 +336,44 @@ try {
                 exit;
             }
             
+<<<<<<< HEAD
+=======
+            // Asegurar que haya al menos una materia
+>>>>>>> master
             $countMaterias = $pdo->query("SELECT COUNT(*) FROM materias")->fetchColumn();
             if ($countMaterias == 0) {
                 $pdo->exec("INSERT INTO materias (nombre) VALUES ('Sin Asignar')");
             }
             
+<<<<<<< HEAD
             $materia = $pdo->query("SELECT id_materia FROM materias LIMIT 1")->fetch();
             $id_materia = $materia['id_materia'];
             
+=======
+            // Obtener la primera materia existente
+            $materia = $pdo->query("SELECT id_materia FROM materias LIMIT 1")->fetch();
+            $id_materia = $materia['id_materia'];
+            
+            // Insertar o actualizar la relación
+>>>>>>> master
             $sql = "INSERT INTO docente_materia_curso (id_docente, id_materia, id_curso, cargo, activo, ciclo_lectivo) 
                     VALUES (?, ?, ?, 'Titular', 1, YEAR(CURDATE()))
                     ON DUPLICATE KEY UPDATE activo = 1";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$input['id_docente'], $id_materia, $input['id_curso']]);
             
+<<<<<<< HEAD
             json_success();
+=======
+            echo json_encode(['success' => true]);
+            exit;
+>>>>>>> master
         }
 
         if ($table === 'estudiantes') {
             $pdo->beginTransaction();
             try {
+<<<<<<< HEAD
                 $id_alumno = insert_alumno($pdo, $input);
                 save_salud($pdo, $input, $id_alumno, 'insert');
                 save_restriccion($pdo, $input, $id_alumno);
@@ -223,12 +381,91 @@ try {
 
                 $pdo->commit();
                 json_success(['success' => true, 'id' => $id_alumno]);
+=======
+                // 1. Insertar Alumno
+                $alumno_fields = [
+                    'apellido', 'nombre', 'tipo_dni', 'dni', 'cuil', 'fecha_nacimiento', 
+                    'lugar_nacimiento', 'nacionalidad', 'genero', 'genero_especificar',
+                    'calle', 'numero', 'piso', 'depto', 'entre_calles', 'localidad', 
+                    'distrito', 'provincia', 'telefono_fijo', 'telefono_celular', 
+                    'id_curso', 'fecha_ingreso'
+                ];
+                $cols = implode(',', $alumno_fields);
+                $placeholders = implode(',', array_fill(0, count($alumno_fields), '?'));
+                $sqlAlu = "INSERT INTO alumnos ($cols) VALUES ($placeholders)";
+                $stmtAlu = $pdo->prepare($sqlAlu);
+                $alumno_values = [];
+                foreach ($alumno_fields as $f) $alumno_values[] = $input[$f] ?? null;
+                $stmtAlu->execute($alumno_values);
+                $id_alumno = $pdo->lastInsertId();
+
+                // 2. Insertar Salud
+                $salud_fields = [
+                    'asma', 'celiaquia', 'diabetes', 'obesidad', 'cardiopatia', 
+                    'otros_checklist', 'alergias', 'internaciones', 'antecedentes_salud', 
+                    'obra_social_nombre', 'obra_social_nro'
+                ];
+                $colsS = "id_alumno," . implode(',', $salud_fields);
+                $placeholdersS = "?," . implode(',', array_fill(0, count($salud_fields), '?'));
+                $sqlSalud = "INSERT INTO salud_alumno ($colsS) VALUES ($placeholdersS)";
+                $stmtSalud = $pdo->prepare($sqlSalud);
+                $salud_values = [$id_alumno];
+                foreach ($salud_fields as $f) $salud_values[] = $input['salud_' . $f] ?? 0;
+                $stmtSalud->execute($salud_values);
+
+                // 3. Insertar Restricciones si existen
+                if (!empty($input['rj_nombre'])) {
+                    $sqlRJ = "INSERT INTO restricciones_judiciales (id_alumno, apellido_nombre, tipo_doc, nro_doc, descripcion) VALUES (?, ?, ?, ?, ?)";
+                    $stmtRJ = $pdo->prepare($sqlRJ);
+                    $stmtRJ->execute([$id_alumno, $input['rj_nombre'], $input['rj_tipo_doc'], $input['rj_nro_doc'], $input['rj_descripcion']]);
+                }
+
+                // 4. Insertar Responsables (hasta 2)
+                for ($i = 1; $i <= 2; $i++) {
+                    if (!empty($input["resp{$i}_dni"])) {
+                        $resp_fields = [
+                            'apellido', 'nombre', 'vinculo', 'nacionalidad', 'tipo_dni', 'dni',
+                            'profesion', 'nivel_educativo', 'condicion_actividad', 'convive_estudiante',
+                            'calle', 'numero', 'piso', 'depto', 'localidad', 'provincia',
+                            'telefono_fijo', 'telefono_celular', 'email'
+                        ];
+                        $colsR = implode(',', $resp_fields);
+                        $placeholdersR = implode(',', array_fill(0, count($resp_fields), '?'));
+                        $sqlResp = "INSERT INTO responsables ($colsR) VALUES ($placeholdersR) ON DUPLICATE KEY UPDATE id_responsable=LAST_INSERT_ID(id_responsable)";
+                        $stmtResp = $pdo->prepare($sqlResp);
+                        $resp_values = [];
+                        foreach ($resp_fields as $f) {
+                            if ($f === 'convive_estudiante') {
+                                $resp_values[] = $input["resp{$i}_convive"] ?? 0;
+                            } elseif ($f === 'condicion_actividad') {
+                                $resp_values[] = $input["resp{$i}_$f"] ?? 'Activo';
+                            } else {
+                                $resp_values[] = $input["resp{$i}_$f"] ?? null;
+                            }
+                        }
+                        $stmtResp->execute($resp_values);
+                        $id_responsable = $pdo->lastInsertId();
+
+                        // Relación
+                        $sqlRel = "INSERT INTO alumno_responsable (id_alumno, id_responsable, es_principal) VALUES (?, ?, ?)";
+                        $stmtRel = $pdo->prepare($sqlRel);
+                        $stmtRel->execute([$id_alumno, $id_responsable, ($i === 1 ? 1 : 0)]);
+                    }
+                }
+
+                $pdo->commit();
+                echo json_encode(['success' => true, 'id' => $id_alumno]);
+>>>>>>> master
             } catch (Exception $e) {
                 $pdo->rollBack();
                 error_log('Error en transacción estudiantes POST: ' . $e->getMessage());
                 http_response_code(500);
                 echo json_encode(['error' => 'Error en transacción: ' . $e->getMessage()]);
             }
+<<<<<<< HEAD
+=======
+            exit;
+>>>>>>> master
         }
 
         // Whitelist of allowed fields per table to prevent SQL injection via column names
@@ -275,50 +512,166 @@ try {
         if ($table === 'docente_cursos') {
             $pdo->beginTransaction();
             try {
+<<<<<<< HEAD
+=======
+                // Asegurar que haya al menos una materia
+>>>>>>> master
                 $countMaterias = $pdo->query("SELECT COUNT(*) FROM materias")->fetchColumn();
                 if ($countMaterias == 0) {
                     $pdo->exec("INSERT INTO materias (nombre) VALUES ('Sin Asignar')");
                 }
                 
+<<<<<<< HEAD
                 $materia = $pdo->query("SELECT id_materia FROM materias LIMIT 1")->fetch();
                 $id_materia = $materia['id_materia'];
                 
                 $pdo->prepare("UPDATE docente_materia_curso SET activo = 0 WHERE id_docente = ?")->execute([$id]);
 
+=======
+                // Obtener la primera materia existente
+                $materia = $pdo->query("SELECT id_materia FROM materias LIMIT 1")->fetch();
+                $id_materia = $materia['id_materia'];
+                
+                // Primero desactivamos todas las relaciones anteriores
+                $sqlDesactivar = "UPDATE docente_materia_curso SET activo = 0 WHERE id_docente = ?";
+                $stmtDesactivar = $pdo->prepare($sqlDesactivar);
+                $stmtDesactivar->execute([$id]);
+
+                // Ahora activamos o insertamos las nuevas
+>>>>>>> master
                 if (isset($input['cursos']) && is_array($input['cursos'])) {
                     foreach ($input['cursos'] as $id_curso) {
                         $sql = "INSERT INTO docente_materia_curso (id_docente, id_materia, id_curso, cargo, activo, ciclo_lectivo) 
                                 VALUES (?, ?, ?, 'Titular', 1, YEAR(CURDATE()))
                                 ON DUPLICATE KEY UPDATE activo = 1";
+<<<<<<< HEAD
                         $pdo->prepare($sql)->execute([$id, $id_materia, $id_curso]);
+=======
+                        $stmt = $pdo->prepare($sql);
+                        $stmt->execute([$id, $id_materia, $id_curso]);
+>>>>>>> master
                     }
                 }
                 
                 $pdo->commit();
+<<<<<<< HEAD
                 json_success();
+=======
+                echo json_encode(['success' => true]);
+>>>>>>> master
             } catch (Exception $e) {
                 $pdo->rollBack();
                 error_log('Error en transacción docente_cursos PUT: ' . $e->getMessage());
                 http_response_code(500);
                 echo json_encode(['error' => 'Error en transacción: ' . $e->getMessage()]);
             }
+<<<<<<< HEAD
+=======
+            exit;
+>>>>>>> master
         }
 
         if ($table === 'estudiantes') {
             $pdo->beginTransaction();
             try {
+<<<<<<< HEAD
                 update_alumno($pdo, $input, $id);
                 save_salud($pdo, $input, $id, 'update');
                 save_responsables($pdo, $input, $id, 'upsert');
 
                 $pdo->commit();
                 json_success();
+=======
+                // 1. Actualizar Alumno
+                $alumno_fields = [
+                    'apellido', 'nombre', 'tipo_dni', 'dni', 'cuil', 'fecha_nacimiento', 
+                    'lugar_nacimiento', 'nacionalidad', 'genero', 'genero_especificar',
+                    'calle', 'numero', 'piso', 'depto', 'entre_calles', 'localidad', 
+                    'distrito', 'provincia', 'telefono_fijo', 'telefono_celular', 
+                    'id_curso', 'fecha_ingreso'
+                ];
+                $sets = [];
+                $params = [];
+                foreach ($alumno_fields as $f) {
+                    $sets[] = "$f = ?";
+                    $params[] = $input[$f] ?? null;
+                }
+                $params[] = $id;
+                $sqlAlu = "UPDATE alumnos SET " . implode(',', $sets) . " WHERE id_alumno = ?";
+                $stmtAlu = $pdo->prepare($sqlAlu);
+                $stmtAlu->execute($params);
+
+                // 2. Actualizar Salud
+                $salud_fields = [
+                    'asma', 'celiaquia', 'diabetes', 'obesidad', 'cardiopatia', 
+                    'otros_checklist', 'alergias', 'internaciones', 'antecedentes_salud', 
+                    'obra_social_nombre', 'obra_social_nro'
+                ];
+                $setsS = [];
+                $paramsS = [];
+                foreach ($salud_fields as $f) {
+                    $setsS[] = "$f = ?";
+                    $paramsS[] = $input['salud_' . $f] ?? 0;
+                }
+                $paramsS[] = $id;
+                $sqlSalud = "UPDATE salud_alumno SET " . implode(',', $setsS) . " WHERE id_alumno = ?";
+                $stmtSalud = $pdo->prepare($sqlSalud);
+                $stmtSalud->execute($paramsS);
+
+                // 3. Actualizar Responsables (Lógica simplificada: borrar relaciones antiguas y recrear)
+                // En un sistema real se buscaría por DNI, aquí mantenemos la coherencia de la ficha
+                for ($i = 1; $i <= 2; $i++) {
+                    if (!empty($input["resp{$i}_dni"])) {
+                        $resp_fields = [
+                            'apellido', 'nombre', 'vinculo', 'nacionalidad', 'tipo_dni', 'dni',
+                            'profesion', 'nivel_educativo', 'condicion_actividad', 'convive_estudiante',
+                            'calle', 'numero', 'piso', 'depto', 'localidad', 'provincia',
+                            'telefono_fijo', 'telefono_celular', 'email'
+                        ];
+                        $colsR = implode(',', $resp_fields);
+                        $placeholdersR = implode(',', array_fill(0, count($resp_fields), '?'));
+                        $sqlResp = "INSERT INTO responsables ($colsR) VALUES ($placeholdersR) 
+                                    ON DUPLICATE KEY UPDATE id_responsable=LAST_INSERT_ID(id_responsable)";
+                        
+                        // Actualizar campos si ya existe
+                        $updateParts = [];
+                        foreach($resp_fields as $f) $updateParts[] = "$f=VALUES($f)";
+                        $sqlResp .= ", " . implode(',', $updateParts);
+
+                        $stmtResp = $pdo->prepare($sqlResp);
+                        $resp_values = [];
+                        foreach ($resp_fields as $f) {
+                            if ($f === 'convive_estudiante') {
+                                $resp_values[] = $input["resp{$i}_convive"] ?? 0;
+                            } elseif ($f === 'condicion_actividad') {
+                                $resp_values[] = $input["resp{$i}_$f"] ?? 'Activo';
+                            } else {
+                                $resp_values[] = $input["resp{$i}_$f"] ?? null;
+                            }
+                        }
+                        $stmtResp->execute($resp_values);
+                        $id_responsable = $pdo->lastInsertId();
+
+                        // Asegurar relación
+                        $sqlRel = "INSERT IGNORE INTO alumno_responsable (id_alumno, id_responsable, es_principal) VALUES (?, ?, ?)";
+                        $stmtRel = $pdo->prepare($sqlRel);
+                        $stmtRel->execute([$id, $id_responsable, ($i === 1 ? 1 : 0)]);
+                    }
+                }
+
+                $pdo->commit();
+                echo json_encode(['success' => true]);
+>>>>>>> master
             } catch (Exception $e) {
                 $pdo->rollBack();
                 error_log('Error en actualización estudiantes PUT: ' . $e->getMessage());
                 http_response_code(500);
                 echo json_encode(['error' => 'Error en actualización: ' . $e->getMessage()]);
             }
+<<<<<<< HEAD
+=======
+            exit;
+>>>>>>> master
         }
 
         // Caso normal para el resto de tablas
@@ -381,8 +734,16 @@ try {
             $id_col = "id_$real_table";
         }
 
+<<<<<<< HEAD
         generic_delete($pdo, $real_table, $id);
         json_success();
+=======
+        $sql = "DELETE FROM $real_table WHERE $id_col = ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$id]);
+        
+        echo json_encode(['success' => true]);
+>>>>>>> master
     }
 
 } catch (\PDOException $e) {

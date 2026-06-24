@@ -1,7 +1,11 @@
 services:
   web:
     build: .
+<<<<<<< HEAD
     container_name: web_mozartv1      
+=======
+    container_name: web_mozartv1
+>>>>>>> master
     ports:
       - "8080:80"
     volumes:
@@ -16,7 +20,11 @@ services:
 
   db:
     image: mysql:8.0.32
+<<<<<<< HEAD
     container_name: db_mozartv1      
+=======
+    container_name: db_mozartv1
+>>>>>>> master
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-schuldatenbank123456}
       MYSQL_DATABASE: ${DB_NAME:-escuela_secundaria_tecnica}
@@ -26,7 +34,11 @@ services:
       - ./mysql:/var/lib/mysql #Aca se guarda toda la DB
       - ./inicializar_bd:/docker-entrypoint-initdb.d #Aca va el .sql para que levante la DB
     networks:
+<<<<<<< HEAD
       - red_mozartv1      
+=======
+      - red_mozartv1
+>>>>>>> master
 
 networks:
   red_mozartv1:
