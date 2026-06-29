@@ -51,11 +51,7 @@ if (!verificar_sesion()) {
 
     <div class="menu">
         <button onclick="cargarEstudiantes()">Estudiantes</button>
-<<<<<<< HEAD
-        <button onclick="cargarProfesores()">Profesores</button>
-=======
         <button onclick="cargarProfesores()">Docentes</button>
->>>>>>> master
         <button onclick="cargarCursos()">Cursos</button>
         <button onclick="cargarVistaNomina()">Listado por Curso</button>
     </div>

@@ -1,4 +1,5 @@
 # Base de datos (datos locales)
+mariadb/
 mysql/
 
 # Environment files with secrets

@@ -207,6 +207,13 @@ th{
     border-collapse: collapse;
     margin-top: 20px;
 }
+.search-results-table th,
+.search-results-table td,
+.suggestions-box,
+.suggestion-item,
+.suggestion-item span {
+    color: black;
+}
 
 .btn-perfil {
     background: #3498db;

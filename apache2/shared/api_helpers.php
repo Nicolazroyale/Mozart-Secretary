@@ -29,7 +29,8 @@ const TABLE_MAP = [
     'estudiantes' => 'alumnos',
     'docentes'    => 'docentes',
     'cursos'      => 'cursos',
-    'materias'    => 'materias'
+    'materias'    => 'materias',
+    'asignaciones' => 'docente_materia_curso',
 ];
 
 // ---------------------------------------------------------------------------
@@ -74,9 +75,10 @@ function init_api(string $method): void {
  * Resolve the primary-key column name for a given real table.
  */
 function get_id_column(string $real_table): string {
-    if ($real_table === 'alumnos')   return 'id_alumno';
-    if ($real_table === 'docentes')  return 'id_docente';
-    if ($real_table === 'materias')  return 'id_materia';
+    if ($real_table === 'alumnos')               return 'id_alumno';
+    if ($real_table === 'docentes')              return 'id_docente';
+    if ($real_table === 'materias')              return 'id_materia';
+    if ($real_table === 'docente_materia_curso') return 'id';
     return "id_$real_table";
 }
 
@@ -339,4 +341,23 @@ function generic_delete(PDO $pdo, string $real_table, string $id): void {
     $id_col = get_id_column($real_table);
     $stmt = $pdo->prepare("DELETE FROM $real_table WHERE $id_col = ?");
     $stmt->execute([$id]);
+}
+
+/**
+ * Get docentes with materias and cargos for a specific curso
+ */
+function query_docentes_por_curso(PDO $pdo, int $id_curso): array {
+    $query = "SELECT
+                dmc.id,
+                d.id_docente, d.apellido, d.nombre, d.dni, d.telefono,
+                m.id_materia, m.nombre as materia,
+                dmc.cargo as cargo_curso, dmc.dia_semana, dmc.hora_inicio, dmc.hora_fin
+              FROM docente_materia_curso dmc
+              JOIN docentes d ON dmc.id_docente = d.id_docente
+              JOIN materias m ON dmc.id_materia = m.id_materia
+              WHERE dmc.id_curso = ? AND dmc.activo = 1
+              ORDER BY d.apellido ASC";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([$id_curso]);
+    return $stmt->fetchAll();
 }

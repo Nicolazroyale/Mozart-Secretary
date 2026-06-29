@@ -1,11 +1,7 @@
 services:
   web:
     build: .
-<<<<<<< HEAD
-    container_name: web_mozartv1      
-=======
-    container_name: web_mozartv1
->>>>>>> master
+    container_name: web_mozart
     ports:
       - "8080:80"
     volumes:
@@ -16,32 +12,24 @@ services:
       DB_USER: ${DB_USER:-DBsecretaria}
       DB_PASS: ${DB_PASS:-Dalia1244!}
     networks:
-      - red_mozartv1
+      - red_mozart
 
   db:
-    image: mysql:8.0.32
-<<<<<<< HEAD
-    container_name: db_mozartv1      
-=======
-    container_name: db_mozartv1
->>>>>>> master
+    image: mariadb:10.11
+    container_name: db_mozart
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-schuldatenbank123456}
       MYSQL_DATABASE: ${DB_NAME:-escuela_secundaria_tecnica}
       MYSQL_USER: ${DB_USER:-DBsecretaria}
       MYSQL_PASSWORD: ${DB_PASS:-Dalia1244!}
     volumes:
-      - ./mysql:/var/lib/mysql #Aca se guarda toda la DB
+      - ./mariadb:/var/lib/mysql #Aca se guarda toda la DB
       - ./inicializar_bd:/docker-entrypoint-initdb.d #Aca va el .sql para que levante la DB
     networks:
-<<<<<<< HEAD
-      - red_mozartv1      
-=======
-      - red_mozartv1
->>>>>>> master
+      - red_mozart
 
 networks:
-  red_mozartv1:
+  red_mozart:
 
 
 

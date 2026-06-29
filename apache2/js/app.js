@@ -23,7 +23,7 @@ function handleSearchInput(query) {
             const anio = '';
             const turno = '';
             
-            const url = `api.php?table=search&search=${encodeURIComponent(query)}&rol=${rol}&anio=${anio}&turno=${turno}`;
+            const url = `sistema/api.php?table=search&search=${encodeURIComponent(query)}&rol=${rol}&anio=${anio}&turno=${turno}`;
             const response = await fetch(url);
             if (!response.ok) {
                 console.error('Error en búsqueda:', response.status);
@@ -204,33 +204,24 @@ async function actualizarNomina() {
 
     let htmlContent = `
         <div style="display:flex; justify-content: flex-end; margin-bottom: 10px; gap: 10px;">
+            <button onclick="abrirModalAsignarDocente('${idCurso}')" style="background:#3498db; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">
+                Asignar Docente
+            </button>
             <button onclick="exportarNomina('pdf')" style="background:#e74c3c;">Exportar PDF</button>
             <button onclick="exportarNomina('excel')" style="background:#27ae60;">Exportar Excel</button>
         </div>
     `;
 
-<<<<<<< HEAD
-    // Sección de Profesores
-    htmlContent += `
-        <div style="margin-bottom:30px;">
-            <h3 style="color:#2c3e50; border-bottom:2px solid #3498db; padding-bottom:5px; margin-bottom:15px;">
-                📚 Profesores del Curso
-=======
     // Sección de Docentes
     htmlContent += `
         <div style="margin-bottom:30px;">
             <h3 style="color:#2c3e50; border-bottom:2px solid #3498db; padding-bottom:5px; margin-bottom:15px;">
                 📚 Docentes del Curso
->>>>>>> master
             </h3>
     `;
 
     if (!docentes || docentes.length === 0) {
-<<<<<<< HEAD
-        htmlContent += `<p style="color:#7f8c8d; padding:10px;">No hay profesores asignados a este curso.</p>`;
-=======
         htmlContent += `<p style="color:#7f8c8d; padding:10px;">No hay docentes asignados a este curso.</p>`;
->>>>>>> master
     } else {
         htmlContent += `
             <table class="search-results-table">
@@ -238,9 +229,11 @@ async function actualizarNomina() {
                     <tr>
                         <th>Apellido y Nombre</th>
                         <th>DNI</th>
+                        <th>Materia</th>
                         <th>Cargo</th>
                         <th>Día</th>
                         <th>Horario</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -248,9 +241,15 @@ async function actualizarNomina() {
                         <tr>
                             <td style="font-weight:bold;">${doc.apellido.toUpperCase()}, ${doc.nombre}</td>
                             <td>${doc.dni}</td>
+                            <td>${doc.materia}</td>
                             <td>${doc.cargo_curso || doc.cargo || 'N/A'}</td>
                             <td>${doc.dia_semana || 'N/A'}</td>
                             <td>${doc.hora_inicio ? `${doc.hora_inicio.substring(0,5)} - ${doc.hora_fin ? doc.hora_fin.substring(0,5) : 'N/A'}` : 'N/A'}</td>
+                            <td>
+                                <button onclick="eliminarAsignacion(${doc.id}, ${idCurso})" style="background:#e74c3c; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">
+                                    Quitar
+                                </button>
+                            </td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -308,12 +307,141 @@ async function actualizarNomina() {
 
 function exportarNomina(formato) {
     const select = document.getElementById('select-curso-nomina');
+    const idCurso = select.value;
     const cursoNombre = select.options[select.selectedIndex].text;
-    alert(`Exportando nómina de ${cursoNombre} a ${formato.toUpperCase()}...\n(Esta funcionalidad requiere librerías adicionales como jsPDF o SheetJS)`);
+    
+    if (!idCurso) {
+        alert('Por favor, seleccione un curso primero.');
+        return;
+    }
+    
+    // Create a modal dialog for export options
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    `;
+    
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    `;
+    
+    dialog.innerHTML = `
+        <h3 style="margin-top:0;">Exportar Nómina - ${cursoNombre}</h3>
+        <p style="color:#666;">Seleccione los datos que desea incluir en la exportación:</p>
+        <div style="display:flex; flex-direction:column; gap:8px; margin:15px 0;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="export-profesores" checked> Incluir profesores del curso
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="export-dni" checked> DNI de los alumnos
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="export-responsables" checked> Datos de los responsables
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="export-telefonos" checked> Teléfonos de emergencia
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="export-salud" checked> Alertas de salud
+            </label>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+            <button id="cancel-export" style="padding:8px 16px; border:1px solid #ddd; border-radius:4px; cursor:pointer;">Cancelar</button>
+            <button id="confirm-export" style="padding:8px 16px; background:${formato === 'pdf' ? '#e74c3c' : '#27ae60'}; color:white; border:none; border-radius:4px; cursor:pointer;">
+                Exportar a ${formato.toUpperCase()}
+            </button>
+        </div>
+    `;
+    
+    modal.appendChild(dialog);
+    document.body.appendChild(modal);
+    
+    // Handle cancel
+    document.getElementById('cancel-export').onclick = () => {
+        document.body.removeChild(modal);
+    };
+    
+    // Handle confirm
+    document.getElementById('confirm-export').onclick = () => {
+        document.body.removeChild(modal);
+        
+        // Create a temporary form to trigger download
+        const form = document.createElement('form');
+        form.method = 'GET';
+        form.action = 'sistema/api.php';
+        
+        const tableInput = document.createElement('input');
+        tableInput.type = 'hidden';
+        tableInput.name = 'table';
+        tableInput.value = 'nomina';
+        form.appendChild(tableInput);
+        
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'id';
+        idInput.value = idCurso;
+        form.appendChild(idInput);
+        
+        const formatInput = document.createElement('input');
+        formatInput.type = 'hidden';
+        formatInput.name = 'format';
+        formatInput.value = formato;
+        form.appendChild(formatInput);
+        
+        const includeProfesores = document.createElement('input');
+        includeProfesores.type = 'hidden';
+        includeProfesores.name = 'include_profesores';
+        includeProfesores.value = document.getElementById('export-profesores').checked ? '1' : '0';
+        form.appendChild(includeProfesores);
+        
+        const includeDni = document.createElement('input');
+        includeDni.type = 'hidden';
+        includeDni.name = 'include_dni';
+        includeDni.value = document.getElementById('export-dni').checked ? '1' : '0';
+        form.appendChild(includeDni);
+        
+        const includeResponsables = document.createElement('input');
+        includeResponsables.type = 'hidden';
+        includeResponsables.name = 'include_responsables';
+        includeResponsables.value = document.getElementById('export-responsables').checked ? '1' : '0';
+        form.appendChild(includeResponsables);
+        
+        const includeTelefonos = document.createElement('input');
+        includeTelefonos.type = 'hidden';
+        includeTelefonos.name = 'include_telefonos';
+        includeTelefonos.value = document.getElementById('export-telefonos').checked ? '1' : '0';
+        form.appendChild(includeTelefonos);
+        
+        const includeSalud = document.createElement('input');
+        includeSalud.type = 'hidden';
+        includeSalud.name = 'include_salud';
+        includeSalud.value = document.getElementById('export-salud').checked ? '1' : '0';
+        form.appendChild(includeSalud);
+        
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    };
 }
 
 async function fetchDataTable(table, id = null) {
-    let url = `api.php?table=${table}`;
+    let url = `sistema/api.php?table=${table}`;
     if (id) url += `&id=${id}`;
     console.log("Fetching URL:", url);
     
@@ -483,13 +611,9 @@ async function cargarFormulario(){
                                 <select id="genero" onchange="handleGeneroChange(this)" required>
                                     <option value="No desea responder">Seleccionar...</option>
                                     <option value="Mujer">Mujer</option>
-<<<<<<< HEAD
                                     <option value="Mujer trans/travesti">Mujer trans/travesti</option>
                                     <option value="Varón">Varón</option>
                                     <option value="Varón trans/masculinidad trans">Varón trans/masculinidad trans</option>
-=======
-                                    <option value="Varón">Varón</option>
->>>>>>> master
                                     <option value="No binario">No binario</option>
                                     <option value="Otra">Otra</option>
                                     <option value="No desea responder">No desea responder</option>
@@ -1332,7 +1456,7 @@ async function guardarEdicion(tipo, id) {
 
     try {
         if (tipo === 'docentes') {
-            const response1 = await fetch(`api.php?table=${tipo}&id=${id}`, {
+            const response1 = await fetch(`sistema/api.php?table=${tipo}&id=${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -1346,7 +1470,7 @@ async function guardarEdicion(tipo, id) {
             const checkboxes = document.querySelectorAll('input[name="cursos"]:checked');
             const cursosSeleccionados = Array.from(checkboxes).map(cb => parseInt(cb.value));
             
-            const response2 = await fetch(`api.php?table=docente_cursos&id=${id}`, {
+            const response2 = await fetch(`sistema/api.php?table=docente_cursos&id=${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cursos: cursosSeleccionados })
@@ -1387,7 +1511,7 @@ async function eliminarRegistro(tipo, id) {
     if (!confirm('¿Está seguro de eliminar este registro?')) return;
 
     try {
-        const response = await fetch(`api.php?table=${tipo}&id=${id}`, { method: 'DELETE' });
+        const response = await fetch(`sistema/api.php?table=${tipo}&id=${id}`, { method: 'DELETE' });
         const result = await response.json().catch(() => ({}));
         if (response.ok && result.success) {
             alert('Registro eliminado con éxito');
@@ -1400,6 +1524,175 @@ async function eliminarRegistro(tipo, id) {
     } catch (error) {
         console.error('Error:', error);
         alert('Error al conectar con el servidor');
+    }
+}
+
+async function abrirModalAsignarDocente(idCurso) {
+    let docentes, materias;
+    try {
+        [docentes, materias] = await Promise.all([
+            fetchDataTable("docentes"),
+            fetchDataTable("materias")
+        ]);
+    } catch (error) {
+        console.error('Error al cargar datos:', error);
+        alert('Error al cargar datos');
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'modal-asignar-docente';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    `;
+
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    `;
+
+    dialog.innerHTML = `
+        <h3 style="margin-top:0;">Asignar Docente a Curso</h3>
+        <form id="form-asignar-docente">
+            <div style="display:flex; flex-direction:column; gap:12px; margin:15px 0;">
+                <div class="form-group">
+                    <label for="asignar-docente">Docente</label>
+                    <select id="asignar-docente" required>
+                        <option value="">Seleccione un docente...</option>
+                        ${docentes.map(d => `<option value="${d.id_docente}">${d.apellido}, ${d.nombre} (${d.dni})</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="asignar-materia">Materia</label>
+                    <select id="asignar-materia" required>
+                        <option value="">Seleccione una materia...</option>
+                        ${materias.map(m => `<option value="${m.id_materia}">${m.nombre}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="asignar-cargo">Cargo</label>
+                    <select id="asignar-cargo" required>
+                        <option value="Titular">Titular</option>
+                        <option value="Provisional">Provisional</option>
+                        <option value="Suplente">Suplente</option>
+                        <option value="Interino">Interino</option>
+                        <option value="Ad-Honorem">Ad-Honorem</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <div class="form-group" style="flex:1;">
+                        <label for="asignar-dia">Día</label>
+                        <select id="asignar-dia">
+                            <option value="">Sin especificar</option>
+                            <option value="Lunes">Lunes</option>
+                            <option value="Martes">Martes</option>
+                            <option value="Miércoles">Miércoles</option>
+                            <option value="Jueves">Jueves</option>
+                            <option value="Viernes">Viernes</option>
+                            <option value="Sábado">Sábado</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label for="asignar-hora-inicio">Hora Inicio</label>
+                        <input type="time" id="asignar-hora-inicio">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label for="asignar-hora-fin">Hora Fin</label>
+                        <input type="time" id="asignar-hora-fin">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="asignar-ciclo">Ciclo Lectivo</label>
+                    <input type="number" id="asignar-ciclo" value="${new Date().getFullYear()}" required min="2000" max="2100">
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+                <button type="button" onclick="cerrarModalAsignarDocente()" style="padding:8px 16px; border:1px solid #ddd; border-radius:4px; cursor:pointer;">Cancelar</button>
+                <button type="submit" style="padding:8px 16px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer;">Guardar Asignación</button>
+            </div>
+        </form>
+    `;
+
+    modal.appendChild(dialog);
+    document.body.appendChild(modal);
+
+    const form = document.getElementById('form-asignar-docente');
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        
+        const idDocente = document.getElementById('asignar-docente').value;
+        const idMateria = document.getElementById('asignar-materia').value;
+        const cargo = document.getElementById('asignar-cargo').value;
+        const diaSemana = document.getElementById('asignar-dia').value;
+        const horaInicio = document.getElementById('asignar-hora-inicio').value;
+        const horaFin = document.getElementById('asignar-hora-fin').value;
+        const cicloLectivo = parseInt(document.getElementById('asignar-ciclo').value);
+        
+        try {
+            const response = await fetch('sistema/api.php?table=asignaciones', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_docente: parseInt(idDocente),
+                    id_materia: parseInt(idMateria),
+                    id_curso: parseInt(idCurso),
+                    cargo: cargo,
+                    dia_semana: diaSemana,
+                    hora_inicio: horaInicio,
+                    hora_fin: horaFin,
+                    ciclo_lectivo: cicloLectivo,
+                    activo: 1
+                })
+            });
+            const result = await response.json().catch(() => ({}));
+            if (response.ok && result.success) {
+                alert('Asignación guardada con éxito');
+                cerrarModalAsignarDocente();
+                actualizarNomina();
+            } else {
+                alert('Error al guardar: ' + (result.error || `Error del servidor (${response.status})`));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error al conectar con el servidor');
+        }
+    };
+}
+
+function cerrarModalAsignarDocente() {
+    const modal = document.getElementById('modal-asignar-docente');
+    if (modal) document.body.removeChild(modal);
+}
+
+async function eliminarAsignacion(idAsignacion, idCurso) {
+    if (!confirm('¿Está seguro de quitar esta asignación?')) return;
+    try {
+        const response = await fetch(`sistema/api.php?table=asignaciones&id=${idAsignacion}`, { method: 'DELETE' });
+        const result = await response.json().catch(() => ({}));
+        if (response.ok && result.success) {
+            alert('Asignación eliminada');
+            actualizarNomina();
+        } else {
+            alert('Error: ' + (result.error || `Error del servidor (${response.status})`));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al conectar');
     }
 }
 
