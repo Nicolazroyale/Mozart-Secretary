@@ -1319,15 +1319,27 @@ async function editarRegistro(tipo, id) {
         try {
             cursosDisponiblesDoc = await fetchDataTable("lista_cursos");
             cursosAsignados = await fetchDataTable("docente_cursos", id);
+            // Store on window so it's available to helper functions
+            window.currentCursosDisponibles = cursosDisponiblesDoc;
+            // Update asignacion index
+            asignacionIndex = cursosAsignados.length;
         } catch (error) {
             console.error('Error al cargar cursos del docente:', error);
             alert('Error al cargar datos de cursos: ' + error.message);
             return;
         }
-        const cursosAsignadosSet = new Set(cursosAsignados || []);
+        // Create a map of curso id to all details
+        const cursoDetailsMap = {};
+        if (cursosAsignados && Array.isArray(cursosAsignados)) {
+            cursosAsignados.forEach(item => {
+                cursoDetailsMap[item.id_curso] = item;
+            });
+        }
+        const cursosAsignadosIds = cursosAsignados && Array.isArray(cursosAsignados) ? cursosAsignados.map(item => item.id_curso) : [];
+        const cursosAsignadosSet = new Set(cursosAsignadosIds);
         
         modal.innerHTML = `
-            <div class="upload-container" style="max-width: 800px;">
+            <div class="upload-container" style="max-width: 1200px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #3498db; margin-bottom:15px;">
                     <h2>Editar Docente</h2>
                     <span style="color:#7f8c8d; font-size: 0.8em;">ID: ${id}</span>
@@ -1366,34 +1378,19 @@ async function editarRegistro(tipo, id) {
                                     <input type="email" id="edit-email" value="${data.email || ''}">
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label>Situación Revista</label>
-                                <select id="edit-situacion_revista" required>
-                                    <option value="Titular" ${data.situacion_revista === 'Titular' ? 'selected' : ''}>Titular</option>
-                                    <option value="Provisional" ${data.situacion_revista === 'Provisional' ? 'selected' : ''}>Provisional</option>
-                                    <option value="Suplente" ${data.situacion_revista === 'Suplente' ? 'selected' : ''}>Suplente</option>
-                                    <option value="Interino" ${data.situacion_revista === 'Interino' ? 'selected' : ''}>Interino</option>
-                                    <option value="Ad-Honorem" ${data.situacion_revista === 'Ad-Honorem' ? 'selected' : ''}>Ad-Honorem</option>
-                                    <option value="Jubilado" ${data.situacion_revista === 'Jubilado' ? 'selected' : ''}>Jubilado</option>
-                                    <option value="Licencia" ${data.situacion_revista === 'Licencia' ? 'selected' : ''}>Licencia</option>
-                                </select>
-                            </div>
                         </div>
                     </div>
                     
                     <div class="accordion-item active">
-                        <div class="accordion-header" onclick="toggleAccordion(this)">Cursos Asignados</div>
+                        <div class="accordion-header" onclick="toggleAccordion(this)">Cursos y Horarios Asignados</div>
                         <div class="accordion-content">
-                            <p style="margin-bottom:10px; color:#7f8c8d;">Selecciona los cursos donde este docente imparte clases:</p>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:10px;">
-                                ${cursosDisponiblesDoc.map(curso => `
-                                    <div style="display:flex; align-items:center; gap:8px; padding:8px; border:1px solid #ddd; border-radius:4px;">
-                                        <input type="checkbox" id="curso-${curso.id_curso}" name="cursos" value="${curso.id_curso}" 
-                                               ${cursosAsignadosSet.has(curso.id_curso) ? 'checked' : ''}>
-                                        <label for="curso-${curso.id_curso}" style="margin:0; cursor:pointer;">${curso.nombre}</label>
-                                    </div>
-                                `).join('')}
+                            <p style="margin-bottom:10px; color:#7f8c8d;">Agrega o modifica los horarios de este docente:</p>
+                            <div id="asignaciones-container" style="display:flex; flex-direction:column; gap:12px;">
+                                <!-- Existing asignaciones -->
                             </div>
+                            <button type="button" onclick="agregarAsignacion()" style="margin-top:10px; padding:6px 12px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer;">
+                                Agregar Horario/Curso
+                            </button>
                         </div>
                     </div>
 
@@ -1422,12 +1419,114 @@ async function editarRegistro(tipo, id) {
     
     document.body.appendChild(modal);
 
+    // Fill asignaciones container
+    if (tipo === 'docentes') {
+        const container = document.getElementById('asignaciones-container');
+        if (container) {
+            let index = 0;
+            cursosAsignados.forEach(asignacion => {
+                agregarAsignacionAlDOM(asignacion, index);
+                index++;
+            });
+        }
+    }
+
     const formEditar = document.getElementById('form-editar');
     if (formEditar) {
         formEditar.onsubmit = (e) => { 
             e.preventDefault(); 
             guardarEdicion(tipo, id); 
         };
+    }
+}
+
+// Helper variables and functions for asignaciones
+let asignacionIndex = 0;
+
+function agregarAsignacion() {
+    const container = document.getElementById('asignaciones-container');
+    agregarAsignacionAlDOM(null, asignacionIndex++);
+}
+
+function agregarAsignacionAlDOM(asignacion, index) {
+    const container = document.getElementById('asignaciones-container');
+    const div = document.createElement('div');
+    div.className = 'asignacion-item';
+    div.dataset.index = index;
+    div.style.cssText = 'display:flex; flex-direction:column; gap:8px; padding:12px; border:1px solid #ddd; border-radius:4px; background:#fafafa;';
+    
+    if (asignacion) {
+        div.dataset.asignacionId = asignacion.id;
+    }
+    
+    div.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:600;">Horario ${index + 1}</span>
+            <button type="button" onclick="eliminarAsignacionItem(this)" style="padding:4px 8px; background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer;">
+                Eliminar
+            </button>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:8px;">
+            <div class="form-group" style="margin:0;">
+                <label for="asignacion-curso-${index}">Curso</label>
+                <select id="asignacion-curso-${index}" name="asignacion-curso" style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;">
+                    <option value="">Selecciona un curso</option>
+                    ${window.currentCursosDisponibles.map(curso => 
+                        `<option value="${curso.id_curso}" ${asignacion?.id_curso == curso.id_curso ? 'selected' : ''}>${curso.nombre}</option>`
+                    ).join('')}
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label for="asignacion-materia-${index}">Materia</label>
+                <input type="text" id="asignacion-materia-${index}" name="asignacion-materia" 
+                       placeholder="Materia" 
+                       style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;"
+                       value="${asignacion?.materia || ''}">
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label for="asignacion-cargo-${index}">Cargo</label>
+                <select id="asignacion-cargo-${index}" name="asignacion-cargo" style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;">
+                    <option value="Titular" ${asignacion?.cargo_curso === 'Titular' ? 'selected' : ''}>Titular</option>
+                    <option value="Provisional" ${asignacion?.cargo_curso === 'Provisional' ? 'selected' : ''}>Provisional</option>
+                    <option value="Suplente" ${asignacion?.cargo_curso === 'Suplente' ? 'selected' : ''}>Suplente</option>
+                    <option value="Interino" ${asignacion?.cargo_curso === 'Interino' ? 'selected' : ''}>Interino</option>
+                    <option value="Ad-Honorem" ${asignacion?.cargo_curso === 'Ad-Honorem' ? 'selected' : ''}>Ad-Honorem</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label for="asignacion-dia-${index}">Día</label>
+                <select id="asignacion-dia-${index}" name="asignacion-dia" style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;">
+                    <option value="">Sin especificar</option>
+                    <option value="Lunes" ${asignacion?.dia_semana === 'Lunes' ? 'selected' : ''}>Lunes</option>
+                    <option value="Martes" ${asignacion?.dia_semana === 'Martes' ? 'selected' : ''}>Martes</option>
+                    <option value="Miércoles" ${asignacion?.dia_semana === 'Miércoles' ? 'selected' : ''}>Miércoles</option>
+                    <option value="Jueves" ${asignacion?.dia_semana === 'Jueves' ? 'selected' : ''}>Jueves</option>
+                    <option value="Viernes" ${asignacion?.dia_semana === 'Viernes' ? 'selected' : ''}>Viernes</option>
+                    <option value="Sábado" ${asignacion?.dia_semana === 'Sábado' ? 'selected' : ''}>Sábado</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label for="asignacion-hora-inicio-${index}">Hora Inicio</label>
+                <input type="time" id="asignacion-hora-inicio-${index}" name="asignacion-hora-inicio" 
+                       style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;"
+                       value="${asignacion?.hora_inicio?.substring(0,5) || ''}">
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label for="asignacion-hora-fin-${index}">Hora Fin</label>
+                <input type="time" id="asignacion-hora-fin-${index}" name="asignacion-hora-fin" 
+                       style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;"
+                       value="${asignacion?.hora_fin?.substring(0,5) || ''}">
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(div);
+}
+
+function eliminarAsignacionItem(btn) {
+    const item = btn.closest('.asignacion-item');
+    if (item) {
+        item.remove();
     }
 }
 
@@ -1439,14 +1538,11 @@ async function guardarEdicion(tipo, id) {
     }
 
     const data = {};
-    const inputs = form.querySelectorAll('input, select, textarea');
+    const inputs = form.querySelectorAll('input[id^="edit-"], select[id^="edit-"], textarea[id^="edit-"]');
     inputs.forEach(input => {
         if (input.id) {
             const realId = input.id.replace('edit-', '');
             if (input.type === 'checkbox') {
-                if (input.name === 'cursos') {
-                    return;
-                }
                 data[realId] = input.checked ? 1 : 0;
             } else {
                 data[realId] = input.value;
@@ -1456,6 +1552,7 @@ async function guardarEdicion(tipo, id) {
 
     try {
         if (tipo === 'docentes') {
+            // Save basic docente data
             const response1 = await fetch(`sistema/api.php?table=${tipo}&id=${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -1467,17 +1564,40 @@ async function guardarEdicion(tipo, id) {
                 return;
             }
             
-            const checkboxes = document.querySelectorAll('input[name="cursos"]:checked');
-            const cursosSeleccionados = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            // Collect all asignaciones from DOM
+            const asignacionesItems = document.querySelectorAll('.asignacion-item');
+            const asignaciones = [];
+            asignacionesItems.forEach((item, idx) => {
+                const curso = document.getElementById(`asignacion-curso-${item.dataset.index}`)?.value;
+                const materia = document.getElementById(`asignacion-materia-${item.dataset.index}`)?.value;
+                const cargo = document.getElementById(`asignacion-cargo-${item.dataset.index}`)?.value;
+                const dia = document.getElementById(`asignacion-dia-${item.dataset.index}`)?.value;
+                const horaInicio = document.getElementById(`asignacion-hora-inicio-${item.dataset.index}`)?.value;
+                const horaFin = document.getElementById(`asignacion-hora-fin-${item.dataset.index}`)?.value;
+                const asignacionId = item.dataset.asignacionId;
+                
+                if (curso) {
+                    asignaciones.push({
+                        id_asignacion: asignacionId ? parseInt(asignacionId) : null,
+                        id_curso: parseInt(curso),
+                        materia: materia,
+                        cargo: cargo,
+                        dia_semana: dia,
+                        hora_inicio: horaInicio,
+                        hora_fin: horaFin
+                    });
+                }
+            });
             
+            // Send asignaciones to API
             const response2 = await fetch(`sistema/api.php?table=docente_cursos&id=${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cursos: cursosSeleccionados })
+                body: JSON.stringify({ asignaciones: asignaciones })
             });
             const result2 = await response2.json().catch(() => ({}));
             if (!response2.ok || result2.error) {
-                alert('Error al guardar cursos: ' + (result2.error || `Error del servidor (${response2.status})`));
+                alert('Error al guardar horarios: ' + (result2.error || `Error del servidor (${response2.status})`));
                 return;
             }
             
@@ -1528,12 +1648,9 @@ async function eliminarRegistro(tipo, id) {
 }
 
 async function abrirModalAsignarDocente(idCurso) {
-    let docentes, materias;
+    let docentes;
     try {
-        [docentes, materias] = await Promise.all([
-            fetchDataTable("docentes"),
-            fetchDataTable("materias")
-        ]);
+        docentes = await fetchDataTable("docentes");
     } catch (error) {
         console.error('Error al cargar datos:', error);
         alert('Error al cargar datos');
@@ -1579,10 +1696,7 @@ async function abrirModalAsignarDocente(idCurso) {
                 </div>
                 <div class="form-group">
                     <label for="asignar-materia">Materia</label>
-                    <select id="asignar-materia" required>
-                        <option value="">Seleccione una materia...</option>
-                        ${materias.map(m => `<option value="${m.id_materia}">${m.nombre}</option>`).join('')}
-                    </select>
+                    <input type="text" id="asignar-materia" placeholder="Especifica la materia" required>
                 </div>
                 <div class="form-group">
                     <label for="asignar-cargo">Cargo</label>
@@ -1636,7 +1750,7 @@ async function abrirModalAsignarDocente(idCurso) {
         e.preventDefault();
         
         const idDocente = document.getElementById('asignar-docente').value;
-        const idMateria = document.getElementById('asignar-materia').value;
+        const materiaNombre = document.getElementById('asignar-materia').value.trim();
         const cargo = document.getElementById('asignar-cargo').value;
         const diaSemana = document.getElementById('asignar-dia').value;
         const horaInicio = document.getElementById('asignar-hora-inicio').value;
@@ -1649,7 +1763,7 @@ async function abrirModalAsignarDocente(idCurso) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     id_docente: parseInt(idDocente),
-                    id_materia: parseInt(idMateria),
+                    materia: materiaNombre,
                     id_curso: parseInt(idCurso),
                     cargo: cargo,
                     dia_semana: diaSemana,

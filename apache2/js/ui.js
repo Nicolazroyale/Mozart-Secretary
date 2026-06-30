@@ -1,4 +1,4 @@
-export function mostrarTabla(lista, tipoTabla){
+export function mostrarTabla(lista, tipoTabla) {
     let cont = document.getElementById("contenido");
 
     if (!Array.isArray(lista) || lista.length === 0) {
@@ -17,10 +17,6 @@ export function mostrarTabla(lista, tipoTabla){
     const displayHeaders = allHeaders.filter(h => !h.startsWith("id_"));
 
     cont.innerHTML = `
-    <div style="display:flex; justify-content: flex-end; margin-bottom: 10px; gap: 10px;">
-        <button onclick="exportarDatos('${tipoTabla}', 'pdf')" style="background:#e74c3c; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">Exportar PDF</button>
-        <button onclick="exportarDatos('${tipoTabla}', 'excel')" style="background:#27ae60; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">Exportar Excel</button>
-    </div>
     <table id="tablasMostradas">
     <thead>
     <tr>

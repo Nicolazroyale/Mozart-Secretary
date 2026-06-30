@@ -28,7 +28,7 @@ if ($format) {
 
 init_api($method);
 
-$allowed_tables = ['estudiantes', 'docentes', 'cursos', 'materias', 'lista_cursos', 'search', 'nomina', 'asignaciones', 'docentes_por_curso'];
+$allowed_tables = ['estudiantes', 'docentes', 'cursos', 'materias', 'lista_cursos', 'search', 'nomina', 'asignaciones', 'docentes_por_curso', 'docente_cursos'];
 
 if (!in_array($table, $allowed_tables)) {
     http_response_code(400);
@@ -73,13 +73,41 @@ try {
             case 'lista_cursos':
                 $query = "SELECT id_curso, CONCAT(anio, '°', division, '° (', ciclo, ') - ', turno) as nombre FROM cursos ORDER BY anio, division";
                 break;
+
+            case 'docente_cursos':
+                if (!$id) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'ID de docente requerido']);
+                    exit;
+                }
+                $query = "SELECT dmc.id, dmc.id_curso, m.nombre as materia, 
+                                 dmc.cargo, dmc.dia_semana, dmc.hora_inicio, dmc.hora_fin
+                          FROM docente_materia_curso dmc
+                          LEFT JOIN materias m ON dmc.id_materia = m.id_materia 
+                          WHERE dmc.id_docente = ? AND dmc.activo = 1";
+                $stmt = $pdo->prepare($query);
+                $stmt->execute([$id]);
+                $cursos = $stmt->fetchAll();
+                json_success($cursos);
+
             case 'estudiantes':
                 if ($id) {
                     $data = query_student_detail($pdo, $id);
                     echo json_encode($data);
                     exit;
                 } else {
-                    $query = "SELECT id_alumno, alumno as nombre, curso, dni, responsable as tutor FROM v_ficha_alumno";
+                    $query = "SELECT 
+                                a.id_alumno,
+                                CONCAT(a.apellido, ', ', a.nombre) as nombre,
+                                CONCAT(c.anio, '°', c.division, '°') as curso,
+                                a.dni,
+                                CONCAT(r.apellido, ', ', r.nombre) as tutor
+                              FROM alumnos a
+                              JOIN cursos c ON a.id_curso = c.id_curso
+                              LEFT JOIN alumno_responsable ar ON a.id_alumno = ar.id_alumno AND ar.es_principal = 1
+                              LEFT JOIN responsables r ON ar.id_responsable = r.id_responsable
+                              WHERE a.activo = 1
+                              ORDER BY a.apellido, a.nombre";
                 }
                 break;
             case 'docentes':
@@ -134,6 +162,40 @@ try {
             exit;
         }
 
+        if ($table === 'docente_cursos') {
+            if (!isset($input['id_docente']) || !isset($input['id_curso'])) {
+                http_response_code(400);
+                echo json_encode(['error' => 'ID de docente y curso requeridos']);
+                exit;
+            }
+            
+            $materiaNombre = isset($input['materia']) ? trim($input['materia']) : '';
+            if (empty($materiaNombre)) {
+                $materiaNombre = 'Sin Asignar';
+            }
+            
+            // Find or create materia by nombre
+            $stmtMateria = $pdo->prepare("SELECT id_materia FROM materias WHERE LOWER(nombre) = LOWER(?) LIMIT 1");
+            $stmtMateria->execute([$materiaNombre]);
+            $materia = $stmtMateria->fetch();
+            
+            if (!$materia) {
+                $pdo->prepare("INSERT INTO materias (nombre) VALUES (?)")->execute([$materiaNombre]);
+                $id_materia = $pdo->lastInsertId();
+            } else {
+                $id_materia = $materia['id_materia'];
+            }
+            
+            $sql = "INSERT INTO docente_materia_curso (id_docente, id_materia, id_curso, cargo, activo, ciclo_lectivo) 
+                    VALUES (?, ?, ?, 'Titular', 1, YEAR(CURDATE()))
+                    ON DUPLICATE KEY UPDATE activo = 1, id_materia = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$input['id_docente'], $id_materia, $input['id_curso'], $id_materia]);
+            
+            json_success();
+            exit;
+        }
+
         if ($table === 'estudiantes') {
             $pdo->beginTransaction();
             try {
@@ -152,9 +214,52 @@ try {
             }
         }
 
+        if ($table === 'asignaciones') {
+            $pdo->beginTransaction();
+            try {
+                // Handle materia by name if present
+                if (isset($input['materia']) && !isset($input['id_materia'])) {
+                    $materiaNombre = trim($input['materia']);
+                    if (empty($materiaNombre)) {
+                        $materiaNombre = 'Sin Asignar';
+                    }
+                    
+                    // Find or create materia
+                    $stmtMateria = $pdo->prepare("SELECT id_materia FROM materias WHERE LOWER(nombre) = LOWER(?) LIMIT 1");
+                    $stmtMateria->execute([$materiaNombre]);
+                    $materia = $stmtMateria->fetch();
+                    
+                    if (!$materia) {
+                        $pdo->prepare("INSERT INTO materias (nombre) VALUES (?)")->execute([$materiaNombre]);
+                        $input['id_materia'] = $pdo->lastInsertId();
+                    } else {
+                        $input['id_materia'] = $materia['id_materia'];
+                    }
+                    unset($input['materia']);
+                }
+                
+                $allowed_fields = ['id_docente', 'id_materia', 'id_curso', 'cargo', 'horas_catedra', 'dia_semana', 'hora_inicio', 'hora_fin', 'ciclo_lectivo', 'activo'];
+                $valid_input = array_intersect_key($input, array_flip($allowed_fields));
+                if (empty($valid_input)) {
+                    throw new Exception('No se proporcionaron campos válidos');
+                }
+                
+                $id_asignacion = generic_insert($pdo, 'docente_materia_curso', $valid_input);
+                $pdo->commit();
+                json_success(['success' => true, 'id' => $id_asignacion]);
+                exit;
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                error_log('Error en transacción asignaciones POST: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Error en transacción: ' . $e->getMessage()]);
+                exit;
+            }
+        }
+
         // Whitelist of allowed fields per table to prevent SQL injection via column names
         $allowed_fields_map = [
-            'docentes' => ['apellido', 'nombre', 'dni', 'fecha_inscripcion', 'situacion_revista', 'telefono', 'email', 'activo'],
+            'docentes' => ['apellido', 'nombre', 'dni', 'fecha_inscripcion', 'telefono', 'email', 'activo'],
             'cursos'   => ['anio', 'division', 'turno', 'ciclo', 'jornada'],
             'materias' => ['nombre'],
             'asignaciones' => ['id_docente', 'id_materia', 'id_curso', 'cargo', 'horas_catedra', 'dia_semana', 'hora_inicio', 'hora_fin', 'ciclo_lectivo', 'activo'],
@@ -188,6 +293,63 @@ try {
             exit;
         }
 
+        if ($table === 'docente_cursos') {
+            $pdo->beginTransaction();
+            try {
+                $pdo->prepare("UPDATE docente_materia_curso SET activo = 0 WHERE id_docente = ?")->execute([$id]);
+
+                if (isset($input['asignaciones']) && is_array($input['asignaciones'])) {
+                    foreach ($input['asignaciones'] as $asignacion) {
+                        $id_curso = $asignacion['id_curso'] ?? null;
+                        $materiaNombre = isset($asignacion['materia']) ? trim($asignacion['materia']) : '';
+                        $cargo = $asignacion['cargo'] ?? 'Titular';
+                        $dia_semana = $asignacion['dia_semana'] ?? '';
+                        $hora_inicio = $asignacion['hora_inicio'] ?? '';
+                        $hora_fin = $asignacion['hora_fin'] ?? '';
+                        
+                        if (!$id_curso) {
+                            continue;
+                        }
+                        
+                        if (empty($materiaNombre)) {
+                            $materiaNombre = 'Sin Asignar';
+                        }
+                        
+                        // Find or create materia by nombre
+                        $stmtMateria = $pdo->prepare("SELECT id_materia FROM materias WHERE LOWER(nombre) = LOWER(?) LIMIT 1");
+                        $stmtMateria->execute([$materiaNombre]);
+                        $materia = $stmtMateria->fetch();
+                        
+                        if (!$materia) {
+                            $pdo->prepare("INSERT INTO materias (nombre) VALUES (?)")->execute([$materiaNombre]);
+                            $id_materia = $pdo->lastInsertId();
+                        } else {
+                            $id_materia = $materia['id_materia'];
+                        }
+                        
+                        $sql = "INSERT INTO docente_materia_curso 
+                                    (id_docente, id_materia, id_curso, cargo, dia_semana, hora_inicio, hora_fin, activo, ciclo_lectivo) 
+                                VALUES (?, ?, ?, ?, ?, ?, ?, 1, YEAR(CURDATE()))
+                                ON DUPLICATE KEY UPDATE 
+                                    activo = 1, id_materia = VALUES(id_materia), cargo = VALUES(cargo), 
+                                    dia_semana = VALUES(dia_semana), hora_inicio = VALUES(hora_inicio), hora_fin = VALUES(hora_fin)";
+                        $pdo->prepare($sql)->execute([
+                            $id, $id_materia, $id_curso, $cargo, $dia_semana, $hora_inicio, $hora_fin
+                        ]);
+                    }
+                }
+                
+                $pdo->commit();
+                json_success();
+                exit;
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                error_log('Error en transacción docente_cursos PUT: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Error en transacción: ' . $e->getMessage()]);
+            }
+        }
+
         if ($table === 'estudiantes') {
             $pdo->beginTransaction();
             try {
@@ -205,9 +367,52 @@ try {
             }
         }
 
+        if ($table === 'asignaciones') {
+            $pdo->beginTransaction();
+            try {
+                // Handle materia by name if present
+                if (isset($input['materia'])) {
+                    $materiaNombre = trim($input['materia']);
+                    if (empty($materiaNombre)) {
+                        $materiaNombre = 'Sin Asignar';
+                    }
+                    
+                    // Find or create materia
+                    $stmtMateria = $pdo->prepare("SELECT id_materia FROM materias WHERE LOWER(nombre) = LOWER(?) LIMIT 1");
+                    $stmtMateria->execute([$materiaNombre]);
+                    $materia = $stmtMateria->fetch();
+                    
+                    if (!$materia) {
+                        $pdo->prepare("INSERT INTO materias (nombre) VALUES (?)")->execute([$materiaNombre]);
+                        $input['id_materia'] = $pdo->lastInsertId();
+                    } else {
+                        $input['id_materia'] = $materia['id_materia'];
+                    }
+                    unset($input['materia']);
+                }
+                
+                $allowed_fields = ['id_docente', 'id_materia', 'id_curso', 'cargo', 'horas_catedra', 'dia_semana', 'hora_inicio', 'hora_fin', 'ciclo_lectivo', 'activo'];
+                $valid_input = array_intersect_key($input, array_flip($allowed_fields));
+                if (empty($valid_input)) {
+                    throw new Exception('No se proporcionaron campos válidos');
+                }
+                
+                generic_update($pdo, 'docente_materia_curso', $valid_input, $id);
+                $pdo->commit();
+                json_success();
+                exit;
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                error_log('Error en transacción asignaciones PUT: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Error en transacción: ' . $e->getMessage()]);
+                exit;
+            }
+        }
+
         // Whitelist of allowed fields per table to prevent SQL injection via column names
         $allowed_fields_map = [
-            'docentes' => ['apellido', 'nombre', 'dni', 'fecha_inscripcion', 'situacion_revista', 'telefono', 'email', 'activo'],
+            'docentes' => ['apellido', 'nombre', 'dni', 'fecha_inscripcion', 'telefono', 'email', 'activo'],
             'cursos'   => ['anio', 'division', 'turno', 'ciclo', 'jornada'],
             'materias' => ['nombre'],
             'asignaciones' => ['id_docente', 'id_materia', 'id_curso', 'cargo', 'horas_catedra', 'dia_semana', 'hora_inicio', 'hora_fin', 'ciclo_lectivo', 'activo'],
@@ -313,13 +518,15 @@ function export_data($pdo, $table, $id, $format) {
             
             if ($include_profesores) {
                 $docentes = query_docentes_por_curso($pdo, $id);
-                $profesores_headers = ['Apellido', 'Nombre', 'Materia', 'Cargo', 'Teléfono'];
+                $profesores_headers = ['Apellido', 'Nombre', 'Materia', 'Cargo', 'Día', 'Horario', 'Teléfono'];
                 $profesores_data = array_map(function($d) {
                     return [
                         $d['apellido'],
                         $d['nombre'],
                         $d['materia'],
                         $d['cargo_curso'],
+                        $d['dia_semana'] ?: '---',
+                        $d['hora_inicio'] ? substr($d['hora_inicio'],0,5) . ' - ' . ($d['hora_fin'] ? substr($d['hora_fin'],0,5) : '---') : '---',
                         $d['telefono'] ?: '---'
                     ];
                 }, $docentes);
