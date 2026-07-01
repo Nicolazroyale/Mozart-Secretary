@@ -16,17 +16,20 @@ if (!verificar_sesion()) {
 </head>
 <body>
     <header>
-        <div style="width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 20px;">
-            <div style="display: flex; align-items: center; justify-content: flex-start;">
-                <img src="imagenes/logo.png" alt="Logo" style="height: 60px; width: auto;">
+        <div class="header-content">
+            <button class="hamburger" id="hamburgerBtn" aria-label="Toggle menu">
+                ☰
+            </button>
+            <div class="header-logo">
+                <img src="imagenes/logo.png" alt="Logo" class="header-logo-img">
             </div>
-            <div style="text-align: center;">
-                <h2 style="margin: 0;">SISTEMA DE ARCHIVOS EESTN°3</h2>
+            <div class="header-title">
+                <h2>SISTEMA DE ARCHIVOS EESTN°3</h2>
             </div>
-            <div style="display: flex; justify-content: flex-end;">
-                <div class="user-badge" style="background: #34495e; padding: 5px 15px; border-radius: 20px; font-size: 13px;">
+            <div class="header-user">
+                <div class="user-badge">
                     <span id="userNameDisplay"><?php echo htmlspecialchars($_SESSION['nombre'], ENT_QUOTES, 'UTF-8'); ?></span> (<?php echo htmlspecialchars($_SESSION['rol'], ENT_QUOTES, 'UTF-8'); ?>)
-                    <a href="logout.php" style="color: #e74c3c; margin-left: 10px; text-decoration: none; font-weight: bold;">Salir</a>
+                    <a href="logout.php" class="logout-link">Salir</a>
                 </div>
             </div>
         </div>
@@ -47,9 +50,12 @@ if (!verificar_sesion()) {
         <button onclick="actualizarDatos()">Actualizar</button>
     </nav>
 
+    <!-- Overlay for mobile menu -->
+    <div class="overlay" id="menuOverlay"></div>
+
 <div class="main">
 
-    <div class="menu">
+    <div class="menu" id="sideMenu">
         <button onclick="cargarEstudiantes()">Estudiantes</button>
         <button onclick="cargarProfesores()">Docentes</button>
         <button onclick="cargarCursos()">Cursos</button>

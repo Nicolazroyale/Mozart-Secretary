@@ -355,6 +355,7 @@ try {
             try {
                 update_alumno($pdo, $input, $id);
                 save_salud($pdo, $input, $id, 'update');
+                save_restriccion($pdo, $input, $id);
                 save_responsables($pdo, $input, $id, 'upsert');
 
                 $pdo->commit();
@@ -456,7 +457,10 @@ function export_data($pdo, $table, $id, $format) {
     $title = '';
     $profesores_data = [];
     $profesores_headers = [];
+    $horarios_data = [];
+    $horarios_headers = [];
     $include_profesores = isset($_GET['include_profesores']) ? (int)$_GET['include_profesores'] : 1;
+    $include_horarios = isset($_GET['include_horarios']) ? (int)$_GET['include_horarios'] : 1;
     $include_dni = isset($_GET['include_dni']) ? (int)$_GET['include_dni'] : 1;
     $include_responsables = isset($_GET['include_responsables']) ? (int)$_GET['include_responsables'] : 1;
     $include_telefonos = isset($_GET['include_telefonos']) ? (int)$_GET['include_telefonos'] : 1;
@@ -532,6 +536,45 @@ function export_data($pdo, $table, $id, $format) {
                 }, $docentes);
             }
             
+            if ($include_horarios) {
+                $horarios_headers = ['Día', 'Materia', 'Profesor', 'Horario'];
+                $docentes = query_docentes_por_curso($pdo, $id);
+                $dias_orden = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                $horarios_por_dia = [];
+                
+                foreach ($docentes as $d) {
+                    if ($d['dia_semana']) {
+                        $dia = $d['dia_semana'];
+                        if (!isset($horarios_por_dia[$dia])) {
+                            $horarios_por_dia[$dia] = [];
+                        }
+                        $horarios_por_dia[$dia][] = $d;
+                    }
+                }
+                
+                // Sort each day's entries by start time
+                foreach ($horarios_por_dia as $dia => $entries) {
+                    usort($entries, function($a, $b) {
+                        return strcmp($a['hora_inicio'], $b['hora_inicio']);
+                    });
+                    $horarios_por_dia[$dia] = $entries;
+                }
+                
+                // Build the data array in order of days of the week
+                foreach ($dias_orden as $dia) {
+                    if (isset($horarios_por_dia[$dia])) {
+                        foreach ($horarios_por_dia[$dia] as $entry) {
+                            $horarios_data[] = [
+                                $dia,
+                                $entry['materia'],
+                                $entry['apellido'] . ', ' . $entry['nombre'],
+                                $entry['hora_inicio'] ? substr($entry['hora_inicio'],0,5) . ' - ' . ($entry['hora_fin'] ? substr($entry['hora_fin'],0,5) : '---') : '---'
+                            ];
+                        }
+                    }
+                }
+            }
+            
             $headers = ['Apellido', 'Nombre'];
             if ($include_dni) $headers[] = 'DNI';
             if ($include_responsables) $headers[] = 'Responsable';
@@ -556,9 +599,9 @@ function export_data($pdo, $table, $id, $format) {
     }
     
     if ($format === 'excel') {
-        export_excel($title, $headers, $data, $profesores_headers, $profesores_data);
+        export_excel($title, $headers, $data, $profesores_headers, $profesores_data, $horarios_headers, $horarios_data);
     } elseif ($format === 'pdf') {
-        export_pdf($title, $headers, $data, $profesores_headers, $profesores_data);
+        export_pdf($title, $headers, $data, $profesores_headers, $profesores_data, $horarios_headers, $horarios_data);
     } else {
         http_response_code(400);
         echo json_encode(['error' => 'Formato no válido']);
@@ -566,15 +609,20 @@ function export_data($pdo, $table, $id, $format) {
     }
 }
 
-function export_excel($title, $headers, $data, $profesores_headers = [], $profesores_data = []) {
+function export_excel($title, $headers, $data, $profesores_headers = [], $profesores_data = [], $horarios_headers = [], $horarios_data = []) {
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
     
     $current_row = 1;
     
+    // Calculate max columns needed
+    $max_cols = max(count($headers), count($profesores_headers), count($horarios_headers));
+    
     // Title
     $sheet->setCellValue('A1', $title);
-    $sheet->mergeCells('A1:' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(max(count($headers), count($profesores_headers))) . '1');
+    if ($max_cols > 0) {
+        $sheet->mergeCells('A1:' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($max_cols) . '1');
+    }
     $titleStyle = [
         'font' => ['bold' => true, 'size' => 16],
         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
@@ -584,15 +632,60 @@ function export_excel($title, $headers, $data, $profesores_headers = [], $profes
     
     // Date
     $sheet->setCellValue('A2', 'Fecha de generación: ' . date('d/m/Y H:i:s'));
-    $sheet->mergeCells('A2:' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(max(count($headers), count($profesores_headers))) . '2');
+    if ($max_cols > 0) {
+        $sheet->mergeCells('A2:' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($max_cols) . '2');
+    }
     $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
     $current_row++;
     $current_row++;
     
+    // Horarios table (if available) – show first for better visibility)
+    if (!empty($horarios_headers) && !empty($horarios_data)) {
+        $sheet->setCellValue('A' . $current_row, 'Horarios del Curso');
+        if (count($horarios_headers) > 0) {
+            $sheet->mergeCells('A' . $current_row . ':' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($horarios_headers)) . $current_row);
+        }
+        $horarios_title_style = [
+            'font' => ['bold' => true, 'size' => 12],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT]
+        ];
+        $sheet->getStyle('A' . $current_row)->applyFromArray($horarios_title_style);
+        $current_row++;
+        
+        // Horarios headers
+        $col = 1;
+        foreach ($horarios_headers as $header) {
+            $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col) . $current_row;
+            $sheet->setCellValue($cell, $header);
+            $headerStyle = [
+                'font' => ['bold' => true],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '70AD47']],
+                'font' => ['color' => ['rgb' => 'FFFFFF']]
+            ];
+            $sheet->getStyle($cell)->applyFromArray($headerStyle);
+            $col++;
+        }
+        $current_row++;
+        
+        // Horarios data
+        foreach ($horarios_data as $rowData) {
+            $col = 1;
+            foreach ($rowData as $cellData) {
+                $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col) . $current_row, $cellData);
+                $col++;
+            }
+            $current_row++;
+        }
+        $current_row++;
+        $current_row++;
+    }
+    
     // Profesores table (if available)
     if (!empty($profesores_headers) && !empty($profesores_data)) {
         $sheet->setCellValue('A' . $current_row, 'Profesores del Curso');
-        $sheet->mergeCells('A' . $current_row . ':' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($profesores_headers)) . $current_row);
+        if (count($profesores_headers) > 0) {
+            $sheet->mergeCells('A' . $current_row . ':' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($profesores_headers)) . $current_row);
+        }
         $profesores_title_style = [
             'font' => ['bold' => true, 'size' => 12],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT]
@@ -654,7 +747,7 @@ function export_excel($title, $headers, $data, $profesores_headers = [], $profes
     }
     
     // Auto size columns
-    $max_cols = max(count($headers), count($profesores_headers));
+    $max_cols = max(count($headers), count($profesores_headers), count($horarios_headers));
     for ($c = 1; $c <= $max_cols; $c++) {
         $sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c))->setAutoSize(true);
     }
@@ -670,7 +763,7 @@ function export_excel($title, $headers, $data, $profesores_headers = [], $profes
     exit;
 }
 
-function export_pdf($title, $headers, $data, $profesores_headers = [], $profesores_data = []) {
+function export_pdf($title, $headers, $data, $profesores_headers = [], $profesores_data = [], $horarios_headers = [], $horarios_data = []) {
     $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
     
     $pdf->SetCreator(PDF_CREATOR);
@@ -692,6 +785,29 @@ function export_pdf($title, $headers, $data, $profesores_headers = [], $profesor
     $pdf->SetFont('helvetica', '', 10);
     $pdf->Cell(0, 5, 'Fecha de generación: ' . date('d/m/Y H:i:s'), 0, 1, 'C');
     $pdf->Ln(10);
+    
+    // Horarios table (if available) – show first
+    if (!empty($horarios_headers) && !empty($horarios_data)) {
+        $pdf->SetFont('helvetica', 'B', 12);
+        $pdf->Cell(0, 10, 'Horarios del Curso', 0, 1, 'L');
+        $pdf->Ln(5);
+        
+        $pdf->SetFont('helvetica', 'B', 10);
+        $colWidth = 180 / count($horarios_headers);
+        foreach ($horarios_headers as $header) {
+            $pdf->Cell($colWidth, 8, $header, 1, 0, 'C');
+        }
+        $pdf->Ln();
+        
+        $pdf->SetFont('helvetica', '', 9);
+        foreach ($horarios_data as $rowData) {
+            foreach ($rowData as $cellData) {
+                $pdf->Cell($colWidth, 7, $cellData, 1, 0, 'C');
+            }
+            $pdf->Ln();
+        }
+        $pdf->Ln(15);
+    }
     
     // Profesores table (if available)
     if (!empty($profesores_headers) && !empty($profesores_data)) {

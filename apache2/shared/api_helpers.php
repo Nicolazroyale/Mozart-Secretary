@@ -104,7 +104,17 @@ function query_nomina(PDO $pdo, string $id): array {
                 r.telefono_celular as resp_tel,
                 (SELECT COUNT(*) FROM salud_alumno s
                  WHERE s.id_alumno = a.id_alumno
-                 AND (s.asma=1 OR s.celiaquia=1 OR s.diabetes=1 OR s.obesidad=1 OR s.cardiopatia=1 OR s.alergias IS NOT NULL OR s.antecedentes_salud IS NOT NULL)) as alerta_salud
+                 AND (
+                     s.asma=1 
+                     OR s.celiaquia=1 
+                     OR s.diabetes=1 
+                     OR s.obesidad=1 
+                     OR s.cardiopatia=1 
+                     OR (s.alergias IS NOT NULL AND TRIM(s.alergias) != '')
+                     OR (s.antecedentes_salud IS NOT NULL AND TRIM(s.antecedentes_salud) != '')
+                     OR (s.otros_checklist IS NOT NULL AND TRIM(s.otros_checklist) != '')
+                     OR (s.internaciones IS NOT NULL AND TRIM(s.internaciones) != '')
+                 )) as alerta_salud
               FROM alumnos a
               LEFT JOIN alumno_responsable ar ON a.id_alumno = ar.id_alumno AND ar.es_principal = 1
               LEFT JOIN responsables r ON ar.id_responsable = r.id_responsable
@@ -241,11 +251,29 @@ function save_salud(PDO $pdo, array $input, string $id_alumno, string $mode = 'i
 }
 
 function save_restriccion(PDO $pdo, array $input, string $id_alumno): void {
+    // First check if there's an existing record
+    $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM restricciones_judiciales WHERE id_alumno = ?");
+    $stmtCheck->execute([$id_alumno]);
+    $exists = $stmtCheck->fetchColumn() > 0;
+
     if (!empty($input['rj_nombre'])) {
-        $stmt = $pdo->prepare(
-            "INSERT INTO restricciones_judiciales (id_alumno, apellido_nombre, tipo_doc, nro_doc, descripcion) VALUES (?, ?, ?, ?, ?)"
-        );
-        $stmt->execute([$id_alumno, $input['rj_nombre'], $input['rj_tipo_doc'], $input['rj_nro_doc'], $input['rj_descripcion']]);
+        if ($exists) {
+            $stmt = $pdo->prepare(
+                "UPDATE restricciones_judiciales SET apellido_nombre = ?, tipo_doc = ?, nro_doc = ?, descripcion = ? WHERE id_alumno = ?"
+            );
+            $stmt->execute([$input['rj_nombre'], $input['rj_tipo_doc'], $input['rj_nro_doc'], $input['rj_descripcion'], $id_alumno]);
+        } else {
+            $stmt = $pdo->prepare(
+                "INSERT INTO restricciones_judiciales (id_alumno, apellido_nombre, tipo_doc, nro_doc, descripcion) VALUES (?, ?, ?, ?, ?)"
+            );
+            $stmt->execute([$id_alumno, $input['rj_nombre'], $input['rj_tipo_doc'], $input['rj_nro_doc'], $input['rj_descripcion']]);
+        }
+    } else {
+        // If no nombre, delete the restriction
+        if ($exists) {
+            $stmt = $pdo->prepare("DELETE FROM restricciones_judiciales WHERE id_alumno = ?");
+            $stmt->execute([$id_alumno]);
+        }
     }
 }
 

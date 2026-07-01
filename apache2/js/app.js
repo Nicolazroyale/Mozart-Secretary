@@ -204,7 +204,7 @@ async function actualizarNomina() {
 
     let htmlContent = `
         <div style="display:flex; justify-content: flex-end; margin-bottom: 10px; gap: 10px;">
-            <button onclick="abrirModalAsignarDocente('${idCurso}')" style="background:#3498db; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">
+            <button onclick="window.abrirModalAsignarDocente('${idCurso}')" style="background:#3498db; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">
                 Asignar Docente
             </button>
             <button onclick="exportarNomina('pdf')" style="background:#e74c3c;">Exportar PDF</button>
@@ -227,29 +227,25 @@ async function actualizarNomina() {
             <table class="search-results-table">
                 <thead>
                     <tr>
-                        <th>Apellido y Nombre</th>
+                        <th style="min-width: 200px;">Apellido y Nombre</th>
                         <th>DNI</th>
                         <th>Materia</th>
                         <th>Cargo</th>
                         <th>Día</th>
                         <th>Horario</th>
-                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${docentes.map(doc => `
                         <tr>
-                            <td style="font-weight:bold;">${doc.apellido.toUpperCase()}, ${doc.nombre}</td>
+                            <td style="font-weight:bold; cursor:pointer; color: #3498db;" onclick="window.verPerfil('docentes', ${doc.id_docente})">
+                                ${doc.apellido.toUpperCase()}, ${doc.nombre}
+                            </td>
                             <td>${doc.dni}</td>
                             <td>${doc.materia}</td>
                             <td>${doc.cargo_curso || doc.cargo || 'N/A'}</td>
                             <td>${doc.dia_semana || 'N/A'}</td>
                             <td>${doc.hora_inicio ? `${doc.hora_inicio.substring(0,5)} - ${doc.hora_fin ? doc.hora_fin.substring(0,5) : 'N/A'}` : 'N/A'}</td>
-                            <td>
-                                <button onclick="eliminarAsignacion(${doc.id}, ${idCurso})" style="background:#e74c3c; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">
-                                    Quitar
-                                </button>
-                            </td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -257,6 +253,79 @@ async function actualizarNomina() {
         `;
     }
     htmlContent += `</div>`;
+
+    // Sección de Horario Gráfico
+    htmlContent += `
+        <div style="margin-bottom:30px;">
+            <h3 style="color:#2c3e50; border-bottom:2px solid #3498db; padding-bottom:5px; margin-bottom:15px;">
+                📅 Horario del Curso
+            </h3>
+    `;
+
+    const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    let horarioData = {};
+    dias.forEach(dia => horarioData[dia] = []);
+
+    docentes.forEach(doc => {
+        if (doc.dia_semana && doc.hora_inicio) {
+            horarioData[doc.dia_semana].push({
+                materia: doc.materia,
+                docente: `${doc.apellido.toUpperCase()}, ${doc.nombre}`,
+                horaInicio: doc.hora_inicio,
+                horaFin: doc.hora_fin
+            });
+        }
+    });
+
+    // Sort each day's horarios from earliest to latest
+    Object.keys(horarioData).forEach(dia => {
+        horarioData[dia].sort((a, b) => {
+            return a.horaInicio.localeCompare(b.horaInicio);
+        });
+    });
+
+    htmlContent += `
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: center;">
+                <thead>
+                    <tr style="background-color: #3498db; color: white;">
+                        <th style="border: 1px solid #ddd; padding: 12px; min-width: 120px;">Día</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; min-width: 200px;">Horario y Materias</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${dias.map(dia => {
+                        const materias = horarioData[dia];
+                        return `
+                            <tr style="background-color: ${materias.length > 0 ? '#f0f8ff' : 'white'};">
+                                <td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">
+                                    ${dia}
+                                </td>
+                                <td style="border: 1px solid #ddd; padding: 10px; text-align: left;">
+                                    ${materias.length === 0 ? 
+                                        '<span style="color:#7f8c8d;">Sin materias asignadas</span>' : 
+                                        materias.map(m => `
+                                            <div style="margin: 8px 0; padding: 8px; background-color: #e3f2fd; border-radius: 4px;">
+                                                <div style="font-weight: bold; color: #1565c0;">
+                                                    ${m.horaInicio.substring(0,5)} - ${m.horaFin ? m.horaFin.substring(0,5) : 'N/A'}
+                                                </div>
+                                                <div style="margin-top: 4px;">
+                                                    <strong>Materia:</strong> ${m.materia}
+                                                </div>
+                                                <div style="font-size: 0.9em;">
+                                                    <strong>Docente:</strong> ${m.docente}
+                                                </div>
+                                            </div>
+                                        `).join('')
+                                    }
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
 
     // Sección de Alumnos
     htmlContent += `
@@ -284,7 +353,9 @@ async function actualizarNomina() {
                 <tbody>
                     ${alumnos.map(alu => `
                         <tr>
-                            <td style="font-weight:bold;">${alu.apellido.toUpperCase()}, ${alu.nombre}</td>
+                            <td style="font-weight:bold; cursor:pointer; color: #3498db;" onclick="window.verPerfil('estudiantes', ${alu.id_alumno})">
+                                ${alu.apellido.toUpperCase()}, ${alu.nombre}
+                            </td>
                             <td>${alu.dni}</td>
                             <td>${alu.resp_apellido || ''}, ${alu.resp_nombre || 'N/A'}</td>
                             <td>${alu.resp_tel || 'N/A'}</td>
@@ -292,7 +363,7 @@ async function actualizarNomina() {
                                 ${alu.alerta_salud > 0 ? '<span title="Tiene antecedentes de salud registrados" style="cursor:help; font-size:1.2em;">⚠️</span>' : '✅'}
                             </td>
                             <td>
-                                <button class="btn-perfil" onclick="verPerfil('estudiantes', ${alu.id_alumno})">Ver Ficha</button>
+                                <button class="btn-perfil" onclick="window.verPerfil('estudiantes', ${alu.id_alumno})">Ver Ficha</button>
                             </td>
                         </tr>
                     `).join('')}
@@ -349,6 +420,9 @@ function exportarNomina(formato) {
                 <input type="checkbox" id="export-profesores" checked> Incluir profesores del curso
             </label>
             <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="export-horarios" checked> Incluir horarios del curso
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                 <input type="checkbox" id="export-dni" checked> DNI de los alumnos
             </label>
             <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
@@ -379,6 +453,26 @@ function exportarNomina(formato) {
     
     // Handle confirm
     document.getElementById('confirm-export').onclick = () => {
+        // Read all checkbox values FIRST (while modal is still in DOM)
+        const exportProfesoresEl = document.getElementById('export-profesores');
+        const includeProfesoresVal = exportProfesoresEl && exportProfesoresEl.checked ? '1' : '0';
+        
+        const exportDniEl = document.getElementById('export-dni');
+        const includeDniVal = exportDniEl && exportDniEl.checked ? '1' : '0';
+        
+        const exportResponsablesEl = document.getElementById('export-responsables');
+        const includeResponsablesVal = exportResponsablesEl && exportResponsablesEl.checked ? '1' : '0';
+        
+        const exportTelefonosEl = document.getElementById('export-telefonos');
+        const includeTelefonosVal = exportTelefonosEl && exportTelefonosEl.checked ? '1' : '0';
+        
+        const exportSaludEl = document.getElementById('export-salud');
+        const includeSaludVal = exportSaludEl && exportSaludEl.checked ? '1' : '0';
+        
+        const exportHorariosEl = document.getElementById('export-horarios');
+        const includeHorariosVal = exportHorariosEl && exportHorariosEl.checked ? '1' : '0';
+        
+        // NOW remove the modal
         document.body.removeChild(modal);
         
         // Create a temporary form to trigger download
@@ -407,32 +501,38 @@ function exportarNomina(formato) {
         const includeProfesores = document.createElement('input');
         includeProfesores.type = 'hidden';
         includeProfesores.name = 'include_profesores';
-        includeProfesores.value = document.getElementById('export-profesores').checked ? '1' : '0';
+        includeProfesores.value = includeProfesoresVal;
         form.appendChild(includeProfesores);
         
         const includeDni = document.createElement('input');
         includeDni.type = 'hidden';
         includeDni.name = 'include_dni';
-        includeDni.value = document.getElementById('export-dni').checked ? '1' : '0';
+        includeDni.value = includeDniVal;
         form.appendChild(includeDni);
         
         const includeResponsables = document.createElement('input');
         includeResponsables.type = 'hidden';
         includeResponsables.name = 'include_responsables';
-        includeResponsables.value = document.getElementById('export-responsables').checked ? '1' : '0';
+        includeResponsables.value = includeResponsablesVal;
         form.appendChild(includeResponsables);
         
         const includeTelefonos = document.createElement('input');
         includeTelefonos.type = 'hidden';
         includeTelefonos.name = 'include_telefonos';
-        includeTelefonos.value = document.getElementById('export-telefonos').checked ? '1' : '0';
+        includeTelefonos.value = includeTelefonosVal;
         form.appendChild(includeTelefonos);
         
         const includeSalud = document.createElement('input');
         includeSalud.type = 'hidden';
         includeSalud.name = 'include_salud';
-        includeSalud.value = document.getElementById('export-salud').checked ? '1' : '0';
+        includeSalud.value = includeSaludVal;
         form.appendChild(includeSalud);
+        
+        const includeHorarios = document.createElement('input');
+        includeHorarios.type = 'hidden';
+        includeHorarios.name = 'include_horarios';
+        includeHorarios.value = includeHorariosVal;
+        form.appendChild(includeHorarios);
         
         document.body.appendChild(form);
         form.submit();
@@ -502,8 +602,13 @@ function cambiarModo(modo) {
 async function mostrarVista(){
     if(VistaSeleccionada === "archivos"){
         try {
-            const data = await fetchDataTable(tablaSeleccionada);
-            mostrarTabla(data, tablaSeleccionada);
+            if(tablaSeleccionada === "nomina"){
+                // For nomina, we need to use actualizarNomina since it needs course id
+                actualizarNomina();
+            } else {
+                const data = await fetchDataTable(tablaSeleccionada);
+                mostrarTabla(data, tablaSeleccionada);
+            }
         } catch (error) {
             console.error('Error al cargar datos:', error);
             document.getElementById('contenido').innerHTML = '<p style="color:#e74c3c; padding:20px;">Error al cargar datos: ' + error.message + '</p>';
@@ -1092,7 +1197,7 @@ async function guardarNuevo(tipo) {
 async function editarRegistro(tipo, id) {
     console.log(`Cargando edición para ${tipo} con ID: ${id}`);
     
-    let data, cursosDisponibles;
+    let data, cursosDisponibles, cursosDisponiblesDoc, cursosAsignados;
     try {
         data = await fetchDataTable(tipo, id);
         console.log("Data received for edit:", data);
@@ -1306,6 +1411,30 @@ async function editarRegistro(tipo, id) {
                         </div>
                     </div>
 
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">7. Restricciones Judiciales</div>
+                        <div class="accordion-content">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nombre y Apellido del Restringido</label>
+                                    <input type="text" id="edit-rj_nombre" value="${data.rj_nombre || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Tipo Doc</label>
+                                    <input type="text" id="edit-rj_tipo_doc" value="${data.rj_tipo_doc || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label>N° Doc</label>
+                                    <input type="text" id="edit-rj_nro_doc" value="${data.rj_nro_doc || ''}">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Descripción de la Restricción</label>
+                                <textarea id="edit-rj_descripcion">${data.rj_descripcion || ''}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
                     <div style="display:flex; gap:10px; margin-top:20px;">
                         <button type="submit" class="submit-btn" style="flex:1;">Guardar Cambios</button>
                         <button type="button" onclick="document.body.removeChild(document.getElementById('modal-edicion'))" style="flex:1; background:#95a5a6;">Cancelar</button>
@@ -1315,14 +1444,14 @@ async function editarRegistro(tipo, id) {
             </div>
         `;
     } else if (tipo === 'docentes') {
-        let cursosDisponiblesDoc, cursosAsignados;
+
         try {
             cursosDisponiblesDoc = await fetchDataTable("lista_cursos");
             cursosAsignados = await fetchDataTable("docente_cursos", id);
             // Store on window so it's available to helper functions
             window.currentCursosDisponibles = cursosDisponiblesDoc;
             // Update asignacion index
-            asignacionIndex = cursosAsignados.length;
+            window.asignacionIndex = cursosAsignados.length;
         } catch (error) {
             console.error('Error al cargar cursos del docente:', error);
             alert('Error al cargar datos de cursos: ' + error.message);
@@ -1388,9 +1517,9 @@ async function editarRegistro(tipo, id) {
                             <div id="asignaciones-container" style="display:flex; flex-direction:column; gap:12px;">
                                 <!-- Existing asignaciones -->
                             </div>
-                            <button type="button" onclick="agregarAsignacion()" style="margin-top:10px; padding:6px 12px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer;">
-                                Agregar Horario/Curso
-                            </button>
+                            <button type="button" onclick="window.agregarAsignacion()" style="margin-top:10px; padding:6px 12px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer;">
+                Agregar Horario/Curso
+            </button>
                         </div>
                     </div>
 
@@ -1424,8 +1553,10 @@ async function editarRegistro(tipo, id) {
         const container = document.getElementById('asignaciones-container');
         if (container) {
             let index = 0;
+            // Use the local cursosAsignados variable we declared earlier
+            window.currentCursosAsignados = cursosAsignados;
             cursosAsignados.forEach(asignacion => {
-                agregarAsignacionAlDOM(asignacion, index);
+                window.agregarAsignacionAlDOM(asignacion, index);
                 index++;
             });
         }
@@ -1441,14 +1572,14 @@ async function editarRegistro(tipo, id) {
 }
 
 // Helper variables and functions for asignaciones
-let asignacionIndex = 0;
+window.asignacionIndex = 0;
 
-function agregarAsignacion() {
+window.agregarAsignacion = function() {
     const container = document.getElementById('asignaciones-container');
-    agregarAsignacionAlDOM(null, asignacionIndex++);
+    window.agregarAsignacionAlDOM(null, window.asignacionIndex++);
 }
 
-function agregarAsignacionAlDOM(asignacion, index) {
+window.agregarAsignacionAlDOM = function(asignacion, index) {
     const container = document.getElementById('asignaciones-container');
     const div = document.createElement('div');
     div.className = 'asignacion-item';
@@ -1462,14 +1593,14 @@ function agregarAsignacionAlDOM(asignacion, index) {
     div.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-weight:600;">Horario ${index + 1}</span>
-            <button type="button" onclick="eliminarAsignacionItem(this)" style="padding:4px 8px; background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer;">
+            <button type="button" onclick="window.eliminarAsignacionItem(this)" style="padding:4px 8px; background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer;">
                 Eliminar
             </button>
         </div>
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:8px;">
             <div class="form-group" style="margin:0;">
                 <label for="asignacion-curso-${index}">Curso</label>
-                <select id="asignacion-curso-${index}" name="asignacion-curso" style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;">
+                <select id="asignacion-curso-${index}" name="asignacion-curso" required style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;">
                     <option value="">Selecciona un curso</option>
                     ${window.currentCursosDisponibles.map(curso => 
                         `<option value="${curso.id_curso}" ${asignacion?.id_curso == curso.id_curso ? 'selected' : ''}>${curso.nombre}</option>`
@@ -1480,23 +1611,24 @@ function agregarAsignacionAlDOM(asignacion, index) {
                 <label for="asignacion-materia-${index}">Materia</label>
                 <input type="text" id="asignacion-materia-${index}" name="asignacion-materia" 
                        placeholder="Materia" 
+                       required
                        style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;"
                        value="${asignacion?.materia || ''}">
             </div>
             <div class="form-group" style="margin:0;">
                 <label for="asignacion-cargo-${index}">Cargo</label>
-                <select id="asignacion-cargo-${index}" name="asignacion-cargo" style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;">
-                    <option value="Titular" ${asignacion?.cargo_curso === 'Titular' ? 'selected' : ''}>Titular</option>
-                    <option value="Provisional" ${asignacion?.cargo_curso === 'Provisional' ? 'selected' : ''}>Provisional</option>
-                    <option value="Suplente" ${asignacion?.cargo_curso === 'Suplente' ? 'selected' : ''}>Suplente</option>
-                    <option value="Interino" ${asignacion?.cargo_curso === 'Interino' ? 'selected' : ''}>Interino</option>
-                    <option value="Ad-Honorem" ${asignacion?.cargo_curso === 'Ad-Honorem' ? 'selected' : ''}>Ad-Honorem</option>
+                <select id="asignacion-cargo-${index}" name="asignacion-cargo" required style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;">
+                    <option value="Titular" ${asignacion?.cargo === 'Titular' ? 'selected' : ''}>Titular</option>
+                    <option value="Provisional" ${asignacion?.cargo === 'Provisional' ? 'selected' : ''}>Provisional</option>
+                    <option value="Suplente" ${asignacion?.cargo === 'Suplente' ? 'selected' : ''}>Suplente</option>
+                    <option value="Interino" ${asignacion?.cargo === 'Interino' ? 'selected' : ''}>Interino</option>
+                    <option value="Ad-Honorem" ${asignacion?.cargo === 'Ad-Honorem' ? 'selected' : ''}>Ad-Honorem</option>
                 </select>
             </div>
             <div class="form-group" style="margin:0;">
                 <label for="asignacion-dia-${index}">Día</label>
-                <select id="asignacion-dia-${index}" name="asignacion-dia" style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;">
-                    <option value="">Sin especificar</option>
+                <select id="asignacion-dia-${index}" name="asignacion-dia" required style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;">
+                    <option value="">Selecciona un día</option>
                     <option value="Lunes" ${asignacion?.dia_semana === 'Lunes' ? 'selected' : ''}>Lunes</option>
                     <option value="Martes" ${asignacion?.dia_semana === 'Martes' ? 'selected' : ''}>Martes</option>
                     <option value="Miércoles" ${asignacion?.dia_semana === 'Miércoles' ? 'selected' : ''}>Miércoles</option>
@@ -1508,12 +1640,14 @@ function agregarAsignacionAlDOM(asignacion, index) {
             <div class="form-group" style="margin:0;">
                 <label for="asignacion-hora-inicio-${index}">Hora Inicio</label>
                 <input type="time" id="asignacion-hora-inicio-${index}" name="asignacion-hora-inicio" 
+                       required
                        style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;"
                        value="${asignacion?.hora_inicio?.substring(0,5) || ''}">
             </div>
             <div class="form-group" style="margin:0;">
                 <label for="asignacion-hora-fin-${index}">Hora Fin</label>
                 <input type="time" id="asignacion-hora-fin-${index}" name="asignacion-hora-fin" 
+                       required
                        style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;"
                        value="${asignacion?.hora_fin?.substring(0,5) || ''}">
             </div>
@@ -1523,7 +1657,7 @@ function agregarAsignacionAlDOM(asignacion, index) {
     container.appendChild(div);
 }
 
-function eliminarAsignacionItem(btn) {
+window.eliminarAsignacionItem = function(btn) {
     const item = btn.closest('.asignacion-item');
     if (item) {
         item.remove();
@@ -1532,6 +1666,17 @@ function eliminarAsignacionItem(btn) {
 
 async function guardarEdicion(tipo, id) {
     const form = document.getElementById('form-editar');
+    
+    // Find all invalid fields and open their parent accordion items
+    const invalidFields = form.querySelectorAll(':invalid');
+    invalidFields.forEach(field => {
+        // Find the closest accordion item
+        const accordionItem = field.closest('.accordion-item');
+        if (accordionItem && !accordionItem.classList.contains('active')) {
+            accordionItem.classList.add('active');
+        }
+    });
+    
     if (!form.checkValidity()) {
         form.reportValidity();
         return;
@@ -1567,6 +1712,8 @@ async function guardarEdicion(tipo, id) {
             // Collect all asignaciones from DOM
             const asignacionesItems = document.querySelectorAll('.asignacion-item');
             const asignaciones = [];
+            let hasError = false;
+            
             asignacionesItems.forEach((item, idx) => {
                 const curso = document.getElementById(`asignacion-curso-${item.dataset.index}`)?.value;
                 const materia = document.getElementById(`asignacion-materia-${item.dataset.index}`)?.value;
@@ -1576,18 +1723,51 @@ async function guardarEdicion(tipo, id) {
                 const horaFin = document.getElementById(`asignacion-hora-fin-${item.dataset.index}`)?.value;
                 const asignacionId = item.dataset.asignacionId;
                 
-                if (curso) {
-                    asignaciones.push({
-                        id_asignacion: asignacionId ? parseInt(asignacionId) : null,
-                        id_curso: parseInt(curso),
-                        materia: materia,
-                        cargo: cargo,
-                        dia_semana: dia,
-                        hora_inicio: horaInicio,
-                        hora_fin: horaFin
-                    });
+                if (!curso) {
+                    hasError = true;
+                    alert(`Por favor, selecciona un curso para el Horario ${idx + 1}`);
+                    return;
                 }
+                if (!materia || materia.trim() === "") {
+                    hasError = true;
+                    alert(`Por favor, ingresa la materia para el Horario ${idx + 1}`);
+                    return;
+                }
+                if (!cargo) {
+                    hasError = true;
+                    alert(`Por favor, selecciona el cargo para el Horario ${idx + 1}`);
+                    return;
+                }
+                if (!dia) {
+                    hasError = true;
+                    alert(`Por favor, selecciona el día para el Horario ${idx + 1}`);
+                    return;
+                }
+                if (!horaInicio) {
+                    hasError = true;
+                    alert(`Por favor, ingresa la hora de inicio para el Horario ${idx + 1}`);
+                    return;
+                }
+                if (!horaFin) {
+                    hasError = true;
+                    alert(`Por favor, ingresa la hora de fin para el Horario ${idx + 1}`);
+                    return;
+                }
+                
+                asignaciones.push({
+                    id_asignacion: asignacionId ? parseInt(asignacionId) : null,
+                    id_curso: parseInt(curso),
+                    materia: materia.trim(),
+                    cargo: cargo,
+                    dia_semana: dia,
+                    hora_inicio: horaInicio,
+                    hora_fin: horaFin
+                });
             });
+            
+            if (hasError) {
+                return;
+            }
             
             // Send asignaciones to API
             const response2 = await fetch(`sistema/api.php?table=docente_cursos&id=${id}`, {
@@ -1647,7 +1827,7 @@ async function eliminarRegistro(tipo, id) {
     }
 }
 
-async function abrirModalAsignarDocente(idCurso) {
+window.abrirModalAsignarDocente = async function(idCurso) {
     let docentes;
     try {
         docentes = await fetchDataTable("docentes");
@@ -1689,7 +1869,7 @@ async function abrirModalAsignarDocente(idCurso) {
             <div style="display:flex; flex-direction:column; gap:12px; margin:15px 0;">
                 <div class="form-group">
                     <label for="asignar-docente">Docente</label>
-                    <select id="asignar-docente" required>
+                    <select id="asignar-docente" required style="min-width: 300px; width: 100%; padding: 8px;">
                         <option value="">Seleccione un docente...</option>
                         ${docentes.map(d => `<option value="${d.id_docente}">${d.apellido}, ${d.nombre} (${d.dni})</option>`).join('')}
                     </select>
@@ -1711,8 +1891,8 @@ async function abrirModalAsignarDocente(idCurso) {
                 <div style="display:flex; gap:10px;">
                     <div class="form-group" style="flex:1;">
                         <label for="asignar-dia">Día</label>
-                        <select id="asignar-dia">
-                            <option value="">Sin especificar</option>
+                        <select id="asignar-dia" required>
+                            <option value="">Selecciona un día</option>
                             <option value="Lunes">Lunes</option>
                             <option value="Martes">Martes</option>
                             <option value="Miércoles">Miércoles</option>
@@ -1723,11 +1903,11 @@ async function abrirModalAsignarDocente(idCurso) {
                     </div>
                     <div class="form-group" style="flex:1;">
                         <label for="asignar-hora-inicio">Hora Inicio</label>
-                        <input type="time" id="asignar-hora-inicio">
+                        <input type="time" id="asignar-hora-inicio" required>
                     </div>
                     <div class="form-group" style="flex:1;">
                         <label for="asignar-hora-fin">Hora Fin</label>
-                        <input type="time" id="asignar-hora-fin">
+                        <input type="time" id="asignar-hora-fin" required>
                     </div>
                 </div>
                 <div class="form-group">
@@ -1736,7 +1916,7 @@ async function abrirModalAsignarDocente(idCurso) {
                 </div>
             </div>
             <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
-                <button type="button" onclick="cerrarModalAsignarDocente()" style="padding:8px 16px; border:1px solid #ddd; border-radius:4px; cursor:pointer;">Cancelar</button>
+                <button type="button" onclick="window.cerrarModalAsignarDocente()" style="padding:8px 16px; border:1px solid #ddd; border-radius:4px; cursor:pointer;">Cancelar</button>
                 <button type="submit" style="padding:8px 16px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer;">Guardar Asignación</button>
             </div>
         </form>
@@ -1788,12 +1968,12 @@ async function abrirModalAsignarDocente(idCurso) {
     };
 }
 
-function cerrarModalAsignarDocente() {
+window.cerrarModalAsignarDocente = function() {
     const modal = document.getElementById('modal-asignar-docente');
     if (modal) document.body.removeChild(modal);
 }
 
-async function eliminarAsignacion(idAsignacion, idCurso) {
+window.eliminarAsignacion = async function(idAsignacion, idCurso) {
     if (!confirm('¿Está seguro de quitar esta asignación?')) return;
     try {
         const response = await fetch(`sistema/api.php?table=asignaciones&id=${idAsignacion}`, { method: 'DELETE' });
@@ -1814,6 +1994,33 @@ function cambiarPagina(pagina) {
     paginaActual = pagina;
     mostrarVista();
 }
+
+// ===== HAMBURGER MENU =====
+document.addEventListener('DOMContentLoaded', function() {
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const sideMenu = document.getElementById('sideMenu');
+    const menuOverlay = document.getElementById('menuOverlay');
+    
+    if (hamburgerBtn && sideMenu && menuOverlay) {
+        function toggleMenu() {
+            sideMenu.classList.toggle('open');
+            menuOverlay.classList.toggle('open');
+        }
+        
+        hamburgerBtn.addEventListener('click', toggleMenu);
+        menuOverlay.addEventListener('click', toggleMenu);
+        
+        // Close menu when clicking a menu button
+        const menuButtons = sideMenu.querySelectorAll('button');
+        menuButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                if (sideMenu.classList.contains('open')) {
+                    toggleMenu();
+                }
+            });
+        });
+    }
+});
 
 // Exponer funciones al objeto global window
 window.cargarRegistroArchivos = () => cambiarModo('archivos');
