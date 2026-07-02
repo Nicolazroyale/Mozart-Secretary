@@ -12,6 +12,11 @@ body{
     min-height: 100vh;
 }
 
+body.dark-mode {
+    background-color: #121212;
+    color: #b0b0b0;
+}
+
 /* ===== Disposición del contenido */
 .main{
     display: flex;
@@ -23,6 +28,10 @@ body{
     background: #cad0d4;
     padding: 8px;
     transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+body.dark-mode .menu {
+    background: #1e1e1e;
 }
 
 .menu button{
@@ -48,6 +57,416 @@ header {
     flex-direction: column;
     align-items: center;
     margin-bottom: 4px;
+}
+
+body.dark-mode header {
+    background-color: #0d141a;
+}
+
+.settings-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    margin-left: 10px;
+    font-size: 12px;
+}
+
+.settings-btn:hover {
+    background: #2980b9;
+}
+
+.settings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.settings-modal.show {
+    display: flex;
+}
+
+.settings-container {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    max-width: 800px;
+    width: 95%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+body.dark-mode .settings-container {
+    background: #1e1e1e;
+    color: #b0b0b0;
+}
+
+.settings-container h2 {
+    color: #2c3e50;
+    margin-top: 0;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+}
+
+body.dark-mode .settings-container h2 {
+    color: #3498db;
+}
+
+.settings-close {
+    float: right;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.settings-section {
+    margin: 20px 0;
+}
+
+.settings-section h3 {
+    color: #34495e;
+}
+
+body.dark-mode .settings-section h3 {
+    color: #3498db;
+}
+
+.theme-toggle {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.theme-toggle button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.theme-btn-light {
+    background: #ecf0f1;
+    color: #2c3e50;
+}
+
+.theme-btn-dark {
+    background: #2c3e50;
+    color: white;
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.users-table th, .users-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.users-table th {
+    background: #ecf0f1;
+    font-weight: bold;
+}
+
+body.dark-mode .users-table th {
+    background: #2a2a2a;
+}
+
+body.dark-mode .users-table td {
+    border-bottom: 1px solid #333;
+}
+
+body.dark-mode table {
+    background: #1e1e1e;
+}
+
+body.dark-mode th, body.dark-mode td {
+    color: #b0b0b0;
+}
+
+body.dark-mode .upload-container {
+    background: #1e1e1e;
+}
+
+body.dark-mode .upload-container h2 {
+    color: #3498db;
+}
+
+body.dark-mode .upload-form label {
+    color: #9e9e9e;
+}
+
+body.dark-mode .upload-form input, 
+body.dark-mode .upload-form select, 
+body.dark-mode .upload-form textarea {
+    background: #2a2a2a;
+    color: #b0b0b0;
+    border: 1px solid #333;
+}
+
+body.dark-mode .accordion-header {
+    background: #2a2a2a;
+}
+
+body.dark-mode .accordion-content {
+    background: #1e1e1e;
+}
+
+body.dark-mode .suggestions-box {
+    background: #1e1e1e;
+    border: 1px solid #333;
+}
+
+body.dark-mode .suggestion-item:hover {
+    background: #2a2a2a;
+}
+
+body.dark-mode .suggestion-item, 
+body.dark-mode .suggestion-item span {
+    color: #b0b0b0;
+}
+
+body.dark-mode .search-results-table th,
+body.dark-mode .search-results-table td {
+    color: #b0b0b0;
+}
+
+body.dark-mode .user-badge {
+    background: #2a2a2a;
+}
+
+body.dark-mode .logout-link {
+    color: #e74c3c;
+}
+
+body.dark-mode nav button {
+    background-color: #2a2a2a;
+    color: #b0b0b0;
+}
+
+body.dark-mode .mode-selector {
+    background-color: #2a2a2a;
+}
+
+body.dark-mode .mode-selector button {
+    color: #9e9e9e;
+}
+
+body.dark-mode .mode-selector button.active {
+    background: #3498db;
+    color: white;
+}
+
+body.dark-mode .header-title h2 {
+    color: #b0b0b0;
+}
+
+body.dark-mode .user-badge {
+    background: #2a2a2a;
+    color: #b0b0b0;
+}
+
+body.dark-mode #globalSearch {
+    background: #2a2a2a;
+    color: #b0b0b0;
+    border-color: #333;
+}
+
+body.dark-mode #globalSearch::placeholder {
+    color: #757575;
+}
+
+body.dark-mode .suggestions-box {
+    background: #1e1e1e;
+    border-color: #333;
+}
+
+body.dark-mode .suggestion-item:hover {
+    background-color: #2a2a2a;
+}
+
+body.dark-mode .suggestion-item,
+body.dark-mode .suggestion-item span {
+    color: #b0b0b0;
+}
+
+/* Horario del Curso table dark mode */
+body.dark-mode #contenido table:not(.search-results-table):not(.users-table) {
+    background: #1e1e1e;
+}
+
+body.dark-mode #contenido table:not(.search-results-table):not(.users-table) th,
+body.dark-mode #contenido table:not(.search-results-table):not(.users-table) td {
+    border-color: #333 !important;
+    color: #b0b0b0 !important;
+}
+
+body.dark-mode #contenido table:not(.search-results-table):not(.users-table) tr {
+    background-color: #1e1e1e !important;
+}
+
+body.dark-mode #contenido table:not(.search-results-table):not(.users-table) tr:nth-child(odd),
+body.dark-mode #contenido table:not(.search-results-table):not(.users-table) tr[style*="background-color: white"] {
+    background-color: #2a2a2a !important;
+}
+
+body.dark-mode #contenido table:not(.search-results-table):not(.users-table) tr[style*="f0f8ff"] {
+    background-color: #232323 !important;
+}
+
+body.dark-mode #contenido table:not(.search-results-table):not(.users-table) tr[style*="#f0f8ff"] {
+    background-color: #232323 !important;
+}
+
+body.dark-mode #contenido div[style*="#e3f2fd"] {
+    background-color: #2a3a4a !important;
+    color: #b0b0b0 !important;
+}
+
+body.dark-mode #contenido div[style*="#e3f2fd"] strong {
+    color: #64b5f6 !important;
+}
+
+body.dark-mode #contenido div[style*="color: #1565c0"] {
+    color: #64b5f6 !important;
+}
+
+/* Search results table dark mode enhancements */
+body.dark-mode .search-results-table th {
+    background-color: #2a2a2a !important;
+    color: #b0b0b0 !important;
+}
+
+body.dark-mode .search-results-table tr:nth-child(odd) {
+    background-color: #232323;
+}
+
+body.dark-mode .search-results-table tr:nth-child(even) {
+    background-color: #1e1e1e;
+}
+
+body.dark-mode .search-results-table td {
+    color: #b0b0b0;
+}
+
+body.dark-mode .search-results-table td[style*="color: #3498db"] {
+    color: #64b5f6 !important;
+}
+
+body.dark-mode #contenido h3,
+body.dark-mode #contenido h4 {
+    color: #3498db !important;
+    border-bottom-color: #3498db !important;
+}
+
+body.dark-mode #contenido span[style*="color:#7f8c8d"],
+body.dark-mode #contenido p[style*="color:#7f8c8d"] {
+    color: #9e9e9e !important;
+}
+
+/* Asignar Docente Modal */
+body.dark-mode #modal-asignar-docente > div {
+    background: #1e1e1e !important;
+}
+
+body.dark-mode #modal-asignar-docente h3 {
+    color: #3498db !important;
+}
+
+body.dark-mode #modal-asignar-docente label {
+    color: #b0b0b0 !important;
+}
+
+body.dark-mode #modal-asignar-docente input,
+body.dark-mode #modal-asignar-docente select {
+    background: #2a2a2a !important;
+    color: #b0b0b0 !important;
+    border-color: #333 !important;
+}
+
+/* Asignacion items (docente horarios) */
+body.dark-mode .asignacion-item {
+    background: #2a2a2a !important;
+    border-color: #333 !important;
+}
+
+body.dark-mode .asignacion-item label {
+    color: #b0b0b0 !important;
+}
+
+body.dark-mode .asignacion-item input,
+body.dark-mode .asignacion-item select {
+    background: #1e1e1e !important;
+    color: #b0b0b0 !important;
+    border-color: #333 !important;
+}
+
+/* Checkbox group (salud antecedentes) */
+body.dark-mode .checkbox-group {
+    background: transparent !important;
+}
+
+body.dark-mode .checkbox-item {
+    background: #2a2a2a !important;
+    border-color: #333 !important;
+    color: #b0b0b0 !important;
+}
+
+body.dark-mode .checkbox-item label {
+    color: #b0b0b0 !important;
+}
+
+body.dark-mode .asignacion-header h4 {
+    color: #b0b0b0 !important;
+}
+
+body.dark-mode .accordion-header {
+    background: #2a2a2a;
+    color: #b0b0b0;
+}
+
+body.dark-mode .accordion-content {
+    background: #1e1e1e;
+    color: #b0b0b0;
+}
+
+body.dark-mode .upload-form input,
+body.dark-mode .upload-form select,
+body.dark-mode .upload-form textarea {
+    background: #2a2a2a;
+    color: #b0b0b0;
+    border: 1px solid #333;
+}
+
+body.dark-mode .upload-form label {
+    color: #9e9e9e;
+}
+
+body.dark-mode #addUserForm {
+    background: #2a2a2a !important;
+}
+
+body.dark-mode #addUserForm label {
+    color: #b0b0b0;
+}
+
+body.dark-mode #addUserForm input,
+body.dark-mode #addUserForm select {
+    background: #1e1e1e;
+    color: #b0b0b0;
+    border: 1px solid #333;
 }
 
 .header-content {
@@ -129,7 +548,7 @@ button{
 
 .mode-selector button {
     background: transparent;
-    color: #bdc3c7;
+    color: #9e9e9e;
     border: none;
     margin: 0;
     padding: 6px 15px;
@@ -196,6 +615,20 @@ th, td{
 
 th{
     background: #ecf0f1;
+}
+
+body.dark-mode table:not(.upload-form) {
+    background: #1e1e1e;
+}
+
+body.dark-mode table:not(.search-results-table):not(.users-table) th {
+    background: #2a2a2a;
+    color: #b0b0b0;
+}
+
+body.dark-mode table:not(.search-results-table):not(.users-table) td {
+    border-bottom-color: #333;
+    color: #b0b0b0;
 }
 
 /* Botones dentro de tabla */

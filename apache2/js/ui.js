@@ -14,7 +14,12 @@ export function mostrarTabla(lista, tipoTabla) {
     }
     
     const allHeaders = Object.keys(firstItem);
-    const displayHeaders = allHeaders.filter(h => !h.startsWith("id_"));
+    let displayHeaders = allHeaders.filter(h => !h.startsWith("id_"));
+
+    // Add "Acciones" column for cursos
+    if (tipoTabla === "cursos") {
+        displayHeaders.push("Acciones");
+    }
 
     cont.innerHTML = `
     <table id="tablasMostradas">
@@ -32,7 +37,20 @@ export function mostrarTabla(lista, tipoTabla) {
 
     lista.forEach(a => {
         const row = document.createElement("tr");
-        row.innerHTML = displayHeaders.map(h => `<td>${a[h] || 'N/A'}</td>`).join('');
+        
+        let cellsHtml = displayHeaders.filter(h => h !== "Acciones").map(h => `<td>${a[h] || 'N/A'}</td>`).join('');
+        
+        // Add actions for cursos
+        if (tipoTabla === "cursos") {
+            cellsHtml += `
+                <td style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-perfil" onclick="event.stopPropagation(); window.editarCurso(${a.id_curso})">Editar Turno</button>
+                    <button class="btn-perfil" style="background: #27ae60;" onclick="event.stopPropagation(); window.pasarDeAño(${a.id_curso}, ${a.anio})">Pasar de Año</button>
+                </td>
+            `;
+        }
+        
+        row.innerHTML = cellsHtml;
         
         // El ID se mantiene oculto en el dataset para permitir edición
         const idField = allHeaders.find(h => h.startsWith("id_"));

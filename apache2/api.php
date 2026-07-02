@@ -12,7 +12,7 @@ $search = $_GET['search'] ?? '';
 $page   = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit  = isset($_GET['limit']) ? (int)$_GET['limit'] : 0;
 
-$allowed_tables = ['estudiantes', 'docentes', 'cursos', 'lista_cursos', 'search', 'nomina', 'docentes_por_curso', 'docente_cursos', 'materias'];
+$allowed_tables = ['estudiantes', 'docentes', 'cursos', 'lista_cursos', 'search', 'nomina', 'docentes_por_curso', 'docente_cursos', 'materias', 'usuarios'];
 
 if (!in_array($table, $allowed_tables)) {
     http_response_code(400);
@@ -28,6 +28,9 @@ try {
         $params = [];
         
         switch ($table) {
+            case 'usuarios':
+                $query = "SELECT id_usuario, username, nombre_completo, rol, activo FROM usuarios ORDER BY username";
+                break;
             case 'nomina':
                 if (!$id) {
                     http_response_code(400);
@@ -192,6 +195,71 @@ try {
             $stmt->execute([$input['id_docente'], $id_materia, $input['id_curso']]);
             
             json_success();
+        }
+
+        if ($table === 'usuarios') {
+            $action = $input['action'] ?? '';
+            $data = $input['data'] ?? [];
+            $id = $input['id'] ?? '';
+
+            if ($action === 'create') {
+                // Hash password
+                if (!isset($data['password']) || empty($data['password'])) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Contraseña requerida']);
+                    exit;
+                }
+                $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+                $allowed_fields = ['username', 'password', 'nombre_completo', 'rol'];
+                $valid_input = array_intersect_key($data, array_flip($allowed_fields));
+                if (empty($valid_input) || !isset($valid_input['username']) || !isset($valid_input['nombre_completo'])) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Datos inválidos']);
+                    exit;
+                }
+                $id_usuario = generic_insert($pdo, 'usuarios', $valid_input);
+                json_success(['success' => true, 'id' => $id_usuario]);
+            } elseif ($action === 'update') {
+                if (empty($id)) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'ID requerido']);
+                    exit;
+                }
+                $allowed_fields = ['nombre_completo', 'rol', 'activo'];
+                if (isset($data['password']) && !empty($data['password'])) {
+                    $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+                    $allowed_fields[] = 'password';
+                }
+                $valid_input = array_intersect_key($data, array_flip($allowed_fields));
+                if (empty($valid_input)) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'No hay campos para actualizar']);
+                    exit;
+                }
+                generic_update($pdo, 'usuarios', $valid_input, $id);
+                json_success();
+            } elseif ($action === 'delete') {
+                if (empty($id)) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'ID requerido']);
+                    exit;
+                }
+                // Don't allow deleting the last admin
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE rol = 'admin' AND activo = 1 AND id_usuario != ?");
+                $stmt->execute([$id]);
+                $admin_count = $stmt->fetchColumn();
+                if ($admin_count == 0) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'No se puede eliminar el último administrador']);
+                    exit;
+                }
+                generic_delete($pdo, 'usuarios', $id);
+                json_success();
+            } else {
+                http_response_code(400);
+                echo json_encode(['error' => 'Acción inválida']);
+                exit;
+            }
         }
 
         if ($table === 'estudiantes') {

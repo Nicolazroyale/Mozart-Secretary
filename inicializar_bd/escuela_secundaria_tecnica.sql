@@ -365,7 +365,7 @@ CREATE TABLE `usuarios` (
   `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `nombre_completo` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `rol` enum('admin','lectura') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'lectura',
+  `rol` enum('lectura','lectura_escritura_viejos','lectura_escritura_nuevos','lectura_escritura_total','admin') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'lectura',
   `activo` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id_usuario`),
   UNIQUE KEY `username` (`username`)
