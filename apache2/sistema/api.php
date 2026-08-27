@@ -586,7 +586,9 @@ function export_data($pdo, $table, $id, $format) {
                 echo json_encode(['error' => 'ID de curso requerido']);
                 exit;
             }
-            $curso = $pdo->query("SELECT CONCAT(anio, '°', division, '° (', turno, ')') as nombre FROM cursos WHERE id_curso = $id")->fetchColumn();
+            $stmtCurso = $pdo->prepare("SELECT CONCAT(anio, '°', division, '° (', turno, ')') as nombre FROM cursos WHERE id_curso = ?");
+            $stmtCurso->execute([$id]);
+            $curso = $stmtCurso->fetchColumn();
             $title = "Nómina del Curso: $curso";
             
             if ($include_profesores) {

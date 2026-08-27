@@ -3,14 +3,19 @@ services:
     build: .
     container_name: web_mozart
     ports:
-      - "8080:80"
+      - "443:443"
+      # - "80:80"  # Descomentar para HTTP (fallback temporal)
     volumes:
       - ./apache2:/var/www/html
     environment:
       DB_HOST: db
       DB_NAME: ${DB_NAME:-escuela_secundaria_tecnica}
       DB_USER: ${DB_USER:-DBsecretaria}
-      DB_PASS: ${DB_PASS:-Dalia1244!}
+      DB_PASS: ${DB_PASS:?Configura DB_PASS en .env}
+      MASTER_PASSWORD: ${MASTER_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - red_mozart
 
@@ -18,20 +23,22 @@ services:
     image: mariadb:10.11
     container_name: db_mozart
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-schuldatenbank123456}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Configura MYSQL_ROOT_PASSWORD en .env}
       MYSQL_DATABASE: ${DB_NAME:-escuela_secundaria_tecnica}
       MYSQL_USER: ${DB_USER:-DBsecretaria}
-      MYSQL_PASSWORD: ${DB_PASS:-Dalia1244!}
+      MYSQL_PASSWORD: ${DB_PASS:?Configura DB_PASS en .env}
     volumes:
-      - ./mariadb:/var/lib/mysql #Aca se guarda toda la DB
-      - ./inicializar_bd:/docker-entrypoint-initdb.d #Aca va el .sql para que levante la DB
+      - ./mariadb:/var/lib/mysql
+      - ./inicializar_bd:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - red_mozart
 
 networks:
   red_mozart:
-
-
-
-
 

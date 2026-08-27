@@ -5,7 +5,32 @@ let searchTimeout;
 let tablaSeleccionada = "estudiantes";
 let VistaSeleccionada = "archivos";
 let paginaActual = 1;
-const limitePorPagina = 30;
+let limitePorPagina = 30;
+
+// XSS protection: escape HTML entities
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// CSRF helper
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+async function secureFetch(url, options = {}) {
+    options.headers = options.headers || {};
+    if (options.method && options.method !== 'GET' && options.method !== 'HEAD') {
+        options.headers['X-CSRF-Token'] = getCsrfToken();
+    }
+    return fetch(url, options);
+}
 
 // Funciones
 function handleSearchInput(query) {
@@ -24,7 +49,7 @@ function handleSearchInput(query) {
             const turno = '';
             
             const url = `sistema/api.php?table=search&search=${encodeURIComponent(query)}&rol=${rol}&anio=${anio}&turno=${turno}`;
-            const response = await fetch(url);
+            const response = await secureFetch(url);
             if (!response.ok) {
                 console.error('Error en búsqueda:', response.status);
                 suggestionsBox.style.display = 'none';
@@ -59,8 +84,8 @@ function displaySuggestions(results) {
         const div = document.createElement('div');
         div.className = 'suggestion-item';
         div.innerHTML = `
-            <span>${item.nombre} <small>(${item.dni})</small></span>
-            <span class="role-tag role-${item.rol}">${item.rol}</span>
+            <span>${escapeHtml(item.nombre)} <small>(${escapeHtml(item.dni)})</small></span>
+            <span class="role-tag role-${escapeHtml(item.rol)}">${escapeHtml(item.rol)}</span>
         `;
         div.onclick = () => {
             verPerfil(item.rol === 'alumno' ? 'estudiantes' : 'docentes', item.id);
@@ -89,7 +114,7 @@ async function triggerSearch() {
 
     try {
         const url = `api.php?table=search&search=${encodeURIComponent(query)}&rol=${rol}&anio=${anio}&turno=${turno}`;
-        const response = await fetch(url);
+        const response = await secureFetch(url);
         if (!response.ok) {
             alert('Error al buscar: el servidor respondió con estado ' + response.status);
             return;
@@ -125,9 +150,9 @@ function mostrarResultadosBusqueda(results) {
                 <tbody>
                     ${results.map(item => `
                         <tr>
-                            <td>${item.nombre}</td>
+                            <td>${escapeHtml(item.nombre)}</td>
                             <td>${item.dni}</td>
-                            <td><span class="role-tag role-${item.rol}">${item.rol}</span></td>
+                            <td><span class="role-tag role-${escapeHtml(item.rol)}">${escapeHtml(item.rol)}</span></td>
                             <td><button class="btn-perfil" onclick="verPerfil('${item.rol === 'alumno' ? 'estudiantes' : 'docentes'}', ${item.id})">Ver Perfil</button></td>
                         </tr>
                     `).join('')}
@@ -152,10 +177,10 @@ async function cargarVistaNomina() {
         cursos = await fetchDataTable("lista_cursos");
     } catch (error) {
         console.error('Error al cargar cursos:', error);
-        cont.innerHTML = '<p style="color:#e74c3c; padding:20px;">Error al cargar los cursos: ' + error.message + '</p>';
+        cont.innerHTML = '<p style="color:#e74c3c; padding:20px;">Error al cargar los cursos: ' + escapeHtml(error.message) + '</p>';
         return;
     }
-    const opcionesCursos = cursos.map(c => `<option value="${c.id_curso}">${c.nombre}</option>`).join('');
+    const opcionesCursos = cursos.map(c => `<option value="${escapeHtml(c.id_curso)}">${escapeHtml(c.nombre)}</option>`).join('');
 
     cont.innerHTML = `
         <div class="upload-container" style="max-width: 1000px;">
@@ -198,7 +223,7 @@ async function actualizarNomina() {
         ]);
     } catch (error) {
         console.error('Error al cargar nómina:', error);
-        container.innerHTML = '<p style="color:#e74c3c; text-align:center; padding:20px;">Error al cargar la nómina: ' + error.message + '</p>';
+        container.innerHTML = '<p style="color:#e74c3c; text-align:center; padding:20px;">Error al cargar la nómina: ' + escapeHtml(error.message) + '</p>';
         return;
     }
 
@@ -239,13 +264,13 @@ async function actualizarNomina() {
                     ${docentes.map(doc => `
                         <tr>
                             <td style="font-weight:bold; cursor:pointer; color: #3498db;" onclick="window.verPerfil('docentes', ${doc.id_docente})">
-                                ${doc.apellido.toUpperCase()}, ${doc.nombre}
+                                ${escapeHtml(doc.apellido.toUpperCase())}, ${escapeHtml(doc.nombre)}
                             </td>
-                            <td>${doc.dni}</td>
-                            <td>${doc.materia}</td>
-                            <td>${doc.cargo_curso || doc.cargo || 'N/A'}</td>
-                            <td>${doc.dia_semana || 'N/A'}</td>
-                            <td>${doc.hora_inicio ? `${doc.hora_inicio.substring(0,5)} - ${doc.hora_fin ? doc.hora_fin.substring(0,5) : 'N/A'}` : 'N/A'}</td>
+                            <td>${escapeHtml(doc.dni)}</td>
+                            <td>${escapeHtml(doc.materia)}</td>
+                            <td>${escapeHtml(doc.cargo_curso || doc.cargo || 'N/A')}</td>
+                            <td>${escapeHtml(doc.dia_semana || 'N/A')}</td>
+                            <td>${doc.hora_inicio ? `${escapeHtml(doc.hora_inicio.substring(0,5))} - ${escapeHtml(doc.hora_fin ? doc.hora_fin.substring(0,5) : 'N/A')}` : 'N/A'}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -270,7 +295,7 @@ async function actualizarNomina() {
         if (doc.dia_semana && doc.hora_inicio) {
             horarioData[doc.dia_semana].push({
                 materia: doc.materia,
-                docente: `${doc.apellido.toUpperCase()}, ${doc.nombre}`,
+                docente: `${escapeHtml(doc.apellido.toUpperCase())}, ${escapeHtml(doc.nombre)}`,
                 horaInicio: doc.hora_inicio,
                 horaFin: doc.hora_fin
             });
@@ -307,13 +332,13 @@ async function actualizarNomina() {
                                         materias.map(m => `
                                             <div style="margin: 8px 0; padding: 8px; background-color: #e3f2fd; border-radius: 4px;">
                                                 <div style="font-weight: bold; color: #1565c0;">
-                                                    ${m.horaInicio.substring(0,5)} - ${m.horaFin ? m.horaFin.substring(0,5) : 'N/A'}
+                                                    ${escapeHtml(m.horaInicio.substring(0,5))} - ${escapeHtml(m.horaFin ? m.horaFin.substring(0,5) : 'N/A')}
                                                 </div>
                                                 <div style="margin-top: 4px;">
-                                                    <strong>Materia:</strong> ${m.materia}
+                                                    <strong>Materia:</strong> ${escapeHtml(m.materia)}
                                                 </div>
                                                 <div style="font-size: 0.9em;">
-                                                    <strong>Docente:</strong> ${m.docente}
+                                                    <strong>Docente:</strong> ${escapeHtml(m.docente)}
                                                 </div>
                                             </div>
                                         `).join('')
@@ -354,11 +379,11 @@ async function actualizarNomina() {
                     ${alumnos.map(alu => `
                         <tr>
                             <td style="font-weight:bold; cursor:pointer; color: #3498db;" onclick="window.verPerfil('estudiantes', ${alu.id_alumno})">
-                                ${alu.apellido.toUpperCase()}, ${alu.nombre}
+                                ${escapeHtml(alu.apellido.toUpperCase())}, ${escapeHtml(alu.nombre)}
                             </td>
-                            <td>${alu.dni}</td>
-                            <td>${alu.resp_apellido || ''}, ${alu.resp_nombre || 'N/A'}</td>
-                            <td>${alu.resp_tel || 'N/A'}</td>
+                            <td>${escapeHtml(alu.dni)}</td>
+                            <td>${escapeHtml(alu.resp_apellido || '')}, ${escapeHtml(alu.resp_nombre || 'N/A')}</td>
+                            <td>${escapeHtml(alu.resp_tel || 'N/A')}</td>
                             <td style="text-align:center;">
                                 ${alu.alerta_salud > 0 ? '<span title="Tiene antecedentes de salud registrados" style="cursor:help; font-size:1.2em;">⚠️</span>' : '✅'}
                             </td>
@@ -545,7 +570,7 @@ async function fetchDataTable(table, id = null) {
     if (id) url += `&id=${id}`;
     console.log("Fetching URL:", url);
     
-    const response = await fetch(url);
+    const response = await secureFetch(url);
     
     if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
@@ -607,11 +632,17 @@ async function mostrarVista(){
                 actualizarNomina();
             } else {
                 const data = await fetchDataTable(tablaSeleccionada);
-                mostrarTabla(data, tablaSeleccionada);
+                if (tablaSeleccionada === "estudiantes" || tablaSeleccionada === "docentes") {
+                    window._datosActuales = data;
+                    paginaActual = 1;
+                    renderTablaPaginada();
+                } else {
+                    mostrarTabla(data, tablaSeleccionada);
+                }
             }
         } catch (error) {
             console.error('Error al cargar datos:', error);
-            document.getElementById('contenido').innerHTML = '<p style="color:#e74c3c; padding:20px;">Error al cargar datos: ' + error.message + '</p>';
+            document.getElementById('contenido').innerHTML = '<p style="color:#e74c3c; padding:20px;">Error al cargar datos: ' + escapeHtml(error.message) + '</p>';
         }
     }
     else if(VistaSeleccionada === "subir"){
@@ -653,10 +684,10 @@ async function cargarFormulario(){
         cursosDisponibles = await fetchDataTable("lista_cursos");
     } catch (error) {
         console.error('Error al cargar cursos:', error);
-        cont.innerHTML = '<p style="color:#e74c3c; padding:20px;">Error al cargar los cursos: ' + error.message + '</p>';
+        cont.innerHTML = '<p style="color:#e74c3c; padding:20px;">Error al cargar los cursos: ' + escapeHtml(error.message) + '</p>';
         return;
     }
-    const opcionesCursos = cursosDisponibles.map(c => `<option value="${c.id_curso}">${c.nombre}</option>`).join('');
+    const opcionesCursos = cursosDisponibles.map(c => `<option value="${escapeHtml(c.id_curso)}">${escapeHtml(c.nombre)}</option>`).join('');
 
     if(tablaSeleccionada === "estudiantes"){
         cont.innerHTML = `
@@ -1069,8 +1100,8 @@ async function cargarFormulario(){
                         <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:10px;">
                             ${cursosDisponibles.map(curso => `
                                 <div style="display:flex; align-items:center; gap:8px; padding:8px; border:1px solid #ddd; border-radius:4px;">
-                                    <input type="checkbox" id="curso-${curso.id_curso}" name="cursos" value="${curso.id_curso}">
-                                    <label for="curso-${curso.id_curso}" style="margin:0; cursor:pointer;">${curso.nombre}</label>
+                                    <input type="checkbox" id="curso-${curso.id_curso}" name="cursos" value="${escapeHtml(curso.id_curso)}">
+                                    <label for="curso-${curso.id_curso}" style="margin:0; cursor:pointer;">${escapeHtml(curso.nombre)}</label>
                                 </div>
                             `).join('')}
                         </div>
@@ -1149,7 +1180,7 @@ async function guardarNuevo(tipo) {
 
     try {
         if (tipo === 'docentes') {
-            const response1 = await fetch(`api.php?table=${tipo}`, {
+            const response1 = await secureFetch(`api.php?table=${tipo}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -1161,7 +1192,7 @@ async function guardarNuevo(tipo) {
             }
             
             const docenteId = result1.id;
-            const response2 = await fetch(`api.php?table=docente_cursos&id=${docenteId}`, {
+            const response2 = await secureFetch(`api.php?table=docente_cursos&id=${docenteId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cursos: cursosSeleccionados })
@@ -1175,7 +1206,7 @@ async function guardarNuevo(tipo) {
             alert('Registro guardado con éxito');
             cambiarModo('archivos');
         } else {
-            const response = await fetch(`api.php?table=${tipo}`, {
+            const response = await secureFetch(`api.php?table=${tipo}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -1210,7 +1241,7 @@ async function editarRegistro(tipo, id) {
         alert('Error al cargar el registro: ' + error.message);
         return;
     }
-    const opcionesCursos = (selectedId) => cursosDisponibles.map(c => `<option value="${c.id_curso}" ${selectedId == c.id_curso ? 'selected' : ''}>${c.nombre}</option>`).join('');
+    const opcionesCursos = (selectedId) => cursosDisponibles.map(c => `<option value="${escapeHtml(c.id_curso)}" ${selectedId == c.id_curso ? 'selected' : ''}>${escapeHtml(c.nombre)}</option>`).join('');
 
     const modal = document.createElement('div');
     modal.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000;";
@@ -1603,7 +1634,7 @@ window.agregarAsignacionAlDOM = function(asignacion, index) {
                 <select id="asignacion-curso-${index}" name="asignacion-curso" required style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;">
                     <option value="">Selecciona un curso</option>
                     ${window.currentCursosDisponibles.map(curso => 
-                        `<option value="${curso.id_curso}" ${asignacion?.id_curso == curso.id_curso ? 'selected' : ''}>${curso.nombre}</option>`
+                        `<option value="${escapeHtml(curso.id_curso)}" ${asignacion?.id_curso == curso.id_curso ? 'selected' : ''}>${escapeHtml(curso.nombre)}</option>`
                     ).join('')}
                 </select>
             </div>
@@ -1613,7 +1644,7 @@ window.agregarAsignacionAlDOM = function(asignacion, index) {
                        placeholder="Materia" 
                        required
                        style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;"
-                       value="${asignacion?.materia || ''}">
+                       value="${escapeHtml(asignacion?.materia || '')}">
             </div>
             <div class="form-group" style="margin:0;">
                 <label for="asignacion-cargo-${index}">Cargo</label>
@@ -1642,14 +1673,14 @@ window.agregarAsignacionAlDOM = function(asignacion, index) {
                 <input type="time" id="asignacion-hora-inicio-${index}" name="asignacion-hora-inicio" 
                        required
                        style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;"
-                       value="${asignacion?.hora_inicio?.substring(0,5) || ''}">
+                       value="${escapeHtml(asignacion?.hora_inicio?.substring(0,5) || '')}">
             </div>
             <div class="form-group" style="margin:0;">
                 <label for="asignacion-hora-fin-${index}">Hora Fin</label>
                 <input type="time" id="asignacion-hora-fin-${index}" name="asignacion-hora-fin" 
                        required
                        style="width:100%; padding:4px 8px; border:1px solid #ddd; border-radius:4px; box-sizing: border-box;"
-                       value="${asignacion?.hora_fin?.substring(0,5) || ''}">
+                       value="${escapeHtml(asignacion?.hora_fin?.substring(0,5) || '')}">
             </div>
         </div>
     `;
@@ -1698,7 +1729,7 @@ async function guardarEdicion(tipo, id) {
     try {
         if (tipo === 'docentes') {
             // Save basic docente data
-            const response1 = await fetch(`sistema/api.php?table=${tipo}&id=${id}`, {
+            const response1 = await secureFetch(`sistema/api.php?table=${tipo}&id=${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -1770,7 +1801,7 @@ async function guardarEdicion(tipo, id) {
             }
             
             // Send asignaciones to API
-            const response2 = await fetch(`sistema/api.php?table=docente_cursos&id=${id}`, {
+            const response2 = await secureFetch(`sistema/api.php?table=docente_cursos&id=${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ asignaciones: asignaciones })
@@ -1786,7 +1817,7 @@ async function guardarEdicion(tipo, id) {
             if (modal) document.body.removeChild(modal);
             mostrarVista();
         } else {
-            const response = await fetch(`api.php?table=${tipo}&id=${id}`, {
+            const response = await secureFetch(`api.php?table=${tipo}&id=${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -1811,7 +1842,7 @@ async function eliminarRegistro(tipo, id) {
     if (!confirm('¿Está seguro de eliminar este registro?')) return;
 
     try {
-        const response = await fetch(`sistema/api.php?table=${tipo}&id=${id}`, { method: 'DELETE' });
+        const response = await secureFetch(`sistema/api.php?table=${tipo}&id=${id}`, { method: 'DELETE' });
         const result = await response.json().catch(() => ({}));
         if (response.ok && result.success) {
             alert('Registro eliminado con éxito');
@@ -1871,7 +1902,7 @@ window.abrirModalAsignarDocente = async function(idCurso) {
                     <label for="asignar-docente">Docente</label>
                     <select id="asignar-docente" required style="min-width: 300px; width: 100%; padding: 8px;">
                         <option value="">Seleccione un docente...</option>
-                        ${docentes.map(d => `<option value="${d.id_docente}">${d.apellido}, ${d.nombre} (${d.dni})</option>`).join('')}
+                        ${docentes.map(d => `<option value="${escapeHtml(d.id_docente)}">${d.apellido}, ${d.nombre} (${escapeHtml(d.dni)})</option>`).join('')}
                     </select>
                 </div>
                 <div class="form-group">
@@ -1938,7 +1969,7 @@ window.abrirModalAsignarDocente = async function(idCurso) {
         const cicloLectivo = parseInt(document.getElementById('asignar-ciclo').value);
         
         try {
-            const response = await fetch('sistema/api.php?table=asignaciones', {
+            const response = await secureFetch('sistema/api.php?table=asignaciones', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1976,7 +2007,7 @@ window.cerrarModalAsignarDocente = function() {
 window.eliminarAsignacion = async function(idAsignacion, idCurso) {
     if (!confirm('¿Está seguro de quitar esta asignación?')) return;
     try {
-        const response = await fetch(`sistema/api.php?table=asignaciones&id=${idAsignacion}`, { method: 'DELETE' });
+        const response = await secureFetch(`sistema/api.php?table=asignaciones&id=${idAsignacion}`, { method: 'DELETE' });
         const result = await response.json().catch(() => ({}));
         if (response.ok && result.success) {
             alert('Asignación eliminada');
@@ -1990,9 +2021,59 @@ window.eliminarAsignacion = async function(idAsignacion, idCurso) {
     }
 }
 
+function renderTablaPaginada() {
+    const datos = window._datosActuales || [];
+    const total = datos.length;
+    const totalPaginas = Math.ceil(total / limitePorPagina) || 1;
+    if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+    const inicio = (paginaActual - 1) * limitePorPagina;
+    const fin = inicio + limitePorPagina;
+    mostrarTabla(datos.slice(inicio, fin), tablaSeleccionada);
+    agregarControlesPaginacion(total, totalPaginas);
+}
+
+function cambiarLimite(nuevoLimite) {
+    limitePorPagina = parseInt(nuevoLimite);
+    paginaActual = 1;
+    renderTablaPaginada();
+}
+
+function agregarControlesPaginacion(total, totalPaginas) {
+    const cont = document.getElementById("contenido");
+    const existente = document.getElementById("paginacion-controles");
+    if (existente) existente.remove();
+
+    const inicio = (paginaActual - 1) * limitePorPagina + 1;
+    const fin = Math.min(paginaActual * limitePorPagina, total);
+
+    const opciones = [15, 30, 60].map(n =>
+        `<option value="${n}" ${n === limitePorPagina ? 'selected' : ''}>${n}</option>`
+    ).join('');
+
+    const div = document.createElement("div");
+    div.id = "paginacion-controles";
+    div.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:12px 0; flex-wrap:wrap; gap:8px;";
+
+    div.innerHTML = `
+        <span>Mostrando ${inicio}-${fin} de ${total} registros
+            <select onchange="window.cambiarLimite(this.value)" style="margin-left:6px; padding:4px 8px; border-radius:4px; border:1px solid #ddd;">
+                ${opciones}
+            </select>
+        </span>
+        <span style="display:flex; gap:4px; align-items:center;">
+            <button onclick="window.cambiarPagina(1)" ${paginaActual === 1 ? 'disabled' : ''}>« Primera</button>
+            <button onclick="window.cambiarPagina(${paginaActual - 1})" ${paginaActual === 1 ? 'disabled' : ''}>‹ Anterior</button>
+            <span style="padding:0 8px;">Página ${paginaActual} de ${totalPaginas}</span>
+            <button onclick="window.cambiarPagina(${paginaActual + 1})" ${paginaActual === totalPaginas ? 'disabled' : ''}>Siguiente ›</button>
+            <button onclick="window.cambiarPagina(${totalPaginas})" ${paginaActual === totalPaginas ? 'disabled' : ''}>Última »</button>
+        </span>
+    `;
+    cont.appendChild(div);
+}
+
 function cambiarPagina(pagina) {
     paginaActual = pagina;
-    mostrarVista();
+    renderTablaPaginada();
 }
 
 // ===== HAMBURGER MENU =====
@@ -2041,6 +2122,7 @@ window.editarRegistro = editarRegistro;
 window.guardarEdicion = guardarEdicion;
 window.eliminarRegistro = eliminarRegistro;
 window.cambiarPagina = cambiarPagina;
+window.cambiarLimite = cambiarLimite;
 window.handleSearchInput = handleSearchInput;
 window.triggerSearch = triggerSearch;
 window.toggleStudentFilters = () => {};

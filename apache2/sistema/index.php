@@ -10,8 +10,9 @@ if (!verificar_sesion()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?php echo htmlspecialchars(get_csrf_token()); ?>">
     <title>Gestión Escolar</title>
-    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/styles.css?v=3">
     <link rel="icon" href="../imagenes/logo.png?v=1" type="image/png">
 </head>
 <body>

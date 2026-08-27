@@ -9,7 +9,36 @@ if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
     ini_set('session.cookie_secure', 1);
 }
 
+// Security headers
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('X-XSS-Protection: 1; mode=block');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+}
+
 session_start();
+
+// Generate CSRF token if not present
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+/**
+ * Get the current CSRF token.
+ */
+function get_csrf_token(): string {
+    return $_SESSION['csrf_token'] ?? '';
+}
+
+/**
+ * Validate a CSRF token against the session token.
+ */
+function validate_csrf_token(?string $token): bool {
+    if ($token === null || $token === '') return false;
+    return hash_equals($_SESSION['csrf_token'] ?? '', $token);
+}
 
 /**
  * Función para verificar la validez de la sesión

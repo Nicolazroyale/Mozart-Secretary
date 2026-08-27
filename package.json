@@ -1,14 +1,17 @@
 {
     "name": "mozart-tests",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "private": true,
     "scripts": {
         "test": "jest --verbose",
         "test:php": "vendor/bin/phpunit --testdox",
         "test:js": "jest --verbose",
-        "test:all": "npm run test:php && npm run test:js"
+        "test:all": "npm run test:php && npm run test:js",
+        "lint:js": "eslint apache2/js/",
+        "lint:fix": "eslint apache2/js/ --fix"
     },
     "devDependencies": {
+        "eslint": "^8.50.0",
         "jest": "^29.7.0",
         "jest-environment-jsdom": "^29.7.0"
     }

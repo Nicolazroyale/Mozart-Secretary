@@ -3,56 +3,11 @@
 use PHPUnit\Framework\TestCase;
 
 /**
- * Tests for verificar_sesion() in auth_config.php.
- *
- * The function checks three conditions:
- *   1. $_SESSION['user_id'] exists
- *   2. $_SESSION['user_fingerprint'] matches md5($_SERVER['HTTP_USER_AGENT'])
- *   3. Session has not timed out (30 min inactivity)
+ * Tests for verificar_sesion() from auth_config.php.
+ * Now imports the REAL function from the application code via bootstrap.
  */
 class VerificarSesionTest extends TestCase
 {
-    private static bool $functionLoaded = false;
-
-    public static function setUpBeforeClass(): void
-    {
-        if (!self::$functionLoaded) {
-            // We need to load only the function, not the ini_set / session_start
-            // calls at the top of auth_config.php. Define the function directly
-            // so we can test it without side-effects.
-            if (!function_exists('verificar_sesion')) {
-                /**
-                 * Exact replica of verificar_sesion() from auth_config.php.
-                 */
-                function verificar_sesion(): bool
-                {
-                    if (!isset($_SESSION['user_id'])) {
-                        return false;
-                    }
-
-                    if (
-                        !isset($_SESSION['user_fingerprint']) ||
-                        $_SESSION['user_fingerprint'] !== md5($_SERVER['HTTP_USER_AGENT'] ?? '')
-                    ) {
-                        return false;
-                    }
-
-                    $timeout = 1800;
-                    if (
-                        isset($_SESSION['last_activity']) &&
-                        (time() - $_SESSION['last_activity'] > $timeout)
-                    ) {
-                        return false;
-                    }
-
-                    $_SESSION['last_activity'] = time();
-                    return true;
-                }
-            }
-            self::$functionLoaded = true;
-        }
-    }
-
     protected function setUp(): void
     {
         $_SESSION = [];
@@ -86,7 +41,6 @@ class VerificarSesionTest extends TestCase
     public function testReturnsFalseWhenFingerprintMissing(): void
     {
         $_SESSION['user_id'] = 1;
-        // fingerprint not set
         $this->assertFalse(verificar_sesion());
     }
 
@@ -95,7 +49,6 @@ class VerificarSesionTest extends TestCase
         $_SESSION['user_id'] = 1;
         $_SESSION['user_fingerprint'] = md5('DifferentBrowser/2.0');
         $_SESSION['last_activity'] = time();
-
         $this->assertFalse(verificar_sesion());
     }
 
@@ -107,8 +60,7 @@ class VerificarSesionTest extends TestCase
     {
         $_SESSION['user_id'] = 1;
         $_SESSION['user_fingerprint'] = md5('TestBrowser/1.0');
-        $_SESSION['last_activity'] = time() - 1801; // 30 min + 1 sec
-
+        $_SESSION['last_activity'] = time() - 1801;
         $this->assertFalse(verificar_sesion());
     }
 
@@ -116,8 +68,7 @@ class VerificarSesionTest extends TestCase
     {
         $_SESSION['user_id'] = 1;
         $_SESSION['user_fingerprint'] = md5('TestBrowser/1.0');
-        $_SESSION['last_activity'] = time() - 1799; // just under 30 min
-
+        $_SESSION['last_activity'] = time() - 1799;
         $this->assertTrue(verificar_sesion());
     }
 
@@ -130,7 +81,6 @@ class VerificarSesionTest extends TestCase
         $_SESSION['user_id'] = 42;
         $_SESSION['user_fingerprint'] = md5('TestBrowser/1.0');
         $_SESSION['last_activity'] = time() - 100;
-
         $this->assertTrue(verificar_sesion());
     }
 
@@ -140,9 +90,7 @@ class VerificarSesionTest extends TestCase
         $_SESSION['user_id'] = 1;
         $_SESSION['user_fingerprint'] = md5('TestBrowser/1.0');
         $_SESSION['last_activity'] = time() - 60;
-
         verificar_sesion();
-
         $this->assertGreaterThanOrEqual($before, $_SESSION['last_activity']);
     }
 
@@ -150,8 +98,6 @@ class VerificarSesionTest extends TestCase
     {
         $_SESSION['user_id'] = 1;
         $_SESSION['user_fingerprint'] = md5('TestBrowser/1.0');
-        // last_activity deliberately not set
-
         $this->assertTrue(verificar_sesion());
     }
 
@@ -163,9 +109,7 @@ class VerificarSesionTest extends TestCase
     {
         $_SESSION['user_id'] = 1;
         $_SESSION['user_fingerprint'] = md5('TestBrowser/1.0');
-        $_SESSION['last_activity'] = time() - 1800; // exactly 30 min
-
-        // time() - last_activity == 1800, condition is > 1800 → should pass
+        $_SESSION['last_activity'] = time() - 1800;
         $this->assertTrue(verificar_sesion());
     }
 

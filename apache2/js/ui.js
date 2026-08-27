@@ -1,3 +1,13 @@
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 export function mostrarTabla(lista, tipoTabla) {
     let cont = document.getElementById("contenido");
 
@@ -38,7 +48,7 @@ export function mostrarTabla(lista, tipoTabla) {
     lista.forEach(a => {
         const row = document.createElement("tr");
         
-        let cellsHtml = displayHeaders.filter(h => h !== "Acciones").map(h => `<td>${a[h] || 'N/A'}</td>`).join('');
+        let cellsHtml = displayHeaders.filter(h => h !== "Acciones").map(h => `<td>${escapeHtml(a[h]) || 'N/A'}</td>`).join('');
         
         // Add actions for cursos
         if (tipoTabla === "cursos") {

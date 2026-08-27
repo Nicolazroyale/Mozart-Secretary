@@ -1,9 +1,18 @@
 <?php
-$host = 'db';
-$db   = 'escuela_secundaria_tecnica';
-$user = 'DBsecretaria';
-$pass = 'Dalia1244!';
+// Canonical db.php — all other db.php files should include this one
+$host = getenv('DB_HOST');
+$db   = getenv('DB_NAME');
+$user = getenv('DB_USER');
+$pass = getenv('DB_PASS');
 $charset = 'utf8mb4';
+
+if ($host === false || $db === false || $user === false || $pass === false) {
+    error_log('Faltan variables de entorno de base de datos (DB_HOST, DB_NAME, DB_USER, DB_PASS)');
+    header('Content-Type: application/json');
+    http_response_code(503);
+    echo json_encode(['error' => 'Configuración del servidor incompleta']);
+    exit;
+}
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 $options = [
@@ -15,8 +24,10 @@ $options = [
 try {
      $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
+     error_log('Error de conexión a base de datos: ' . $e->getMessage());
      header('Content-Type: application/json');
-     echo json_encode(['error' => $e->getMessage()]);
+     http_response_code(503);
+     echo json_encode(['error' => 'No se pudo conectar a la base de datos']);
      exit;
 }
 ?>

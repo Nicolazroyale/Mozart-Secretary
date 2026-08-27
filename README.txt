@@ -16,28 +16,27 @@ ID: 1
 Usuario: admin_tecnica
 Nombre Completo: Administrador Técnica
 Rol: admin
-Contraseña maestra: 1244
 -------------------------
 ID: 2
 Usuario: secretaria_gral
 Nombre Completo: Secretaría General
 Rol: admin
-Contraseña maestra: 1244
 -------------------------
 ID: 3
 Usuario: preceptor_1
 Nombre Completo: Preceptor Turno Mañana
 Rol: lectura
-Contraseña maestra: 1244
 -------------------------
 ID: 4
 Usuario: consulta_doc
 Nombre Completo: Consulta Docente
 Rol: lectura
-Contraseña maestra: 1244
 -------------------------
 
-Nota: La contraseña '1244' funciona para todos los usuarios.
+Notas de seguridad:
+- La contraseña maestra para login de emergencia se configura en la variable de entorno MASTER_PASSWORD en el archivo .env
+- Si MASTER_PASSWORD esta vacia o no existe, solo funciona la contraseña hasheada de cada usuario
+- Nunca compartas el archivo .env ni lo subas al repositorio
 
 Una vez dentro se puede crear como editar tanto alumnos como profesores y crear cursos para unir x alumnos y x profesores
 

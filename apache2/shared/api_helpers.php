@@ -1,6 +1,19 @@
 <?php
 
 // ---------------------------------------------------------------------------
+// Input validation helpers
+// ---------------------------------------------------------------------------
+
+function validate_dni(string $dni): bool {
+    return preg_match('/^\d{7,15}$/', $dni) === 1;
+}
+
+function validate_email(?string $email): bool {
+    if ($email === null || $email === '') return true; // optional field
+    return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+}
+
+// ---------------------------------------------------------------------------
 // Field-list constants (used in both POST and PUT for estudiantes)
 // ---------------------------------------------------------------------------
 
@@ -68,6 +81,14 @@ function init_api(string $method): void {
 
     if (in_array($method, ['POST', 'PUT', 'DELETE']) && $_SESSION['rol'] !== 'admin') {
         json_error('No tiene permisos para realizar esta acción', 403);
+    }
+
+    // CSRF validation for state-changing methods
+    if (in_array($method, ['POST', 'PUT', 'DELETE'])) {
+        $csrf = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '';
+        if (!validate_csrf_token($csrf)) {
+            json_error('Token CSRF inválido', 403);
+        }
     }
 }
 

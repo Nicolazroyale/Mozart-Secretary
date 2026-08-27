@@ -12,7 +12,7 @@ if (php_sapi_name() !== 'cli') {
 $host = getenv('DB_HOST') ?: 'localhost';
 $db   = getenv('DB_NAME') ?: 'escuela_secundaria_tecnica';
 $user = getenv('DB_USER') ?: 'DBsecretaria';
-$pass = getenv('DB_PASS') ?: 'Dalia1244!';
+$pass = getenv('DB_PASS');
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";

@@ -1,5 +1,2 @@
--- Update the users table to include new roles
-ALTER TABLE `usuarios` 
-MODIFY COLUMN `rol` enum('lectura','lectura_escritura_viejos','lectura_escritura_nuevos','lectura_escritura_total','admin') 
-COLLATE utf8mb4_unicode_ci 
-NOT NULL DEFAULT 'lectura';
+-- DEPRECATED: Este archivo era un no-op (modificaba la columna al mismo enum).
+-- Todas las mejoras de esquema ahora estan en migration_improvements.sql

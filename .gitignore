@@ -17,10 +17,11 @@ release.sh
 vendor/
 node_modules/
 
-# Composer
-composer.lock
-
 # npm
 package-lock.json
 
 .vscode/
+
+# Backup files
+*.bak
+*.sql.old
