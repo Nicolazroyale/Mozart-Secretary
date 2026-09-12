@@ -1,2 +1,0 @@
--- DEPRECATED: Este archivo era un no-op (modificaba la columna al mismo enum).
--- Todas las mejoras de esquema ahora estan en migration_improvements.sql
