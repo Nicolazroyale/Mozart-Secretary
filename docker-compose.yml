@@ -1,44 +1,28 @@
 services:
-  web:
+  mozart:
     build: .
-    container_name: web_mozart
+    image: mozart:latest
+    container_name: mozart
     ports:
       - "443:443"
-      # - "80:80"  # Descomentar para HTTP (fallback temporal)
-    volumes:
-      - ./apache2:/var/www/html
+      - "127.0.0.1:8081:8081"
+      - "[::1]:8081:8081"
     environment:
-      DB_HOST: db
-      DB_NAME: ${DB_NAME:-escuela_secundaria_tecnica}
-      DB_USER: ${DB_USER:-DBsecretaria}
-      DB_PASS: ${DB_PASS:?Configura DB_PASS en .env}
-      MASTER_PASSWORD: ${MASTER_PASSWORD:-}
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - red_mozart
-
-  db:
-    image: mariadb:10.11
-    container_name: db_mozart
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Configura MYSQL_ROOT_PASSWORD en .env}
-      MYSQL_DATABASE: ${DB_NAME:-escuela_secundaria_tecnica}
-      MYSQL_USER: ${DB_USER:-DBsecretaria}
-      MYSQL_PASSWORD: ${DB_PASS:?Configura DB_PASS en .env}
+      - PORT=443
+      - HTTP_PORT=8081
+      - DATA_DIR=/data
+      - DB_PATH=/data/mozart.db
+      - WEB_ROOT=/srv/web
+      - TEMPLATES_DIR=/srv/templates
+      - HOSTNAME=${HOSTNAME:-}
+      - MASTER_PASSWORD=${MASTER_PASSWORD:-}
+      - ADMIN_USER=${ADMIN_USER:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      - AUTH_SECRET=${AUTH_SECRET:-}
+      - DB_KEY=${DB_KEY:-}
+      - BACKUP_DIR=${BACKUP_DIR:-/data/backups}
+      - BACKUP_DAY=${BACKUP_DAY:-0}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-90}
     volumes:
-      - ./mariadb:/var/lib/mysql
-      - ./inicializar_bd:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - red_mozart
-
-networks:
-  red_mozart:
-
+      - ./data:/data
+    restart: unless-stopped

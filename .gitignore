@@ -1,6 +1,7 @@
 # Base de datos (datos locales)
 mariadb/
 mysql/
+data/
 
 # Environment files with secrets
 .env
@@ -25,3 +26,6 @@ package-lock.json
 # Backup files
 *.bak
 *.sql.old
+
+# Binario compilado
+mozart

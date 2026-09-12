@@ -4,11 +4,9 @@
     "private": true,
     "scripts": {
         "test": "jest --verbose",
-        "test:php": "vendor/bin/phpunit --testdox",
         "test:js": "jest --verbose",
-        "test:all": "npm run test:php && npm run test:js",
-        "lint:js": "eslint apache2/js/",
-        "lint:fix": "eslint apache2/js/ --fix"
+        "lint:js": "eslint web/js/",
+        "lint:fix": "eslint web/js/ --fix"
     },
     "devDependencies": {
         "eslint": "^8.50.0",

@@ -41,43 +41,53 @@ docker compose up -d
 - Los intentos fallidos de login bloquean la cuenta por 15 minutos
 - Se implementan tokens CSRF en todas las operaciones de escritura
 
+## Auditoría
+
+El sistema registra automáticamente todas las operaciones de escritura (INSERT, UPDATE, DELETE)
+en la tabla `audit_log`. Cada registro incluye:
+
+- Usuario que realizó la operación e IP
+- Tabla y registro afectado
+- Valores anteriores y nuevos (JSON)
+- Campos sensibles (passwords) nunca se registran, se reemplazan por `[REDACTED]`
+
+Solo los usuarios con rol `admin` pueden ver el log desde el menú **Log de Auditoría**.
+
 ## Estructura del proyecto
 
 ```
 Mozart/
-├── apache2/                 # Código fuente PHP/JS/CSS
-│   ├── api.php              # API endpoint (forwarding a sistema/)
-│   ├── auth_config.php      # Seguridad de sesiones y headers
-│   ├── db.php               # Conexión a base de datos
-│   ├── login_process.php    # Autenticación de login
-│   ├── logout.php           # Cierre de sesión
-│   ├── seeder.php           # Carga de datos de prueba (CLI)
-│   ├── shared/              # Funciones compartidas (api_helpers.php, db.php)
-│   ├── sistema/             # API canónica y sistema principal
-│   ├── js/                  # JavaScript (app.js, ui.js)
-│   ├── css/                 # Estilos (styles.css)
-│   └── Login/               # Página de login
-├── inicializar_bd/          # Scripts SQL de inicialización
-│   ├── escuela_secundaria_tecnica.sql  # Schema completo
-│   ├── init.sql             # Permisos de usuario DB
-│   └── migration_improvements.sql      # Migraciones de mejoras
-├── tests/                   # Tests PHPUnit y Jest
-├── docker-compose.yml       # Orquestación Docker
-├── Dockerfile               # Imagen PHP/Apache
-└── .env.example             # Template de variables de entorno
+├── main.go, server.go        # Arranque, rutas, sesiones y seguridad
+├── api.go                    # Despacho del API (/api.php y /sistema/api.php)
+├── api_read.go               # Lecturas GET (listados, paginado, detalle, búsqueda)
+├── api_write.go              # Escrituras (POST/PUT/DELETE) + auditoría
+├── api_write_handlers.go     # Handlers específicos (estudiantes, usuarios, dmc)
+├── api_export.go             # Exportaciones PDF/Excel con fuentes UTF-8 embebidas
+├── login.go, security.go     # Login (bcrypt, lockout), CSRF y headers
+├── auth/                     # Paquete: hash de contraseñas y sesiones
+├── db/                       # Esquema SQLite (12 tablas), conexión WAL, seed
+├── assets/fonts/             # DejaVu (incrustados en el binario vía go:embed)
+├── web/                      # Frontend servido (JS, CSS, imágenes, Login/)
+│   └── templates/            # Plantillas HTML (index, sistema_index, login)
+├── tests/                    # Test suite del frontend (Jest)
+├── docker-compose.yml        # Orquestación (servicio único Go)
+├── Dockerfile                # Imagen multi-stage (build + distroless estático)
+└── .env.example              # Template de variables de entorno
 ```
 
 ## Desarrollo
 
 ```bash
-# Ejecutar tests PHP
-docker compose exec web vendor/bin/phpunit --testdox
+# Compilar y ejecutar en local
+go build -o /tmp/mozart .
+PORT=8443 DATA_DIR=./data WEB_ROOT=./web go run .   # o ./mozart
 
-# Ejecutar tests JavaScript
-npm test
+# Tests
+go test .        # backend (login/lockout)
+npm run test:js  # frontend Jest
 
-# Cargar datos de prueba
-docker compose exec web php /var/www/html/seeder.php
+# Producción vía Docker
+docker compose up -d --build
 ```
 
 ## Licencia

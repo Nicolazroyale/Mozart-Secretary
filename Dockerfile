@@ -1,25 +1,27 @@
-FROM php:8.2-apache
+# ---- Stage de compilación (con CGO + OpenSSL para SQLCipher) ----
+FROM golang:1.27-bookworm AS build
+WORKDIR /src
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+ENV CGO_ENABLED=1
+RUN go build -trimpath -ldflags="-s -w" -o /out/mozart .
 
-# Instala y activa extensiones PHP requeridas
-RUN apt-get update && apt-get install -y libpng-dev libzip-dev zip unzip libonig-dev libxml2-dev
-RUN docker-php-ext-install pdo_mysql gd mbstring zip xml
-
-# Instala Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Copia composer.json e instala dependencias
-WORKDIR /var/www/html
-
-# Activar módulo SSL
-RUN a2enmod ssl
-
-# Generar certificado autofirmado (válido 365 días, RSA 2048)
-RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout /etc/ssl/private/mozart.key \
-    -out /etc/ssl/certs/mozart.crt \
-    -subj "/C=AR/ST=BuenosAires/L=SanMiguel/O=EESTN3/CN=localhost"
-
-# Configuración VirtualHost SSL
-COPY apache2-ssl.conf /etc/apache2/sites-available/mozart-ssl.conf
-RUN a2ensite mozart-ssl.conf
-
+# ---- Imagen final (glibc + libcrypto para SQLCipher) ----
+FROM debian:bookworm-slim
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /srv
+COPY --from=build /out/mozart /usr/local/bin/mozart
+COPY web /srv/web
+COPY web/templates /srv/templates
+ENV WEB_ROOT=/srv/web \
+    TEMPLATES_DIR=/srv/templates \
+    DATA_DIR=/data \
+    PORT=443
+EXPOSE 443
+ENTRYPOINT ["/usr/local/bin/mozart"]

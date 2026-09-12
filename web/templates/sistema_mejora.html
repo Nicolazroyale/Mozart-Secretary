@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{.CSRF}}">
+    <title>Sistema · Gestión Escolar</title>
+    <link rel="stylesheet" href="/css/mejoras.css?v=3">
+    <link rel="stylesheet" href="/css/mejoras_crud.css?v=1">
+    <link rel="icon" href="/imagenes/logo.png?v=1" type="image/png">
+</head>
+<body>
+    <div id="app-sistema"
+         data-nombre="{{.Nombre}}"
+         data-rol="{{.Rol}}"
+         data-csrf="{{.CSRF}}"
+         data-esadmin="{{.EsAdmin}}"></div>
+    <script type="module">
+        import { initSistemaMejora } from '/js/sistema_mejora.js';
+        const app = document.getElementById('app-sistema');
+        if (app) {
+            initSistemaMejora(app, {
+                user: {
+                    nombre: app.dataset.nombre || 'Administrador',
+                    rol: app.dataset.rol || ''
+                },
+                csrf: app.dataset.csrf || '',
+                esAdmin: app.dataset.esadmin === 'true'
+            });
+        }
+    </script>
+</body>
+</html>
