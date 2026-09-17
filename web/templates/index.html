@@ -5,27 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{.CSRF}}">
     <title>Sistema · Gestión Escolar</title>
-    <link rel="stylesheet" href="/css/mejoras.css?v=3">
-    <link rel="stylesheet" href="/css/mejoras_crud.css?v=2">
+    <script>try { if (localStorage.getItem('mozart-theme') === 'dark') document.documentElement.classList.add('dark'); } catch (e) {}</script>
+    <link rel="stylesheet" href="/css/app.css?v=10">
+    <link rel="stylesheet" href="/css/crud.css?v=10">
     <link rel="icon" href="/imagenes/logo.png?v=1" type="image/png">
 </head>
 <body>
-    <div id="app-sistema"
+    <div id="app"
          data-nombre="{{.Nombre}}"
          data-rol="{{.Rol}}"
          data-csrf="{{.CSRF}}"
-         data-esadmin="{{.EsAdmin}}"></div>
+         data-esadmin="{{.EsAdmin}}"
+         data-permisos="{{.Permisos}}"
+         data-ultimo-backup="{{.UltimoBackup}}"></div>
     <script type="module">
-        import { initSistemaMejora } from '/js/sistema_mejora.js';
-        const app = document.getElementById('app-sistema');
+        import { initMain } from '/js/main.js?v=11';
+        const app = document.getElementById('app');
         if (app) {
-            initSistemaMejora(app, {
+            initMain(app, {
                 user: {
                     nombre: app.dataset.nombre || 'Administrador',
                     rol: app.dataset.rol || ''
                 },
                 csrf: app.dataset.csrf || '',
-                esAdmin: app.dataset.esadmin === 'true'
+                esAdmin: app.dataset.esadmin === 'true',
+                permisos: JSON.parse(app.dataset.permisos || '[]'),
+                ultimoBackup: app.dataset.ultimoBackup || ''
             });
         }
     </script>

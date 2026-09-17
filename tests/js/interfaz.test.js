@@ -1,5 +1,5 @@
 /**
- * Tests for Interfaz_mejora.js (port vanilla de Interfaz_mejora.ts).
+ * Tests for interfaz.js (port vanilla de interfaz.ts).
  *
  * Al igual que ui.test.js/app.test.js, re-implementamos la lógica pura del
  * módulo (que usa ES modules/DOM). Verificación de runtime real del módulo
@@ -50,7 +50,7 @@ function courseGroups(groups) {
     .join('');
 }
 
-describe('Interfaz_mejora (lógica pura)', () => {
+describe('interfaz (lógica pura)', () => {
   test('SECTIONS expone las 4 secciones + Inicio como shell', () => {
     expect(SECTIONS.length).toBe(4);
     const labels = SECTIONS.map((s) => s.label);

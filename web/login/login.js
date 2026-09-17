@@ -10,7 +10,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     loginBtn.textContent = 'Accediendo...';
 
     try {
-        const response = await fetch('../login_process.php', {
+        const response = await fetch('/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
@@ -24,7 +24,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
             statusMessage.style.display = 'block';
             
             setTimeout(() => {
-                window.location.href = '../index.php';
+                window.location.href = '/sistema/';
             }, 1000);
         } else {
             statusMessage.textContent = result.error || 'Usuario o contraseña incorrectos';

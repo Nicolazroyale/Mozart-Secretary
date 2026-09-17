@@ -1,17 +1,18 @@
 /**
- * sistema_mejora.js
- * Interfaz mejorada (diseño de mejoras.css) conectada a los datos REALES de la
+ * main.js
+ * Sistema principal (diseño de app.css) conectada a los datos REALES de la
  * API (/api.php). Reemplaza el diseño del sistema en / y /sistema.
  *
- * Incluye alta/edición/eliminación integradas (rol admin) vía crud_mejora.js.
+ * Incluye alta/edición/eliminación integradas (según permisos) vía crud.js.
  *
  * Uso:
- *   import { initSistemaMejora } from '/js/sistema_mejora.js';
- *   initSistemaMejora(document.getElementById('app-sistema'), opts);
+ *   import { initMain } from '/js/main.js';
+ *   initMain(document.getElementById('app'), opts);
  */
 
-import { icon, esc } from './Interfaz_mejora.js';
-import { createCrud } from './crud_mejora.js';
+import { icon, esc } from './interfaz.js?v=11';
+import { createCrud } from './crud.js?v=11';
+import { hasPerm, PERM, SECTION_READ, SECTION_WRITE } from './permissions.js?v=8';
 
 // ---------------------------------------------------------------------------
 // Configuración de secciones
@@ -41,14 +42,26 @@ const EXPORT_FOR = {
   'Listado por Cursos': 'cursos',
 };
 
-const ADMIN_SECTIONS = [
-  { label: 'Usuarios', icon: 'ShieldCheck', color: 'violet', desc: 'Administra las cuentas del sistema' },
-  { label: 'Auditoría', icon: 'ScrollText', color: 'orange', desc: 'Traza de operaciones sobre la base' },
-];
+const ADMIN_GROUP = {
+  label: 'Administración',
+  icon: 'Shield',
+  color: 'green',
+  desc: 'Usuarios, backups y auditoría',
+  items: [
+    { label: 'Usuarios', icon: 'ShieldCheck', color: 'violet', desc: 'Administra las cuentas del sistema' },
+    { label: 'Backups', icon: 'DatabaseBackup', color: 'teal', desc: 'Respaldo de la base de datos', crud: 'backups' },
+    { label: 'Auditoría', icon: 'ScrollText', color: 'orange', desc: 'Traza de operaciones sobre la base' },
+  ],
+};
 
 export function visibleSections(state) {
-  const base = SECTIONS.slice();
-  if (state && state.esAdmin) base.push(...ADMIN_SECTIONS);
+  const base = SECTIONS.filter((s) => hasPerm(state, SECTION_READ[s.label]));
+  const adminItems = ADMIN_GROUP.items.filter((it) => hasPerm(state, SECTION_READ[it.label]));
+  if (state && state.esAdmin) {
+    base.push(Object.assign({}, ADMIN_GROUP, { items: ADMIN_GROUP.items.slice() }));
+  } else if (adminItems.length > 0) {
+    base.push(Object.assign({}, ADMIN_GROUP, { items: adminItems }));
+  }
   return base;
 }
 
@@ -72,6 +85,28 @@ export function alertaClass(alerta) {
 
 export function alertaText(alerta) {
   return Number(alerta) === 1 ? 'Alerta de salud' : 'Sin alertas';
+}
+
+export function ultimoBackupText(dateStr) {
+  if (!dateStr) return 'Sin backups todavía';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr));
+  if (!m) return 'Sin backups todavía';
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const ahora = new Date();
+  const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const diff = Math.round((hoy - d) / 86400000);
+  const fecha = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  if (diff <= 0) return 'hoy · ' + fecha;
+  if (diff === 1) return 'ayer · ' + fecha;
+  return 'hace ' + diff + ' días · ' + fecha;
+}
+
+function getStoredTheme() {
+  try {
+    return localStorage.getItem('mozart-theme') === 'dark' ? 'dark' : 'light';
+  } catch (err) {
+    return 'light';
+  }
 }
 
 export function groupCoursesByYear(courses) {
@@ -346,7 +381,7 @@ function downloadExport(table, id, format) {
 }
 
 // ---------------------------------------------------------------------------
-// Render del shell (paridad de markup con mejoras.css)
+// Render del shell (paridad de markup con app.css)
 // ---------------------------------------------------------------------------
 
 function sectionMeta(state, label) {
@@ -377,10 +412,26 @@ function navButton(iconName, dataSection, label, active, count) {
   return '<button class="nav-item' + (active ? ' active' : '') + '" data-section="' + esc(dataSection) + '" type="button">' + inner + '</button>';
 }
 
+function navChild(c, activeSection) {
+  if (c.crud) {
+    return '<button class="nav-item" data-crud="' + esc(c.crud) + '" type="button">' + icon(c.icon, 19) + '<span>' + esc(c.label) + '</span></button>';
+  }
+  return navButton(c.icon, c.label, c.label, activeSection === c.label, null);
+}
+
+function navGroupHTML(activeSection, group) {
+  const children = group.items.map((c) => navChild(c, activeSection)).join('');
+  return '<div class="nav-group"><div class="nav-group-label">' + esc(group.label) + '</div>' + children + '</div>';
+}
+
 function navItems(activeSection, counts, sections) {
   const home = navButton('LayoutDashboard', 'Inicio', 'Panel principal', activeSection === 'Inicio', null);
   const items = (sections || SECTIONS)
-    .map((s) => navButton(s.icon, s.label, s.label, activeSection === s.label, isSet(counts[s.label]) ? counts[s.label] : null))
+    .map((s) =>
+      s.items
+        ? navGroupHTML(activeSection, s)
+        : navButton(s.icon, s.label, s.label, activeSection === s.label, isSet(counts[s.label]) ? counts[s.label] : null)
+    )
     .join('');
   return home + items;
 }
@@ -404,7 +455,7 @@ export function buildShellHTML(opts, section, counts) {
     '<div class="sidebar-label">Espacio de trabajo</div>' +
     '<nav class="main-nav" aria-label="Navegación principal">' + navItems(section, counts, sections) + '</nav>' +
     '<div class="sidebar-bottom">' +
-    '<div class="help-card">' + icon('Database', 18) + '<div><strong>Base de datos local</strong><span>Datos sincronizados y protegidos.</span></div></div>' +
+    '<div class="help-card">' + icon('DatabaseBackup', 18) + '<div><strong>Último backup</strong><span>' + esc(ultimoBackupText(opts.ultimoBackup)) + '</span></div></div>' +
     '<div class="profile-mini">' +
     '<div class="avatar avatar-navy">' + esc(iniciales) + '</div>' +
     '<div><strong>' + esc(nombre) + '</strong><span>' + esc(rol) + '</span></div>' +
@@ -416,10 +467,9 @@ export function buildShellHTML(opts, section, counts) {
     '<button class="mobile-menu" aria-label="Abrir menú" type="button">' + icon('Menu', 22) + '</button>' +
     '<div class="breadcrumbs"><span>Establecimiento</span>' + icon('ChevronRight', 15) + '<strong data-breadcrumb>' + esc(breadcrumb) + '</strong></div>' +
     '<div class="topbar-actions">' +
-    '<div class="top-search">' + icon('Search', 17) + '<input id="global-search" placeholder="Buscar en el sistema" aria-label="Buscar en el sistema" /></div>' +
-    (rol === 'admin' ? '<button class="icon-button" type="button" data-crud="backups" title="Backups de la base" aria-label="Backups de la base">' + icon('DatabaseBackup', 19) + '</button>' : '') +
-    '<button class="icon-button notification" aria-label="Notificaciones" type="button">' + icon('Bell', 19) + '<i></i></button>' +
-    '<a class="icon-button" href="../logout.php" aria-label="Salir de la sesión" title="Salir">' + icon('LogOut', 19) + '</a>' +
+    '<div class="top-search">' + icon('Search', 17) + '<input id="global-search" placeholder="Buscar en el sistema" aria-label="Buscar en el sistema" autocomplete="off" /></div>' +
+    '<button class="icon-button theme-toggle" aria-label="Cambiar tema claro u oscuro" title="Cambiar apariencia" type="button">' + icon(opts.theme === 'dark' ? 'Moon' : 'Sun', 19) + '</button>' +
+    '<a class="icon-button" href="/logout" aria-label="Salir de la sesión" title="Salir">' + icon('LogOut', 19) + '</a>' +
     '<div class="top-avatar">' + esc(iniciales) + '</div>' +
     '</div>' +
     '</header>' +
@@ -430,8 +480,7 @@ export function buildShellHTML(opts, section, counts) {
 }
 
 function viewHero(meta, agregarLabel, state, editableTipo) {
-  const can = state.esAdmin && editableTipo;
-  const action = can
+  const action = editableTipo
     ? '<button class="primary-button" type="button" data-crud="create" data-tipo="' + esc(editableTipo) + '">' + icon('Plus', 18) + ' ' + esc(agregarLabel) + '</button>'
     : '';
   return (
@@ -447,14 +496,14 @@ function viewHero(meta, agregarLabel, state, editableTipo) {
   );
 }
 
-function toolbarHTML(section) {
-  const exports = EXPORT_FOR[section]
+function toolbarHTML(state, section) {
+  const exports = (EXPORT_FOR[section] && hasPerm(state, PERM.EXPORTAR))
     ? '<button class="filter-button" data-export="' + esc(EXPORT_FOR[section]) + '" type="button">' + icon('Download', 16) + ' PDF</button>' +
       '<button class="filter-button" data-export="' + esc(EXPORT_FOR[section]) + '" data-format="excel" type="button">' + icon('Download', 16) + ' Excel</button>'
     : '';
   return (
     '<div class="view-toolbar">' +
-    '<div class="local-search">' + icon('Search', 17) + '<input id="local-search-' + esc(section) + '" placeholder="Buscar ' + esc(section.toLowerCase()) + '..." aria-label="Buscar ' + esc(section.toLowerCase()) + '" /></div>' +
+    '<div class="local-search">' + icon('Search', 17) + '<input id="local-search-' + esc(section) + '" placeholder="Buscar ' + esc(section.toLowerCase()) + '..." aria-label="Buscar ' + esc(section.toLowerCase()) + '" autocomplete="off" /></div>' +
     exports +
     '</div>'
   );
@@ -487,7 +536,7 @@ export function usuarioRowsHTML(rows) {
 
 function bodyFor(state, section, rows, query) {
   const q = String(query || '').trim().toLowerCase();
-  const editable = state.esAdmin;
+  const editable = hasPerm(state, SECTION_WRITE[section]);
   if (section === 'Estudiantes') {
     const filtered = filterRows(rows, q, ['nombre', 'curso', 'dni', 'tutor']);
     return (
@@ -555,7 +604,7 @@ function dashboardHTML(state) {
   const counts = state.counts || {};
   const hoy = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const quick = visibleSections(state).map((s) =>
-    '<button class="quick-card" data-section="' + esc(s.label) + '" type="button">' +
+    '<button class="quick-card" data-section="' + esc(s.items ? 'Auditoría' : s.label) + '" type="button">' +
     '<div class="quick-icon icon-' + s.color + '">' + icon(s.icon, 24) + '</div>' +
     '<div><strong>' + esc(s.label) + '</strong><span>' + esc(s.desc) + '</span></div>' +
     '<span class="quick-arrow">' + icon('ArrowUpRight', 18) + '</span>' +
@@ -590,7 +639,7 @@ function dashboardHTML(state) {
     '<h1>Hola, ' + esc(state.user.nombre || 'Administrador') + ' <span>•</span></h1>' +
     '<p>Este es el resumen de tu establecimiento para hoy.</p>' +
     '</div>' +
-    (state.esAdmin
+    (hasPerm(state, PERM.MOD.estudiantes)
       ? '<button class="primary-button" type="button" data-crud="create" data-tipo="estudiantes">' + icon('Plus', 18) + ' Nuevo registro</button>'
       : '') +
     '</section>' +
@@ -689,6 +738,12 @@ async function renderCurrent(state) {
 
   const meta = sectionMeta(state, state.section);
 
+  if (SECTION_READ[state.section] && !hasPerm(state, SECTION_READ[state.section])) {
+    const contentG = state.root.querySelector('[data-content]');
+    if (contentG) contentG.innerHTML = errorHTML('No tiene permisos para ver esta sección');
+    return;
+  }
+
   if (state.section === 'Auditoría') {
     content.innerHTML = '<section class="section-view">' + viewHero(meta, '', state, '') + loadingHTML() + '</section>';
     try {
@@ -700,17 +755,16 @@ async function renderCurrent(state) {
     return;
   }
 
-  const editableTipo = state.esAdmin
-    ? state.section === 'Usuarios' ? 'usuarios'
-      : state.section === 'Estudiantes' ? 'estudiantes'
-        : state.section === 'Docentes' ? 'docentes'
-          : state.section === 'Cursos' ? 'cursos'
-            : state.section === 'Materias' ? 'materias'
-              : ''
-    : '';
+  const editableTipo = hasPerm(state, SECTION_WRITE[state.section]) && state.section === 'Usuarios'
+    ? 'usuarios'
+    : hasPerm(state, SECTION_WRITE[state.section]) && state.section === 'Estudiantes' ? 'estudiantes'
+      : hasPerm(state, SECTION_WRITE[state.section]) && state.section === 'Docentes' ? 'docentes'
+        : hasPerm(state, SECTION_WRITE[state.section]) && state.section === 'Cursos' ? 'cursos'
+          : hasPerm(state, SECTION_WRITE[state.section]) && state.section === 'Materias' ? 'materias'
+            : '';
   const agLabel = state.section === 'Usuarios' ? 'Nuevo usuario' : 'Agregar ' + (state.section === 'Estudiantes' ? 'estudiante' : state.section === 'Docentes' ? 'docente' : state.section.toLowerCase());
   const xm = '<section class="section-view">' + viewHero(meta, agLabel, state, editableTipo) +
-    toolbarHTML(state.section) + '<div data-view-body>' + loadingHTML() + '</div></section>';
+    toolbarHTML(state, state.section) + '<div data-view-body>' + loadingHTML() + '</div></section>';
   content.innerHTML = xm;
 
   try {
@@ -747,13 +801,16 @@ async function openNomina(state, id, nombre) {
       apiRows('api.php?table=docentes_por_curso&id=' + encodeURIComponent(id)),
     ]);
     const curso = { id: id, nombre: nombre };
-    content.innerHTML = '<div data-view-body>' + nominaHTML(curso, alumnos, docentes, state.esAdmin) + '</div>';
+    content.innerHTML = '<div data-view-body>' + nominaHTML(curso, alumnos, docentes, hasPerm(state, PERM.MOD.estudiantes)) + '</div>';
   } catch (err) {
     content.innerHTML = errorHTML(err && err.message ? err.message : 'error');
   }
 }
 
 async function doSearch(state, term) {
+  if (!hasPerm(state, PERM.VER.estudiantes) && !hasPerm(state, PERM.VER.docentes)) {
+    return;
+  }
   const q = String(term || '').trim();
   if (!q) return;
   state.section = 'search';
@@ -817,6 +874,18 @@ function wireEvents(state) {
       showSection(state, qc.getAttribute('data-section'));
       return;
     }
+    const tt = e.target.closest('.theme-toggle');
+    if (tt) {
+      const next = state.theme === 'dark' ? 'light' : 'dark';
+      state.theme = next;
+      const doc = document.documentElement;
+      doc.classList.toggle('dark', next === 'dark');
+      try {
+        localStorage.setItem('mozart-theme', next);
+      } catch (err) { /* sin almacenamiento */ }
+      tt.innerHTML = icon(next === 'dark' ? 'Moon' : 'Sun', 19);
+      return;
+    }
     const circle = e.target.closest('.circle-button[data-section], .outline-button[data-section]');
     if (circle) {
       showSection(state, circle.getAttribute('data-section'));
@@ -872,25 +941,44 @@ function wireEvents(state) {
 }
 
 async function loadAll(state) {
-  const [estudiantes, docentes, cursos, materias] = await Promise.all([
-    apiRows('api.php?table=estudiantes&limit=100'),
-    apiRows('api.php?table=docentes&limit=100'),
-    apiRows('api.php?table=lista_cursos&limit=100'),
-    apiRows('api.php?table=materias&limit=100'),
-  ]);
-  state.cache = {
-    Estudiantes: estudiantes,
-    Docentes: docentes,
-    Cursos: cursos,
-    'Listado por Cursos': cursos,
-    Materias: materias,
+  const want = {
+    Estudiantes: hasPerm(state, SECTION_READ.Estudiantes),
+    Docentes: hasPerm(state, SECTION_READ.Docentes),
+    Cursos: hasPerm(state, SECTION_READ.Cursos),
+    Materias: hasPerm(state, SECTION_READ.Materias),
   };
+  const tutors = {};
+  const jobs = [];
+  ['Estudiantes', 'Docentes', 'Cursos', 'Materias'].forEach((sec) => {
+    if (!want[sec]) return;
+    const table = sec === 'Listado por Cursos' ? 'lista_cursos' : TABLE_FOR[sec];
+    jobs.push(
+      apiRows('api.php?table=' + encodeURIComponent(table) + '&limit=100').then((rows) => {
+        tutors[sec] = rows;
+      })
+    );
+  });
+  await Promise.all(jobs);
+
+  const cache = {
+    Estudiantes: tutors.Estudiantes || [],
+    Docentes: tutors.Docentes || [],
+    Cursos: tutors.Cursos || [],
+    'Listado por Cursos': tutors.Cursos || [],
+    Materias: tutors.Materias || [],
+  };
+  for (const sec of ['Estudiantes', 'Docentes', 'Cursos', 'Materias']) {
+    if (tutors[sec] === undefined) {
+      delete cache[sec];
+    }
+  }
+  state.cache = cache;
   return {
-    Estudiantes: estudiantes.length,
-    Docentes: docentes.length,
-    Cursos: cursos.length,
-    Materias: materias.length,
-    'Listado por Cursos': cursos.length,
+    Estudiantes: tutors.Estudiantes === undefined ? undefined : tutors.Estudiantes.length,
+    Docentes: tutors.Docentes === undefined ? undefined : tutors.Docentes.length,
+    Cursos: tutors.Cursos === undefined ? undefined : tutors.Cursos.length,
+    Materias: tutors.Materias === undefined ? undefined : tutors.Materias.length,
+    'Listado por Cursos': tutors.Cursos === undefined ? undefined : tutors.Cursos.length,
   };
 }
 
@@ -927,12 +1015,15 @@ export async function refreshData(state, section) {
 // Inicialización
 // ---------------------------------------------------------------------------
 
-export async function initSistemaMejora(root, opts) {
+export async function initMain(root, opts) {
   const state = {
     root: root,
     user: (opts && opts.user) || { nombre: 'Administrador', rol: '' },
     csrf: (opts && opts.csrf) || '',
     esAdmin: !!(opts && opts.esAdmin),
+    perms: (opts && Array.isArray(opts.permisos)) ? opts.permisos : [],
+    ultimoBackup: (opts && opts.ultimoBackup) || '',
+    theme: getStoredTheme(),
     section: 'Inicio',
     drill: null,
     results: null,
@@ -944,6 +1035,7 @@ export async function initSistemaMejora(root, opts) {
   state.crud = createCrud(state);
   state.crudRefresh = (section) => refreshData(state, section);
   state.counts = { estudiantes: '—', docentes: '—', cursos: '—', materias: '—' };
+  document.documentElement.classList.toggle('dark', state.theme === 'dark');
   root.innerHTML = buildShellHTML(state, 'Inicio', {});
   wireEvents(state);
 
@@ -953,10 +1045,10 @@ export async function initSistemaMejora(root, opts) {
   try {
     const navCounts = await loadAll(state);
     state.counts = {
-      estudiantes: navCounts.Estudiantes,
-      docentes: navCounts.Docentes,
-      cursos: navCounts.Cursos,
-      materias: navCounts.Materias,
+      estudiantes: navCounts.Estudiantes === undefined ? '—' : navCounts.Estudiantes,
+      docentes: navCounts.Docentes === undefined ? '—' : navCounts.Docentes,
+      cursos: navCounts.Cursos === undefined ? '—' : navCounts.Cursos,
+      materias: navCounts.Materias === undefined ? '—' : navCounts.Materias,
     };
     const shell = root.querySelector('.app-shell');
     if (shell) shell.outerHTML = buildShellHTML(state, 'Inicio', navCounts);
@@ -972,5 +1064,5 @@ export async function initSistemaMejora(root, opts) {
 export { showSection, downloadExport };
 
 if (typeof window !== 'undefined') {
-  window.initSistemaMejora = initSistemaMejora;
+  window.initMain = initMain;
 }

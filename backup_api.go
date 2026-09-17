@@ -72,13 +72,22 @@ func listBackups(dir string) ([]backupEntry, error) {
 	return out, nil
 }
 
-func (s *Server) requireAdminSess(w http.ResponseWriter, r *http.Request) (*auth.Session, bool) {
+// lastBackupDate devuelve la fecha (YYYY-MM-DD) del snapshot más reciente o "".
+func (s *Server) lastBackupDate() string {
+	entries, err := listBackups(s.cfg.BackupDir)
+	if err != nil || len(entries) == 0 {
+		return ""
+	}
+	return entries[0].ModTime
+}
+
+func (s *Server) requirePerm(w http.ResponseWriter, r *http.Request, perm string) (*auth.Session, bool) {
 	sess := s.currentSession(r)
 	if sess == nil {
 		jsonError(w, http.StatusUnauthorized, "No autorizado o sesión expirada.")
 		return nil, false
 	}
-	if sess.Role != "admin" {
+	if s.cfg.AutoLogin == "" && !hasPerm(sess.Role, s.userPerms(sess), perm) {
 		jsonError(w, http.StatusForbidden, "No tiene permisos para realizar esta acción")
 		return nil, false
 	}
@@ -86,7 +95,7 @@ func (s *Server) requireAdminSess(w http.ResponseWriter, r *http.Request) (*auth
 }
 
 func (s *Server) handleBackupsList(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requireAdminSess(w, r); !ok {
+	if _, ok := s.requirePerm(w, r, permVerBackups); !ok {
 		return
 	}
 	entries, err := listBackups(s.cfg.BackupDir)
@@ -101,7 +110,7 @@ func (s *Server) handleBackupsList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleBackupCreate(w http.ResponseWriter, r *http.Request) {
-	sess, ok := s.requireAdminSess(w, r)
+	sess, ok := s.requirePerm(w, r, permGestionBackups)
 	if !ok {
 		return
 	}
@@ -115,7 +124,7 @@ func (s *Server) handleBackupCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleBackupDownload(w http.ResponseWriter, r *http.Request) {
-	sess, ok := s.requireAdminSess(w, r)
+	sess, ok := s.requirePerm(w, r, permVerBackups)
 	if !ok {
 		return
 	}
@@ -165,7 +174,7 @@ func validateBackupFile(path, key string) error {
 }
 
 func (s *Server) handleBackupUpload(w http.ResponseWriter, r *http.Request) {
-	sess, ok := s.requireAdminSess(w, r)
+	sess, ok := s.requirePerm(w, r, permGestionBackups)
 	if !ok {
 		return
 	}

@@ -9,7 +9,7 @@ import (
 // planilla_parse.go — Parser de la ficha de inscripción (Educación Secundaria).
 // Extrae campos por anclas de etiquetas en el texto reconocido (pdftotext o
 // tesseract). Las claves del mapa de salida son los nombres exactos de los
-// inputs del formulario nuevo (crud_mejora.js).
+// inputs del formulario nuevo (crud.js).
 
 // rxMarker convierte una etiqueta de texto en una regex tolerante a
 // mayúsculas y acentos (útil cuando el OCR pierde los acentos impresos).

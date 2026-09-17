@@ -124,20 +124,48 @@ func (s *Server) handleApiGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Exportaciones (PDF/Excel): requieren permiso de exportación Y de lectura
+	// del módulo exportado.
 	if format := q.Get("format"); format != "" {
+		if !hasPerm(sess.Role, s.userPerms(sess), permExportar) ||
+			!hasPerm(sess.Role, s.userPerms(sess), viewPermForTable(table)) {
+			jsonError(w, http.StatusForbidden, "No tiene permisos para exportar este recurso")
+			return
+		}
 		s.handleExport(w, r, table, id, format)
+		return
+	}
+
+	// Lecturas: gate por permiso de la tabla consultada.
+	if table == "search" {
+		perms := s.userPerms(sess)
+		if !hasPerm(sess.Role, perms, permVerEstudiantes) && !hasPerm(sess.Role, perms, permVerDocentes) {
+			jsonError(w, http.StatusForbidden, "No tiene permisos para buscar")
+			return
+		}
+	} else if p := viewPermForTable(table); p != "" {
+		if s.cfg.AutoLogin == "" && !hasPerm(sess.Role, s.userPerms(sess), p) {
+			jsonError(w, http.StatusForbidden, "No tiene permisos para ver esta sección")
+			return
+		}
+	} else if table != "" {
+		jsonError(w, http.StatusBadRequest, "Tabla no válida")
 		return
 	}
 
 	switch table {
 	case "usuarios":
-		s.jsonRows(w, "SELECT id_usuario, username, nombre_completo, rol, activo FROM usuarios ORDER BY username")
-
-	case "audit_log":
-		if sess.Role != "admin" {
-			jsonError(w, http.StatusForbidden, "Solo los administradores pueden ver el log de auditoría")
+		rows, err := queryRows(s.dbs, "SELECT id_usuario, username, nombre_completo, rol, activo, permisos FROM usuarios ORDER BY username")
+		if err != nil {
+			s.serverError(w, err)
 			return
 		}
+		for i := range rows {
+			rows[i]["permisos"] = parsePerms(asString(rows[i]["permisos"]))
+		}
+		s.writeResult(w, rows)
+
+	case "audit_log":
 		filtro := q.Get("filtro_tabla")
 		base := `SELECT al.*, u.nombre_completo as usuario_nombre
 		         FROM audit_log al

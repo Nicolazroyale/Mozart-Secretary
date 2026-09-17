@@ -64,11 +64,13 @@ Los archivos se llaman `mozart_YYYY-MM-DD.db`, están **cifrados** con la misma 
 
 ### Panel web de backups (solo administradores)
 
-Desde el botón con ícono de disco en la barra superior:
+Se accede desde **Administración → Backups** (menú lateral) o con el acceso rápido del panel principal:
 
 - **Listar** y **descargar** los snapshots existentes.
 - **Crear backup ahora** (genera el snapshot del día actual si no existe).
 - **Subir** un backup guardado en otra computadora (arrastrando el archivo). Si el backup fue cifrado con una clave distinta a la `DB_KEY` actual, el sistema pide ingresar la clave usada en ese momento. La clave **nunca se guarda en disco ni en la base**.
+
+En la tarjeta *Último backup* de la barra lateral se muestra la antigüedad del snapshot más reciente (p. ej. `hoy · 17/09/2026`, `ayer`, `hace 3 días · …` o `Sin backups todavía`). La fecha sale del servidor en cada carga del portal, así que cualquier sesión activa la ve sin necesidad de permisos sobre el panel.
 
 ### Restaurar un backup (procedimiento manual)
 
@@ -86,6 +88,26 @@ Desde el botón con ícono de disco en la barra superior:
 - Sin un backup que incluya la clave NO es posible descifrar los snapshots.
 - Todavía no hay destino off-site automático; por ahora la copia externa se hace descargando los snapshots por el panel web. Cuando exista servicio, documentar en esta sección el sync (p. ej. rclone → B2/S3/NAS).
 
+## Permisos por usuario
+
+Cada cuenta tiene un rol (`admin` o `lectura`) y una lista individual de permisos (columna `permisos` en `usuarios`, JSON). El rol **admin implica todos los permisos**; el rol `lectura` solo accede a lo que su lista permita. Un permiso de **modificar** implica el de **ver** del mismo módulo. La lista se lee de la base en cada petición, así que los cambios se aplican al instante.
+
+Segmentos editables desde **Usuarios → Nuevo/Editar** (grilla según el rol; si el rol es `admin` la grilla se deshabilita):
+
+- **Datos · Lectura**: `ver_estudiantes`, `ver_docentes`, `ver_cursos`, `ver_materias`, `ver_nomina`, `exportar`.
+- **Datos · Modificar**: `modificar_estudiantes` (incluye el OCR de planillas), `modificar_docentes` (incluye asignaciones docente-materia-curso), `modificar_cursos`, `modificar_materias`.
+- **Administración**: `ver_usuarios`, `gestion_usuarios` (implica `ver_usuarios`), `ver_auditoria`, `ver_backups`, `gestion_backups` (implica `ver_backups`).
+
+El backend valida cada petición del API (listados, busca, exportación y escrituras) contra estos permisos y responde `403` si falta. Solo un `admin` puede crear, editar o eliminar cuentas `admin` (o asignar el rol `admin`). Los usuarios que ya existían como `lectura` antes de esta versión quedan con la lista **vacía**: un administrador debe asignarles sus permisos.
+
+## Panel principal
+
+La pantalla de inicio muestra totales de la base, accesos rápidos y una vista de los últimos estudiantes. El acceso rápido **Administración** (con ícono de escudo) navega directamente a la sección **Auditoría**, donde se ven Usuarios, Backups y Auditoría según los permisos de la sesión.
+
+## Modo oscuro
+
+La barra superior incluye un botón **sol/luna** que alterna entre tema claro y oscuro (`html.dark`). La preferencia se guarda en `localStorage` bajo la clave `mozart-theme` y se aplica antes del primer render para evitar parpadeo. El tema elegido es el mismo en el sistema (`/sistema`) y en la demo (`/interfaz`), ya que ambos comparten `localStorage`.
+
 ## Estructura del proyecto
 
 ```
@@ -97,12 +119,15 @@ Mozart/
 ├── api_write_handlers.go     # Handlers específicos (estudiantes, usuarios, dmc)
 ├── api_export.go             # Exportaciones PDF/Excel con fuentes UTF-8 embebidas
 ├── backup.go, backup_api.go  # Backups diarios, retención y panel web (subir/listar)
-├── login.go, security.go     # Login (bcrypt, lockout), CSRF y headers
+├── perms.go                    # Catálogo y chequeo de permisos por usuario
+├── login.go, security.go       # Login (bcrypt, lockout), CSRF y headers
 ├── auth/                     # Paquete: hash de contraseñas y sesiones
 ├── db/                       # Esquema SQLite (12 tablas), conexión WAL, seed
 ├── assets/fonts/             # DejaVu (incrustados en el binario vía go:embed)
-├── web/                      # Frontend servido (JS, CSS, imágenes, Login/)
-│   └── templates/            # Plantillas HTML (index, sistema_index, login)
+├── web/                      # Frontend servido (JS, CSS, imágenes, login/)
+│   ├── js/                   # main.js (sistema), crud.js (CRUD), interfaz.js (demo)
+│   ├── css/                  # app.css (estilos), crud.css (estilos del CRUD)
+│   └── templates/            # Plantillas HTML (index, login, interfaz)
 ├── tests/                    # Test suite del frontend (Jest)
 ├── docker-compose.yml        # Orquestación (servicio único Go)
 ├── Dockerfile                # Imagen multi-stage (build + distroless estático)
@@ -117,7 +142,7 @@ go build -o /tmp/mozart .
 PORT=8443 DATA_DIR=./data WEB_ROOT=./web go run .   # o ./mozart
 
 # Tests
-go test .        # backend (login/lockout)
+go test .        # backend (login, lockout, permisos)
 npm run test:js  # frontend Jest
 
 # Producción vía Docker

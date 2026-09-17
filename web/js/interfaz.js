@@ -1,17 +1,17 @@
 /**
- * Interfaz_mejora.js
- * Port vanilla JS de "Interfaz_mejora.ts" (demo con datos estáticos) pensado
- * para renderizarse con "mejoras.css". Mantiene EXACTO el mismo HTML/clases
+ * interfaz.js
+ * Port vanilla JS de "interfaz.ts" (demo con datos estáticos) pensado
+ * para renderizarse con "app.css". Mantiene EXACTO el mismo HTML/clases
  * que el componente React original (lucide-react + useState), usando SVG
  * inline de lucide para los íconos. No requiere build ni React.
  *
  * Uso:
- *   import { initInterfazMejora } from './Interfaz_mejora.js';
- *   initInterfazMejora(document.getElementById('app-mejoras'), opts);
+ *   import { initInterfaz } from './interfaz.js';
+ *   initInterfaz(document.getElementById('app'), opts);
  */
 
 // ---------------------------------------------------------------------------
-// Datos (paridad con Interfaz_mejora.ts)
+// Datos (paridad con interfaz.ts)
 // ---------------------------------------------------------------------------
 
 export const SECTIONS = [
@@ -115,6 +115,8 @@ const ICON_SVG = {
   AlertTriangle: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" />',
   ArrowUpRight: '<path d="M7 7h10v10" /><path d="M7 17 17 7" />',
   Bell: '<path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" />',
+  Moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />',
+  Sun: '<circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" />',
   BookMarked: '<path d="M10 2v8l3-3 3 3V2" /><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />',
   BookOpen: '<path d="M12 5v16" /><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z" />',
   CalendarDays: '<path d="M8 2v3" /><path d="M16 2v3" /><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M8 13h.01" /><path d="M12 13h.01" /><path d="M16 13h.01" /><path d="M8 17h.01" /><path d="M12 17h.01" /><path d="M16 17h.01" />',
@@ -138,6 +140,7 @@ const ICON_SVG = {
   Settings: '<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /><circle cx="12" cy="12" r="3" />',
   ScrollText: '<path d="M15 12h-5" /><path d="M15 8h-5" /><path d="M19 17V5a2 2 0 0 0-2-2H4" /><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" />',
   ShieldCheck: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="m9 12 2 2 4-4" />',
+  Shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />',
   Sparkles: '<path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /><path d="M20 2v4" /><path d="M22 4h-4" /><circle cx="4" cy="20" r="2" />',
   Trash2: '<path d="M10 11v6" /><path d="M14 11v6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />',
   UserPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" x2="19" y1="8" y2="14" /><line x1="22" x2="16" y1="11" y2="11" />',
@@ -161,8 +164,16 @@ function icon(name, size, strokeWidth) {
 }
 export { ICON_SVG, icon };
 
+function getStoredTheme() {
+  try {
+    return localStorage.getItem('mozart-theme') === 'dark' ? 'dark' : 'light';
+  } catch (err) {
+    return 'light';
+  }
+}
+
 // ---------------------------------------------------------------------------
-// Helpers de render (HTML) — paridad exacta con Interfaz_mejora.ts
+// Helpers de render (HTML) — paridad exacta con interfaz.ts
 // ---------------------------------------------------------------------------
 
 export function esc(s) {
@@ -427,7 +438,7 @@ function sectionViewHTML(section) {
     '<button class="primary-button" type="button">' + icon('Plus', 18) + ' Agregar ' + esc(agregar) + '</button>' +
     '</div>' +
     '<div class="view-toolbar">' +
-    '<div class="local-search">' + icon('Search', 17) + '<input placeholder="Buscar ' + esc(section.toLowerCase()) + '..." aria-label="Buscar ' + esc(section.toLowerCase()) + '" /></div>' +
+    '<div class="local-search">' + icon('Search', 17) + '<input placeholder="Buscar ' + esc(section.toLowerCase()) + '..." aria-label="Buscar ' + esc(section.toLowerCase()) + '" autocomplete="off" /></div>' +
     '<button class="filter-button" type="button">' + icon('Filter', 16) + ' Filtros</button>' +
     '<button class="filter-button" type="button">' + icon('CalendarDays', 17) + ' Este ciclo lectivo</button>' +
     '<button class="filter-button" type="button">' + icon('Download', 16) + ' Exportar</button>' +
@@ -438,7 +449,7 @@ function sectionViewHTML(section) {
 }
 
 // ---------------------------------------------------------------------------
-// Shell (sidebar + topbar) — paridad con Interfaz_mejora.ts
+// Shell (sidebar + topbar) — paridad con interfaz.ts
 // ---------------------------------------------------------------------------
 
 function navItems(activeSection) {
@@ -490,8 +501,8 @@ function buildShellHTML(opts, activeSection) {
     '<button class="mobile-menu" aria-label="Abrir menú" type="button">' + icon('Menu', 22) + '</button>' +
     '<div class="breadcrumbs"><span>Establecimiento</span>' + icon('ChevronRight', 15) + '<strong>' + esc(breadcrumb) + '</strong></div>' +
     '<div class="topbar-actions">' +
-    '<div class="top-search">' + icon('Search', 17) + '<input placeholder="Buscar en el sistema" aria-label="Buscar en el sistema" /></div>' +
-    '<button class="icon-button notification" aria-label="Notificaciones" type="button">' + icon('Bell', 19) + '<i></i></button>' +
+    '<div class="top-search">' + icon('Search', 17) + '<input placeholder="Buscar en el sistema" aria-label="Buscar en el sistema" autocomplete="off" /></div>' +
+    '<button class="icon-button theme-toggle" aria-label="Cambiar tema claro u oscuro" title="Cambiar apariencia" type="button">' + icon(opts.theme === 'dark' ? 'Moon' : 'Sun', 19) + '</button>' +
     '<div class="top-avatar">' + esc(iniciales) + '</div>' +
     '</div>' +
     '</header>' +
@@ -506,7 +517,7 @@ function buildContentHTML(section) {
 }
 
 // ---------------------------------------------------------------------------
-// Interacción (equivalente al estado de Interfaz_mejora.ts)
+// Interacción (equivalente al estado de interfaz.ts)
 // ---------------------------------------------------------------------------
 
 function navigate(api, section) {
@@ -547,15 +558,17 @@ function closeSidebar(api) {
 }
 
 /**
- * initInterfazMejora(root, opts) monta la interfaz mejorada dentro de `root`
+ * initInterfaz(root, opts) monta la interfaz mejorada dentro de `root`
  * y devuelve un control { root, section, setSection }.
  * opts: { user: { nombre, rol } }
  */
-export function initInterfazMejora(root, opts) {
+export function initInterfaz(root, opts) {
   const state = { root: root, section: 'Inicio', setSection: null };
   if (!root) return state;
 
-  root.innerHTML = buildShellHTML(opts || {}, 'Inicio');
+  const currentTheme = getStoredTheme();
+  document.documentElement.classList.toggle('dark', currentTheme === 'dark');
+  root.innerHTML = buildShellHTML(Object.assign({}, opts, { theme: currentTheme }), 'Inicio');
 
   state.setSection = function (section) {
     navigate(state, section);
@@ -565,6 +578,17 @@ export function initInterfazMejora(root, opts) {
     const target = e.target.closest('[data-section]');
     if (target) {
       navigate(state, target.getAttribute('data-section'));
+      return;
+    }
+    if (e.target.closest('.theme-toggle')) {
+      const btn = e.target.closest('.theme-toggle');
+      const next = currentTheme === 'dark' ? 'light' : 'dark';
+      currentTheme = next;
+      document.documentElement.classList.toggle('dark', next === 'dark');
+      try {
+        localStorage.setItem('mozart-theme', next);
+      } catch (err) { /* sin almacenamiento */ }
+      btn.innerHTML = icon(next === 'dark' ? 'Moon' : 'Sun', 19);
       return;
     }
     if (e.target.closest('.mobile-menu')) {
@@ -580,5 +604,5 @@ export function initInterfazMejora(root, opts) {
 }
 
 if (typeof window !== 'undefined') {
-  window.initInterfazMejora = initInterfazMejora;
+  window.initInterfaz = initInterfaz;
 }

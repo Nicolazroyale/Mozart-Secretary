@@ -13,6 +13,8 @@ func isStatic(path string) bool {
 		strings.HasPrefix(path, "/js/"),
 		strings.HasPrefix(path, "/imagenes/"):
 		return true
+	case path == "/login/login.css", path == "/login/login.js":
+		return true
 	case path == "/Login/Login.css", path == "/Login/Login.js":
 		return true
 	case path == "/favicon.ico":
@@ -26,6 +28,10 @@ func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request, path string
 		methodNotAllowed(w)
 		return
 	}
+	// Nunca cachear en borde/agente: los assets cambian con cada deploy y sin
+	// esta cabecera navegador/Cloudflare aplican caché heurística y quedan
+	// servidos versiones viejas (el usuario no ve los cambios).
+	w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 	p := strings.TrimPrefix(path, "/")
 	if path == "/favicon.ico" {
 		p = "imagenes/logo.png"

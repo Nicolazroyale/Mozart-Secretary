@@ -1,5 +1,5 @@
 /**
- * Tests for crud_mejora.js (lógica pura del CRUD integrado).
+ * Tests for crud.js (lógica pura del CRUD integrado).
  *
  * Convención del repo: re-implementamos las funciones puras del módulo (que
  * usa ES modules/DOM/fetch). El flujo completo e integrado se verifica con
@@ -27,6 +27,41 @@ const TIPOS_DNI = ['DNI Argentino', 'Pasaporte'];
 const CARGOS = ['Titular', 'Suplente'];
 const DIAS = ['Lunes', 'Martes'];
 const ROLES = ['admin', 'lectura'];
+
+function permissionGroups() {
+  return [
+    {
+      label: 'Datos · Lectura',
+      items: [
+        { v: 'ver_estudiantes', l: 'Ver estudiantes' },
+        { v: 'ver_docentes', l: 'Ver docentes' },
+        { v: 'ver_cursos', l: 'Ver cursos' },
+        { v: 'ver_materias', l: 'Ver materias' },
+        { v: 'ver_nomina', l: 'Ver listado por cursos (nóminas)' },
+        { v: 'exportar', l: 'Exportar PDF/Excel' },
+      ],
+    },
+    {
+      label: 'Datos · Modificar',
+      items: [
+        { v: 'modificar_estudiantes', l: 'Modificar estudiantes (incl. OCR)' },
+        { v: 'modificar_docentes', l: 'Modificar docentes y asignaciones' },
+        { v: 'modificar_cursos', l: 'Modificar cursos' },
+        { v: 'modificar_materias', l: 'Modificar materias' },
+      ],
+    },
+    {
+      label: 'Administración',
+      items: [
+        { v: 'ver_usuarios', l: 'Ver usuarios' },
+        { v: 'gestion_usuarios', l: 'Gestionar usuarios' },
+        { v: 'ver_auditoria', l: 'Ver registro de auditoría' },
+        { v: 'ver_backups', l: 'Ver backups' },
+        { v: 'gestion_backups', l: 'Crear y subir backups' },
+      ],
+    },
+  ];
+}
 
 function selectOptions(opts, selected) {
   return opts
@@ -94,8 +129,8 @@ function estudiantePayload(data) {
   return Object.assign({}, o, resp2, rj);
 }
 
-function usuarioPayload(username, nombre, rol, activo, password, mode) {
-  const data = { username, nombre_completo: nombre, rol, activo: activo ? 1 : 0 };
+function usuarioPayload(username, nombre, rol, activo, password, mode, perms) {
+  const data = { username, nombre_completo: nombre, rol, activo: activo ? 1 : 0, permisos: rol === 'admin' ? [] : (perms || []) };
   if (mode !== 'edit') data.password = password;
   return { action: mode === 'edit' ? 'update' : 'create', data };
 }
@@ -223,7 +258,7 @@ function backupsTableHTML(list) {
     .join('');
 }
 
-describe('crud_mejora (lógica pura)', () => {
+describe('crud (lógica pura)', () => {
   test('selectOptions marca la opción seleccionada', () => {
     expect(selectOptions(CARGOS, 'Suplente')).toContain('value="Suplente" selected');
     expect(selectOptions(CARGOS, 'Titular')).not.toMatch(/value="Suplente" selected/);
@@ -250,15 +285,24 @@ describe('crud_mejora (lógica pura)', () => {
     expect(p.resp2_apellido).toBe('');
   });
 
-  test('usuarioPayload crea o actualiza sin password en edit', () => {
-    expect(usuarioPayload('nuevo', 'Nuevo Usuario', 'lectura', false, 'secret', 'create')).toEqual({
+  test('usuarioPayload crea con permisos y actualiza sin password en edit', () => {
+    expect(usuarioPayload('nuevo', 'Nuevo Usuario', 'lectura', false, 'secret', 'create', ['ver_estudiantes', 'ver_auditoria'])).toEqual({
       action: 'create',
-      data: { username: 'nuevo', nombre_completo: 'Nuevo Usuario', rol: 'lectura', activo: 0, password: 'secret' },
+      data: { username: 'nuevo', nombre_completo: 'Nuevo Usuario', rol: 'lectura', activo: 0, password: 'secret', permisos: ['ver_estudiantes', 'ver_auditoria'] },
     });
-    const edit = usuarioPayload('nuevo', 'Nuevo Usuario', 'admin', true, '', 'edit');
+    const edit = usuarioPayload('nuevo', 'Nuevo Usuario', 'admin', true, '', 'edit', ['ver_materias']);
     expect(edit.action).toBe('update');
     expect(edit.data).not.toHaveProperty('password');
     expect(edit.data.activo).toBe(1);
+    expect(edit.data.permisos).toEqual([]);
+    const editLectura = usuarioPayload('nuevo', 'Nuevo Usuario', 'lectura', true, '', 'edit', ['gestion_backups']);
+    expect(editLectura.data.permisos).toEqual(['gestion_backups']);
+  });
+
+  test('permissionGroups define los 3 segmentos del formulario', () => {
+    const grupos = permissionGroups();
+    expect(grupos.map((g) => g.label)).toEqual(['Datos · Lectura', 'Datos · Modificar', 'Administración']);
+    expect(grupos[2].items.map((i) => i.v)).toEqual(['ver_usuarios', 'gestion_usuarios', 'ver_auditoria', 'ver_backups', 'gestion_backups']);
   });
 
   test('asignacionData mapea el formulario de asignación', () => {
@@ -275,7 +319,7 @@ describe('crud_mejora (lógica pura)', () => {
   });
 });
 
-describe('crud_mejora · OCR planilla', () => {
+describe('crud · OCR planilla', () => {
   test('normalizeDNI limpia ceros y separadores', () => {
     expect(normalizeDNI('38541236')).toBe('38541236');
     expect(normalizeDNI('  38.541.236 ')).toBe('38541236');
@@ -466,7 +510,7 @@ describe('crud_mejora · OCR planilla', () => {
   });
 });
 
-describe('crud_mejora · Backups', () => {
+describe('crud · Backups', () => {
   test('backupSize formatea bytes legibles', () => {
     expect(backupSize(0)).toBe('0 B');
     expect(backupSize(512)).toBe('512 B');

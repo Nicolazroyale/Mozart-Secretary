@@ -17,10 +17,6 @@ func (s *Server) handleApiWrite(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusUnauthorized, "No autorizado o sesión expirada.")
 		return
 	}
-	if sess.Role != "admin" {
-		jsonError(w, http.StatusForbidden, "No tiene permisos para realizar esta acción")
-		return
-	}
 
 	var input map[string]interface{}
 	if r.Body != nil {
@@ -42,6 +38,15 @@ func (s *Server) handleApiWrite(w http.ResponseWriter, r *http.Request) {
 	realTable := table
 	if rt, ok := writeTableMap[table]; ok {
 		realTable = rt
+	}
+
+	// Re-chequeo del permiso de escritura (defensa en profundidad).
+	if s.cfg.AutoLogin == "" {
+		p := writePermForTable(realTable)
+		if p != "" && !hasPerm(sess.Role, s.userPerms(sess), p) {
+			jsonError(w, http.StatusForbidden, "No tiene permisos para realizar esta acción")
+			return
+		}
 	}
 
 	switch r.Method {
@@ -96,11 +101,16 @@ func (s *Server) postUsuarios(w http.ResponseWriter, input map[string]interface{
 	if bodyID := mapVal(input, "id"); bodyID != nil && asString(bodyID) != "" {
 		id = asString(bodyID)
 	}
+	actorAdmin := sess.Role == "admin"
 	switch action {
 	case "create":
 		pw := mapVal(data, "password")
 		if !hasKey(data, "password") || pw == nil || asString(pw) == "" {
 			jsonError(w, http.StatusBadRequest, "Contraseña requerida")
+			return
+		}
+		if !actorAdmin && asString(data["rol"]) == "admin" {
+			jsonError(w, http.StatusForbidden, "Solo un administrador puede crear administradores")
 			return
 		}
 		hash, err := auth.HashPassword(asString(pw))
@@ -109,8 +119,13 @@ func (s *Server) postUsuarios(w http.ResponseWriter, input map[string]interface{
 			jsonError(w, http.StatusInternalServerError, "Error interno del servidor")
 			return
 		}
-		valid := filterFields(data, []string{"username", "password", "nombre_completo", "rol"})
+		valid := filterFields(data, []string{"username", "password", "nombre_completo", "rol", "permisos"})
 		valid["password"] = hash
+		if asString(data["rol"]) == "admin" {
+			valid["permisos"] = "[]"
+		} else {
+			valid["permisos"] = permsJSON(permValues(data))
+		}
 		if len(valid) == 0 || !hasKey(valid, "username") || !hasKey(valid, "nombre_completo") {
 			jsonError(w, http.StatusBadRequest, "Datos inválidos")
 			return
@@ -128,7 +143,29 @@ func (s *Server) postUsuarios(w http.ResponseWriter, input map[string]interface{
 			jsonError(w, http.StatusBadRequest, "ID requerido")
 			return
 		}
-		valid := filterFields(data, []string{"nombre_completo", "rol", "activo"})
+
+		var currentRol string
+		_ = s.dbs.QueryRow("SELECT rol FROM usuarios WHERE id_usuario = ?", id).Scan(&currentRol)
+		targetAdmin := currentRol == "admin"
+		if !actorAdmin && targetAdmin {
+			jsonError(w, http.StatusForbidden, "No puede modificar a un administrador")
+			return
+		}
+		newRol := currentRol
+		if mapVal(data, "rol") != nil {
+			newRol = asString(data["rol"])
+		}
+		if !actorAdmin && newRol == "admin" {
+			jsonError(w, http.StatusForbidden, "Solo un administrador puede otorgar el rol administrador")
+			return
+		}
+
+		valid := filterFields(data, []string{"nombre_completo", "rol", "activo", "permisos"})
+		if newRol == "admin" {
+			valid["permisos"] = "[]"
+		} else if hasKey(data, "permisos") {
+			valid["permisos"] = permsJSON(permValues(data))
+		}
 		if hasKey(data, "password") {
 			pw := mapVal(data, "password")
 			if pw != nil && asString(pw) != "" {
@@ -156,6 +193,14 @@ func (s *Server) postUsuarios(w http.ResponseWriter, input map[string]interface{
 		if id == "" {
 			jsonError(w, http.StatusBadRequest, "ID requerido")
 			return
+		}
+		if !actorAdmin {
+			var targetRol string
+			_ = s.dbs.QueryRow("SELECT rol FROM usuarios WHERE id_usuario = ?", id).Scan(&targetRol)
+			if targetRol == "admin" {
+				jsonError(w, http.StatusForbidden, "No puede eliminar a un administrador")
+				return
+			}
 		}
 		var adminCount int
 		_ = s.dbs.QueryRow("SELECT COUNT(*) FROM usuarios WHERE rol = 'admin' AND activo = 1 AND id_usuario != ?", id).Scan(&adminCount)

@@ -214,6 +214,52 @@
   accent-color: #2a83e8;
 }
 
+.permisos-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.permisos-note {
+  padding: 8px 12px;
+  border: 1px dashed #c3a34a;
+  border-radius: 8px;
+  background: #fffbea;
+  color: #8a6d1d;
+  font-size: 11px;
+}
+
+.permisos-group {
+  border: 1px solid #e2e8f1;
+  border-radius: 10px;
+  padding: 8px 10px 4px;
+  margin: 0;
+}
+
+.permisos-group legend {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #8a94a6;
+  padding: 0 4px;
+}
+
+.permisos-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.permisos-editor input[type="checkbox"]:disabled + label,
+.permisos-editor input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.permisos-editor[data-admin="1"] .crud-check {
+  opacity: 0.55;
+}
+
 .crud-section-title {
   margin: 4px 0 10px;
   color: #8a94a6;
@@ -702,4 +748,229 @@
 
 .backups-status.err {
   color: #b0342c;
+}
+
+/* ------------------------------------------------------------------ */
+/* Modo oscuro (crud)                                                  */
+/* ------------------------------------------------------------------ */
+
+html.dark .crud-modal {
+  background: #16233c;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+}
+
+html.dark .crud-head {
+  border-bottom-color: #24344f;
+}
+
+html.dark .crud-head-copy h2 {
+  color: #e6ecf7;
+}
+
+html.dark .crud-head-copy p,
+html.dark .crud-hint,
+html.dark .crud-section-title,
+html.dark .crud-paginado,
+html.dark .backups-hint,
+html.dark .ocr-fgroup legend {
+  color: #93a3c0;
+}
+
+html.dark .crud-close {
+  border-color: #2a3b58;
+  color: #8ea0be;
+  background: #131f38;
+}
+
+html.dark .crud-section {
+  border-color: #24344f;
+}
+
+html.dark .crud-section-head {
+  color: #dfe7f3;
+  background: #131f38;
+}
+
+html.dark .crud-section-body {
+  border-top-color: #24344f;
+}
+
+html.dark .crud-section-head .chev,
+html.dark .crud-head-copy p {
+  color: #8393b1;
+}
+
+html.dark .crud-field label,
+html.dark .ocr-flabel {
+  color: #9aabc7;
+}
+
+html.dark .crud-input,
+html.dark .crud-select,
+html.dark .crud-textarea {
+  border-color: #2a3b58;
+  color: #e6ecf7;
+  background: #131f38;
+}
+
+html.dark .crud-input:focus,
+html.dark .crud-select:focus,
+html.dark .crud-textarea:focus {
+  border-color: #7ab2f0;
+  box-shadow: 0 0 0 3px rgba(42, 131, 232, .18);
+}
+
+html.dark .crud-input::placeholder,
+html.dark .crud-textarea::placeholder {
+  color: #6d7d9c;
+}
+
+html.dark .crud-check {
+  border-color: #2a3b58;
+  color: #a5b4cd;
+  background: #131f38;
+}
+
+html.dark .permisos-group {
+  border-color: #2a3b58;
+}
+
+html.dark .permisos-note {
+  border-color: #c3a34a;
+  background: #2b2413;
+  color: #d9bd6a;
+}
+
+html.dark .assign-remove {
+  color: #f08787;
+  background: #2c1a1a;
+}
+
+html.dark .crud-actions {
+  border-top-color: #24344f;
+  background: #131f38;
+}
+
+html.dark .crud-btn-ghost {
+  color: #a5b4cd;
+  background: transparent;
+  border-color: #2a3b58;
+}
+
+html.dark .crud-btn-ghost:hover {
+  background: #1a2a49;
+}
+
+html.dark .row-actions .row-action {
+  border-color: #2a3b58;
+  color: #8ea0be;
+  background: #131f38;
+}
+
+html.dark .row-actions .action-edit:hover {
+  color: #7fb4f4;
+  border-color: #33507f;
+  background: #1a2a49;
+}
+
+html.dark .row-actions .action-del:hover {
+  color: #f08787;
+  border-color: #6d3a3c;
+  background: #2c1a1a;
+}
+
+html.dark .crud-role-badge {
+  color: #3fc99b;
+  background: #132e2a;
+}
+
+html.dark .crud-role-badge.admin {
+  color: #e8a173;
+  background: #33221a;
+}
+
+html.dark .crud-user-avatar {
+  color: #7fb4f4;
+  background: #1c3254;
+}
+
+html.dark .crud-audit-row td pre,
+html.dark .ocr-preview summary,
+html.dark .backups-clave {
+  color: #a5b4cd;
+}
+
+html.dark .ocr-drop {
+  border-color: #2c3e5d;
+  background: #131f38;
+  color: #8393b1;
+}
+
+html.dark .ocr-drop:hover,
+html.dark .ocr-drop.drag {
+  border-color: #3b82c4;
+  background: #1a2a49;
+}
+
+html.dark .ocr-drop p strong {
+  color: #dbe4f2;
+}
+
+html.dark .ocr-status {
+  background: #1a2a49;
+  color: #a5b4cd;
+}
+
+html.dark .ocr-preview,
+html.dark .ocr-fields {
+  border-color: #2a3b58;
+  background: #131f38;
+}
+
+html.dark .ocr-preview pre {
+  border-top-color: #24344f;
+  color: #93a3c0;
+}
+
+html.dark .ocr-fhead {
+  background: #1a2a49;
+  border-bottom-color: #2a3b58;
+}
+
+html.dark .ocr-fhead strong {
+  color: #e0e8f4;
+}
+
+html.dark .ocr-fhead span {
+  color: #8393b1;
+}
+
+html.dark .ocr-fgroup {
+  border-top-color: #24344f;
+}
+
+html.dark .reinscripcion-banner {
+  background: #132e26;
+  border-color: #1e5f44;
+  color: #7fd0ab;
+}
+
+html.dark .reinscripcion-banner svg {
+  color: #3fc99b;
+}
+
+html.dark .reinscripcion-banner p {
+  color: #9fd6c0;
+}
+
+html.dark .backups-status.ok {
+  color: #3fc99b;
+}
+
+html.dark .backups-status.err {
+  color: #f08787;
+}
+
+html.dark .crud-link {
+  color: #7fb4f4;
 }

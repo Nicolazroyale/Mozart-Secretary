@@ -32,7 +32,8 @@ button {
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   background: #f5f7fb;
 }
@@ -40,7 +41,8 @@ button {
 .sidebar {
   width: 264px;
   flex-shrink: 0;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   padding: 28px 18px 20px;
   display: flex;
   flex-direction: column;
@@ -96,6 +98,9 @@ button {
 }
 
 .main-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: grid;
   gap: 5px;
 }
@@ -223,12 +228,17 @@ button {
 }
 
 .main-area {
+  height: 100vh;
   min-width: 0;
   flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .topbar {
   height: 76px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -327,9 +337,20 @@ button {
 }
 
 .content-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   max-width: 1440px;
   margin: 0 auto;
   padding: 40px 42px 55px;
+}
+
+@supports (height: 100dvh) {
+  .app-shell,
+  .sidebar,
+  .main-area {
+    height: 100dvh;
+  }
 }
 
 .welcome-row,
@@ -449,6 +470,11 @@ button {
 .icon-violet {
   color: #775dd0;
   background: #eeeafd;
+}
+
+.icon-green {
+  color: #12884a;
+  background: #e2f7eb;
 }
 
 .stat-copy > span {
@@ -1389,4 +1415,210 @@ td {
   .topbar-actions {
     gap: 10px;
   }
+}
+
+.nav-group {
+  display: grid;
+  gap: 3px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #1e3a5f;
+}
+
+.nav-group-label {
+  padding: 4px 12px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #5f7ba0;
+}
+
+.nav-group .nav-item {
+  padding: 11px 12px;
+}
+
+/* ---------------------------------------------------------------------------
+   Modo oscuro
+   --------------------------------------------------------------------------- */
+
+html.dark {
+  color-scheme: dark;
+  color: #e6ecf7;
+  background: #0d1526;
+}
+
+html.dark body,
+html.dark .app-shell {
+  background: #0d1526;
+}
+
+html.dark .topbar {
+  border-bottom-color: #24344f;
+  background: rgba(19, 31, 54, .85);
+}
+
+html.dark .breadcrumbs,
+html.dark .eyebrow,
+html.dark .section-heading p,
+html.dark .panel-heading p,
+html.dark .card-grid-heading p {
+  color: #93a3c0;
+}
+
+html.dark .breadcrumbs strong {
+  color: #dbe4f2;
+}
+
+html.dark .top-search,
+html.dark .local-search {
+  border-color: #2a3b58;
+  background: #131f38;
+}
+
+html.dark .top-search input,
+html.dark .local-search input {
+  color: #e6ecf7;
+}
+
+html.dark .top-search input::placeholder,
+html.dark .local-search input::placeholder {
+  color: #6d7d9c;
+}
+
+html.dark .icon-button,
+html.dark .circle-button,
+html.dark .row-action {
+  color: #8ea0be;
+}
+
+html.dark .top-avatar {
+  background: #23416e;
+}
+
+html.dark .welcome-row h1,
+html.dark .view-hero h1 {
+  color: #ecf2fc;
+}
+
+html.dark .welcome-row p,
+html.dark .view-hero p {
+  color: #8ba0bd;
+}
+
+html.dark .stat-card,
+html.dark .panel,
+html.dark .data-panel,
+html.dark .teacher-card,
+html.dark .course-card,
+html.dark .course-group,
+html.dark .course-section-card {
+  border-color: #24344f;
+  background: #16233c;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, .28);
+}
+
+html.dark .stat-copy > strong,
+html.dark .section-count {
+  color: #e9f0fa;
+}
+
+html.dark .stat-copy > span,
+html.dark .stat-copy small {
+  color: #93a3c0;
+}
+
+html.dark .quick-card {
+  border-color: #24344f;
+  background: #16233c;
+}
+
+html.dark .quick-card:hover {
+  border-color: #4a6ea0;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .3);
+}
+
+html.dark .quick-card strong,
+html.dark .teacher-body strong,
+html.dark .course-body strong,
+html.dark .course-group-header strong,
+html.dark .section-card-body strong,
+html.dark .student-info strong,
+html.dark .activity-row strong,
+html.dark .table-person strong {
+  color: #dfe7f3;
+}
+
+html.dark .quick-card span,
+html.dark .quick-arrow,
+html.dark .teacher-body .teacher-subject,
+html.dark .course-teacher,
+html.dark .course-group-header span,
+html.dark .section-card-body .cell-muted,
+html.dark .student-info span,
+html.dark .activity-row span,
+html.dark .activity-row time,
+html.dark .cell-muted,
+html.dark .meta-row,
+html.dark .empty-state p {
+  color: #8393b1;
+}
+
+html.dark .section-heading h2,
+html.dark .panel-heading h2,
+html.dark .card-grid-heading h2,
+html.dark .empty-state h2 {
+  color: #e6ecf7;
+}
+
+html.dark .activity-row,
+html.dark .course-meta,
+html.dark .teacher-meta {
+  border-color: #24344f;
+}
+
+html.dark th {
+  color: #9aabc7;
+  background: #131f38;
+}
+
+html.dark td {
+  border-top-color: #24344f;
+  color: #a5b4cd;
+}
+
+html.dark .filter-button,
+html.dark .outline-button {
+  border-color: #2a3b58;
+  color: #7fb4f4;
+  background: #131f38;
+}
+
+html.dark .circle-button {
+  border-color: #2a3b58;
+}
+
+html.dark .empty-state {
+  border-color: #2c3e5d;
+  background: rgba(22, 35, 60, .55);
+}
+
+html.dark .course-group-header {
+  border-bottom-color: #24344f;
+  background: linear-gradient(90deg, #1a2a49, #16233c);
+}
+
+html.dark .course-section-card {
+  background: #131f38;
+}
+
+html.dark .course-section-card:hover {
+  border-color: #3b5680;
+  background: #1a2a49;
+}
+
+html.dark .text-button,
+html.dark .course-link,
+html.dark .section-link {
+  color: #63a5f0;
 }

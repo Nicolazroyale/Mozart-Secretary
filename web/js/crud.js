@@ -1,18 +1,24 @@
 /**
- * crud_mejora.js
+ * crud.js
  * Alta / edición / eliminación dentro de la interfaz mejorada del sistema,
- * contra /api.php (paridad con la app legacy). Requiere rol admin y envía el
- * header X-CSRF-Token.
+ * contra /api.php (paridad con la app legacy). Respeta los permisos
+ * granulares del usuario y envía el header X-CSRF-Token.
  *
  * Exports para tests: helpers puros (buildFormHTML, gatherForm, usuarioPayload),
  * constantes de configuración y `createCrud`, que arma los manejadores DOM
  * atados a un state del sistema.
  */
 
-import { icon, esc } from './Interfaz_mejora.js';
+import { icon, esc } from './interfaz.js?v=11';
+import { hasPerm, PERM, PERM_GROUPS } from './permissions.js?v=8';
 
 function isSet(x) {
   return x !== undefined && x !== null;
+}
+
+// alias local: un usuario "puede" según rol admin o su lista de permisos.
+function can(state, perm) {
+  return hasPerm(state, perm);
 }
 
 // ---------------------------------------------------------------------------
@@ -199,7 +205,7 @@ function fieldInputHTML(f, data, opts) {
   } else {
     const type = f.t === 'date' ? 'date' : f.t === 'email' ? 'email' : f.t === 'number' ? 'number' : 'text';
     const list = f.t === 'textlist' ? ' list="' + esc(f.list) + '"' : '';
-    ctrl = '<input class="crud-input" type="' + type + '" name="' + esc(name) + '" value="' + esc(val) + '"' + (f.hint ? ' placeholder="' + esc(f.hint) + '"' : '') + list + req + '>';
+    ctrl = '<input class="crud-input" type="' + type + '" name="' + esc(name) + '" value="' + esc(val) + '"' + (f.hint ? ' placeholder="' + esc(f.hint) + '"' : '') + list + req + ' autocomplete="off">';
   }
   const hint = f.hint ? '<span class="crud-hint">' + esc(f.hint) + '</span>' : '';
   return '<div class="crud-field' + (hiddenByDefault ? ' hidden-field' : '') + '"' + span + visAttr + '><label>' + esc(f.l) + (f.req ? ' <span class="req">*</span>' : '') + '</label>' + ctrl + hint + '</div>';
@@ -226,11 +232,11 @@ export function assignRowHTML(opts, asignacion) {
   return (
     '<div class="crud-assign-row" data-asig-row>' +
     '<div class="crud-field"><label>Curso</label><select class="crud-select" name="asig_curso" required><option value="">—</option>' + cursoOptions(opts && opts.cursos, selectedCurso) + '</select></div>' +
-    '<div class="crud-field"><label>Materia</label><input class="crud-input" name="asig_materia" list="materias_dl" value="' + esc(row.materia || '') + '" required placeholder="Materia"></div>' +
+    '<div class="crud-field"><label>Materia</label><input class="crud-input" name="asig_materia" list="materias_dl" value="' + esc(row.materia || '') + '" required placeholder="Materia" autocomplete="off"></div>' +
     '<div class="crud-field"><label>Cargo</label><select class="crud-select" name="asig_cargo">' + selectOptions(CARGOS_ASIG, row.cargo || 'Titular') + '</select></div>' +
     '<div class="crud-field"><label>Día</label><select class="crud-select" name="asig_dia" required><option value="">—</option>' + selectOptions(DIAS, row.dia_semana) + '</select></div>' +
-    '<div class="crud-field"><label>Hora Inicio</label><input class="crud-input" type="time" name="asig_ini" value="' + esc(String(row.hora_inicio || '').slice(0, 5)) + '" required></div>' +
-    '<div class="crud-field"><label>Hora Fin</label><input class="crud-input" type="time" name="asig_fin" value="' + esc(String(row.hora_fin || '').slice(0, 5)) + '" required></div>' +
+    '<div class="crud-field"><label>Hora Inicio</label><input class="crud-input" type="time" name="asig_ini" value="' + esc(String(row.hora_inicio || '').slice(0, 5)) + '" required autocomplete="off"></div>' +
+    '<div class="crud-field"><label>Hora Fin</label><input class="crud-input" type="time" name="asig_fin" value="' + esc(String(row.hora_fin || '').slice(0, 5)) + '" required autocomplete="off"></div>' +
     '<button class="assign-remove" type="button" data-asig-remove aria-label="Quitar horario">' + icon('Trash2', 15) + '</button>' +
     '</div>'
   );
@@ -285,15 +291,24 @@ export function gatherForm(formEl) {
 
 export function usuarioPayload(formEl, mode, id) {
   const data = gatherForm(formEl);
+  const perms = Array.from(formEl.querySelectorAll('input[name="permisos"]:checked')).map((c) => c.value);
   const payload = { action: mode, data: {} };
+  const rol = data.rol;
   if (mode === 'create') {
-    payload.data = { username: data.username, password: data.password, nombre_completo: data.nombre_completo, rol: data.rol };
+    payload.data = {
+      username: data.username,
+      password: data.password,
+      nombre_completo: data.nombre_completo,
+      rol: rol,
+      permisos: rol === 'admin' ? [] : perms,
+    };
   } else {
     payload.id = id;
     payload.data = {
       nombre_completo: data.nombre_completo,
-      rol: data.rol,
+      rol: rol,
       activo: Number(data.activo),
+      permisos: rol === 'admin' ? [] : perms,
     };
     if (isSet(data.password) && String(data.password) !== '') payload.data.password = data.password;
   }
@@ -526,7 +541,7 @@ export function ocrFieldsHTML(fields, base) {
         }
         return '<label class="ocr-frow' + (badge ? ' ocr-frow-alert' : '') + '">' +
           '<span class="ocr-flabel">' + esc(ocrFieldLabel(k)) + badge + '</span>' +
-          '<input class="crud-input" data-ocr-field name="' + esc(k) + '" value="' + esc(val) + '">' +
+          '<input class="crud-input" data-ocr-field name="' + esc(k) + '" value="' + esc(val) + '" autocomplete="off">' +
           '</label>';
       }).join('');
       return '<fieldset class="ocr-fgroup"><legend>' + esc(g.label) + '</legend>' + rows + '</fieldset>';
@@ -768,7 +783,7 @@ export function createCrud(state) {
     if (ocr) wireOcr(state);
     if (ocr && opts && opts.ocrFields) {
       const zoneEl = state.root.querySelector('[data-ocr-zone]');
-      if (zoneEl && state.user && (state.user.rol || state.user.role) === 'admin') {
+      if (zoneEl && can(state, PERM.MOD.estudiantes)) {
         renderOcrFields(zoneEl, opts.ocrFields, opts.ocrBase || null);
       }
     }
@@ -792,12 +807,12 @@ export function createCrud(state) {
       '<form data-crud-form data-kind="asignacion" data-id="' + esc(cursoId) + '">' +
       '<div class="crud-grid">' +
       '<div class="crud-field"><label>Docente <span class="req">*</span></label><select class="crud-select" name="id_docente" required><option value="">Seleccione un docente…</option>' + docenteOptions(docentes, '') + '</select></div>' +
-      '<div class="crud-field"><label>Materia <span class="req">*</span></label><input class="crud-input" name="materia" list="materias_dl" required placeholder="Especifica la materia"></div>' +
+      '<div class="crud-field"><label>Materia <span class="req">*</span></label><input class="crud-input" name="materia" list="materias_dl" required placeholder="Especifica la materia" autocomplete="off"></div>' +
       '<div class="crud-field"><label>Cargo</label><select class="crud-select" name="cargo">' + selectOptions(CARGOS_ASIG, 'Titular') + '</select></div>' +
       '<div class="crud-field"><label>Día <span class="req">*</span></label><select class="crud-select" name="dia_semana" required><option value="">Selecciona un día</option>' + selectOptions(DIAS, '') + '</select></div>' +
-      '<div class="crud-field"><label>Hora Inicio</label><input class="crud-input" type="time" name="hora_inicio" required></div>' +
-      '<div class="crud-field"><label>Hora Fin</label><input class="crud-input" type="time" name="hora_fin" required></div>' +
-      '<div class="crud-field"><label>Ciclo Lectivo</label><input class="crud-input" type="number" name="ciclo_lectivo" min="2000" max="2100" value="' + new Date().getFullYear() + '" required></div>' +
+      '<div class="crud-field"><label>Hora Inicio</label><input class="crud-input" type="time" name="hora_inicio" required autocomplete="off"></div>' +
+      '<div class="crud-field"><label>Hora Fin</label><input class="crud-input" type="time" name="hora_fin" required autocomplete="off"></div>' +
+      '<div class="crud-field"><label>Ciclo Lectivo</label><input class="crud-input" type="number" name="ciclo_lectivo" min="2000" max="2100" value="' + new Date().getFullYear() + '" required autocomplete="off"></div>' +
       '<div class="crud-field"><label>&nbsp;</label>' + materias.length + ' materias disponibles</div>' +
       '</div>' +
       '<datalist id="materias_dl">' + materias.map((m) => '<option value="' + esc(m.nombre) + '"></option>').join('') + '</datalist>' +
@@ -816,17 +831,52 @@ export function createCrud(state) {
     }
   }
 
+  function permsGridHTML(perms, admin) {
+    const set = new Set(perms || []);
+    return (
+      '<div class="permisos-editor"' + (admin ? ' data-admin="1"' : '') + '>' +
+      '<div class="permisos-note"' + (admin ? '' : ' style="display:none"') + '>El rol administrador tiene todos los permisos.</div>' +
+      PERM_GROUPS.map(
+        (g) =>
+          '<fieldset class="permisos-group"><legend>' + esc(g.label) + '</legend><div class="permisos-grid">' +
+          g.items.map(
+            (it) =>
+              '<label class="crud-check"><input type="checkbox" name="permisos" value="' + esc(it.v) + '"' +
+              (set.has(it.v) ? ' checked' : '') + (admin ? ' disabled' : '') + '> ' + esc(it.l) + '</label>'
+          ).join('') +
+          '</div></fieldset>'
+      ).join('') +
+      '</div>'
+    );
+  }
+
+  function wirePermisosEditor(formEl) {
+    const sel = formEl.querySelector('select[name="rol"]');
+    const editor = formEl.querySelector('.permisos-editor');
+    if (!sel || !editor) return;
+    const toggle = () => {
+      const admin = sel.value === 'admin';
+      editor.querySelectorAll('input[name="permisos"]').forEach((c) => { c.disabled = admin; });
+      const note = editor.querySelector('.permisos-note');
+      if (note) note.style.display = admin ? '' : 'none';
+    };
+    sel.addEventListener('change', toggle);
+    toggle();
+  }
+
   function usuarioFormHTML(mode, row) {
     const r = row || {};
+    const admin = r.rol === 'admin';
     const disabled = mode === 'edit' ? ' readonly' : '';
     return (
       '<form data-crud-form data-kind="usuario" data-mode="' + esc(mode) + '" data-id="' + esc(r.id_usuario || '') + '">' +
       '<div class="crud-grid">' +
-      '<div class="crud-field"><label>Usuario <span class="req">*</span></label><input class="crud-input" name="username" ' + (disabled ? 'disabled' : 'required') + ' value="' + esc(r.username || '') + '"></div>' +
-      '<div class="crud-field"><label>Nombre Completo <span class="req">*</span></label><input class="crud-input" name="nombre_completo" required value="' + esc(r.nombre_completo || '') + '"></div>' +
+      '<div class="crud-field"><label>Usuario <span class="req">*</span></label><input class="crud-input" name="username" ' + (disabled ? 'disabled' : 'required') + ' value="' + esc(r.username || '') + '" autocomplete="off"></div>' +
+      '<div class="crud-field"><label>Nombre Completo <span class="req">*</span></label><input class="crud-input" name="nombre_completo" required value="' + esc(r.nombre_completo || '') + '" autocomplete="off"></div>' +
       '<div class="crud-field"><label>Rol</label><select class="crud-select" name="rol">' + selectOptions(ROLES, r.rol || 'lectura') + '</select></div>' +
       '<div class="crud-field"><label>&nbsp;</label><label class="crud-check"><input type="checkbox" name="activo" checked> Cuenta activa</label></div>' +
-      '<div class="crud-field span-2"><label>Contraseña ' + (mode === 'edit' ? '' : '<span class="req">*</span>') + '</label><input class="crud-input" type="password" name="password" ' + (mode === 'edit' ? 'placeholder="Dejar en blanco para mantener"' : 'required') + '></div>' +
+      '<div class="crud-field span-2"><label>Contraseña ' + (mode === 'edit' ? '' : '<span class="req">*</span>') + '</label><input class="crud-input" type="password" name="password" ' + (mode === 'edit' ? 'placeholder="Dejar en blanco para mantener"' : 'required') + ' autocomplete="off"></div>' +
+      '<div class="crud-field span-2"><label>Permisos</label>' + permsGridHTML(r.permisos, admin) + '</div>' +
       '</div>' +
       '</form>'
     );
@@ -834,6 +884,8 @@ export function createCrud(state) {
 
   function openUsuario(mode, row) {
     openCrudModal(state, modalHTML(headHTML('ShieldCheck', 'violet', mode === 'edit' ? 'Editar Usuario' : 'Nuevo Usuario', mode === 'edit' ? 'Ajustes del usuario #' + row.id_usuario : 'Crea una cuenta para el sistema'), usuarioFormHTML(mode, row), actionsFooter('usuarios', mode)));
+    const formEl = state.root.querySelector('[data-crud-form][data-kind="usuario"]');
+    if (formEl) wirePermisosEditor(formEl);
   }
 
   async function saveUsuario(mode, formEl, id) {
@@ -914,8 +966,8 @@ export function createCrud(state) {
         const d = await runOcr(state, files);
         if (!d.ok) throw new Error(d.error || 'No se pudo leer la planilla');
         applyOcrFields(d.fields || {}, form);
-        const isAdmin = state.user && (state.user.rol || state.user.role) === 'admin';
-        if (isAdmin) {
+        const canAdminOcr = can(state, PERM.MOD.estudiantes);
+        if (canAdminOcr) {
           renderOcrFields(zone, d.fields || {}, null);
           if (Array.isArray(d.text) && d.text.length) {
             showOcrPreview(state, zone, d);

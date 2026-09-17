@@ -21,11 +21,12 @@ func (s *Server) handleApi(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		if sess.Role != "admin" && s.cfg.AutoLogin == "" {
-			jsonError(w, http.StatusForbidden, "No tiene permisos para realizar esta acción")
-			return
-		}
 		if s.cfg.AutoLogin == "" {
+			p := writePermForReq(r)
+			if p != "" && !hasPerm(sess.Role, s.userPerms(sess), p) {
+				jsonError(w, http.StatusForbidden, "No tiene permisos para realizar esta acción")
+				return
+			}
 			if subtle.ConstantTimeCompare([]byte(r.Header.Get("X-CSRF-Token")), []byte(sess.CSRF)) != 1 {
 				jsonError(w, http.StatusForbidden, "Token CSRF inválido.")
 				return
@@ -33,7 +34,7 @@ func (s *Server) handleApi(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// OCR de planillas: multipart (PDF o fotos). Reusa el gate de admin+CSRF.
+	// OCR de planillas: multipart (PDF o fotos). Requiere ver/modificar estudiantes.
 	if r.Method == http.MethodPost && r.URL.Query().Get("action") == "ocr" {
 		s.handleOcr(w, r)
 		return

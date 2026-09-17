@@ -46,10 +46,48 @@ func Open(path, keyHex string) (*sql.DB, error) {
 	return conn, nil
 }
 
-// EnsureSchema aplica el DDL (idempotente).
+// EnsureSchema aplica el DDL (idempotente) y migraciones sobre bases existentes.
 func EnsureSchema(conn *sql.DB) error {
 	if _, err := conn.Exec(schemaSQL); err != nil {
 		return fmt.Errorf("aplicando esquema: %w", err)
 	}
+	return migrate(conn)
+}
+
+// migrate aplica cambios de esquema idempotentes para bases ya creadas.
+func migrate(conn *sql.DB) error {
+	if err := ensureColumn(conn, "usuarios", "permisos", "TEXT NOT NULL DEFAULT '[]'"); err != nil {
+		return fmt.Errorf("migrando usuarios.permisos: %w", err)
+	}
 	return nil
+}
+
+// ensureColumn agrega la columna si la tabla no la tiene todavía.
+func ensureColumn(conn *sql.DB, table, column, ddl string) error {
+	rows, err := conn.Query("PRAGMA table_info(" + table + ")")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	cols, err := rows.Columns()
+	if err != nil {
+		return err
+	}
+	vals := make([]interface{}, len(cols))
+	ptrs := make([]interface{}, len(cols))
+	for i := range vals {
+		ptrs[i] = &vals[i]
+	}
+	for rows.Next() {
+		if err := rows.Scan(ptrs...); err != nil {
+			return err
+		}
+		for i, c := range cols {
+			if c == "name" && fmt.Sprint(vals[i]) == column {
+				return nil
+			}
+		}
+	}
+	_, err = conn.Exec("ALTER TABLE " + table + " ADD COLUMN " + column + " " + ddl)
+	return err
 }

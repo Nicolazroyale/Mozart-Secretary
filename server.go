@@ -152,9 +152,9 @@ func NewServer(cfg Config) (*Server, error) {
 		secret:     secret,
 		dbs:        conn,
 		limiter:    NewRateLimiter(ratePerMin, float64(ratePerMin)/60.0),
-		tplNuevo:   parse("sistema_mejora.html"),
+		tplNuevo:   parse("index.html"),
 		tplLogin:   parse("login.html"),
-		tplMejoras: parse("interfaz_mejora.html"),
+		tplMejoras: parse("interfaz.html"),
 		CertFile:   certFile,
 		KeyFile:    keyFile,
 		lockouts:   make(map[string]*lockout),
@@ -174,15 +174,23 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.handleLogin(w, r)
-	case path == "/logout.php":
-		s.handleLogout(w, r)
-	case path == "/" || path == "/index.php":
+	case path == "/login" || path == "/login/":
+		if r.Method == http.MethodPost {
+			s.handleLogin(w, r)
+			return
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			methodNotAllowed(w)
 			return
 		}
-		s.handleDashboard(w, r, s.tplNuevo)
-	case path == "/sistema" || path == "/sistema/" || path == "/sistema/index.php":
+		s.handleLoginPage(w, r)
+	case path == "/logout" || path == "/logout.php":
+		s.handleLogout(w, r)
+	case path == "/index.php" || path == "/sistema/index.php":
+		http.Redirect(w, r, "/sistema/", http.StatusMovedPermanently)
+	case path == "/Login" || path == "/Login/" || path == "/Login/Login.php":
+		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
+	case path == "/" || path == "/sistema" || path == "/sistema/":
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			methodNotAllowed(w)
 			return
@@ -194,12 +202,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.handleDashboard(w, r, s.tplMejoras)
-	case path == "/Login" || path == "/Login/" || path == "/Login/Login.php":
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			methodNotAllowed(w)
-			return
-		}
-		s.handleLoginPage(w, r)
 	case isStatic(path):
 		s.serveStatic(w, r, path)
 	default:
@@ -233,23 +235,27 @@ func (s *Server) autoSession() *auth.Session {
 }
 
 type viewData struct {
-	CSRF    string
-	Nombre  string
-	Rol     string
-	EsAdmin bool
+	CSRF         string
+	Nombre       string
+	Rol          string
+	EsAdmin      bool
+	Permisos     string
+	UltimoBackup string
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request, tpl *template.Template) {
 	sess := s.currentSession(r)
 	if sess == nil {
-		http.Redirect(w, r, "/Login/Login.php", http.StatusFound)
+		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
 	data := viewData{
-		CSRF:    sess.CSRF,
-		Nombre:  sess.Name,
-		Rol:     sess.Role,
-		EsAdmin: sess.Role == "admin",
+		CSRF:         sess.CSRF,
+		Nombre:       sess.Name,
+		Rol:          sess.Role,
+		EsAdmin:      sess.Role == "admin",
+		Permisos:     permsJSON(s.userPerms(sess)),
+		UltimoBackup: s.lastBackupDate(),
 	}
 	if err := tpl.Execute(w, data); err != nil {
 		log.Printf("render dashboard: %v", err)
@@ -261,7 +267,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request, tpl *te
 
 func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 	if sess := s.currentSession(r); sess != nil {
-		http.Redirect(w, r, "/index.php", http.StatusFound)
+		http.Redirect(w, r, "/sistema/", http.StatusFound)
 		return
 	}
 	if err := s.tplLogin.Execute(w, nil); err != nil {
@@ -271,5 +277,5 @@ func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	auth.ClearSessionCookie(w)
-	http.Redirect(w, r, "/Login/Login.php", http.StatusFound)
+	http.Redirect(w, r, "/login", http.StatusFound)
 }
