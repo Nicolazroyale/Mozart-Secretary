@@ -644,6 +644,71 @@ export function auditoriaRowsHTML(rows) {
 }
 
 // ---------------------------------------------------------------------------
+// Backups (helpers puros)
+// ---------------------------------------------------------------------------
+
+export function backupSize(bytes) {
+  const n = Number(bytes || 0);
+  if (!Number.isFinite(n) || n < 0) return '—';
+  if (n < 1024) return n + ' B';
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let v = n / 1024;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return (v >= 100 ? Math.round(v) : v.toFixed(1)) + ' ' + units[i];
+}
+
+export function isMonthlyBackup(name) {
+  const m = /^mozart_(\d{4})-(\d{2})-(\d{2})\.db$/.exec(String(name || ''));
+  return !!(m && m[3] === '01');
+}
+
+export function downloadBackupURL(name) {
+  return 'api.php?action=backup_download&file=' + encodeURIComponent(String(name || ''));
+}
+
+export function backupsTableHTML(list) {
+  if (!list || list.length === 0) {
+    return '<tr><td colspan="4" class="table-empty">Sin backups todavía. Se generan cada día automáticamente o con “Crear backup ahora”.</td></tr>';
+  }
+  return list
+    .map(
+      (b) =>
+        '<tr class="crud-audit-row">' +
+        '<td><strong>' + esc(b.name) + '</strong></td>' +
+        '<td><span class="cell-muted">' + esc(b.modtime || '') + '</span></td>' +
+        '<td><span class="cell-muted">' + esc(backupSize(b.size)) + '</span>' + (b.mensual ? ' <span class="ocr-badge ocr-badge-new">mensual</span>' : '') + '</td>' +
+        '<td><a class="crud-link" href="' + esc(downloadBackupURL(b.name)) + '">' + icon('Download', 14) + ' Descargar</a></td>' +
+        '</tr>'
+    )
+    .join('');
+}
+
+export function backupsModalHTML() {
+  return modalHTML(
+    headHTML('DatabaseBackup', 'teal', 'Backups de la base', 'Snapshots cifrados de la base de datos'),
+    '<div class="backups-panel" data-backups-panel>' +
+      '<div class="backups-tools">' +
+      '<button class="crud-btn crud-btn-primary" type="button" data-backups-create>' + icon('RotateCw', 15) + ' Crear backup ahora</button>' +
+      '<span class="backups-hint">Retención: 30 días + primer día de cada mes por 12 meses.</span>' +
+      '</div>' +
+      '<div class="table-wrap crud-table"><table><thead><tr><th>Archivo</th><th>Fecha</th><th>Tamaño</th><th></th></tr></thead><tbody data-backups-rows>' + backupsTableHTML(null) + '</tbody></table></div>' +
+      '<div class="backups-upload">' +
+      '<div class="ocr-drop" data-backups-drop>' + icon('Upload', 17) + '<span><strong>Subir un backup</strong><em>Para recuperar datos guardados en otra computadora.</em></span></div>' +
+      '<input class="hidden-field" type="file" data-backups-file accept=".db">' +
+      '<label class="backups-clave"><span>Clave con la que se cifró este backup (opcional)</span>' +
+      '<input class="crud-input" type="password" data-backups-clave placeholder="Solo si difiere de la clave actual…" autocomplete="off"></label>' +
+      '<p class="backups-status" data-backups-status hidden></p>' +
+      '</div>' +
+      '</div>',
+    ''
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Manejadores (DOM)
 // ---------------------------------------------------------------------------
 
@@ -879,6 +944,88 @@ export function createCrud(state) {
     }
   }
 
+  function wireBackupsModal(state) {
+    const wrap = state.root.querySelector('.crud-root-append');
+    const panel = wrap && wrap.querySelector('[data-backups-panel]');
+    if (!panel) return;
+    const rows = panel.querySelector('[data-backups-rows]');
+    const statusEl = panel.querySelector('[data-backups-status]');
+    const input = panel.querySelector('[data-backups-file]');
+    const drop = panel.querySelector('[data-backups-drop]');
+    const claveInput = panel.querySelector('[data-backups-clave]');
+    const createBtn = panel.querySelector('[data-backups-create]');
+
+    const setStatus = (msg, ok) => {
+      statusEl.hidden = false;
+      statusEl.textContent = msg;
+      statusEl.className = 'backups-status' + (ok ? ' ok' : ' err');
+    };
+
+    async function load() {
+      try {
+        const res = await fetch('api.php?action=backups');
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(d.error || 'Error listando backups (' + res.status + ')');
+        rows.innerHTML = backupsTableHTML(Array.isArray(d) ? d : []);
+      } catch (err) {
+        setStatus(err.message, false);
+      }
+    }
+
+    createBtn.addEventListener('click', async () => {
+      try {
+        const d = await apiWrite(state, 'api.php?action=backup_crear', 'POST', {});
+        setStatus('Backup creado' + (d.name ? ': ' + d.name : ''), true);
+        load();
+      } catch (err) {
+        setStatus(err.message, false);
+      }
+    });
+
+    drop.addEventListener('click', () => input.click());
+    ['dragover', 'dragenter'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('drag'); }));
+    ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('drag'); }));
+    drop.addEventListener('drop', (e) => { if (e.dataTransfer && e.dataTransfer.files.length) upload(e.dataTransfer.files[0]); });
+    input.addEventListener('change', () => { if (input.files && input.files.length) upload(input.files[0]); input.value = ''; });
+
+    async function upload(file) {
+      if (!file) return;
+      setStatus('Validando y guardando ' + file.name + '…', true);
+      try {
+        const fd = new FormData();
+        fd.append('archivo', file);
+        if (claveInput && claveInput.value.trim()) fd.append('clave', claveInput.value.trim());
+        const res = await fetch('api.php?action=backup_upload', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': state.csrf || '' },
+          body: fd,
+        });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (res.status === 409) throw new Error(d.error || 'Ya existe un backup con ese nombre');
+          if (res.status === 422 && d.reason === 'clave') {
+            setStatus(d.error || 'Ingresá la clave utilizada para ese backup.', false);
+            if (claveInput) claveInput.focus();
+            return;
+          }
+          throw new Error(d.error || 'Error subiendo backup (' + res.status + ')');
+        }
+        setStatus('Backup guardado: ' + (d.name || file.name), true);
+        if (claveInput) claveInput.value = '';
+        load();
+      } catch (err) {
+        setStatus(err.message, false);
+      }
+    }
+
+    load();
+  }
+
+  function openBackups() {
+    openCrudModal(state, backupsModalHTML());
+    wireBackupsModal(state);
+  }
+
   return {
     TIPOS: TIPOS,
 
@@ -899,6 +1046,7 @@ export function createCrud(state) {
     removeAsignacion: removeAsignacion,
     removeUsuario: removeUsuario,
     openUsuario: openUsuario,
+    openBackups: openBackups,
     auditorsBody: auditorsBody,
 
     handleClick(e) {
@@ -909,6 +1057,8 @@ export function createCrud(state) {
         const id = crudBtn.getAttribute('data-id');
         if (kind === 'create') {
           this.openCreate(tipo);
+        } else if (kind === 'backups') {
+          this.openBackups();
         } else if (kind === 'edit') {
           this.openEdit(tipo, id);
         } else if (kind === 'del') {

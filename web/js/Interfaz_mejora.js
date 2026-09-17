@@ -146,6 +146,8 @@ const ICON_SVG = {
 BadgeCheck: '<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" /><path d="m9 12 2 2 4-4" />',
   RotateCw: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" />',
   ScanText: '<path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><path d="M7 8h8" /><path d="M7 12h10" /><path d="M7 16h6" />',
+  Upload: '<path d="M12 3v12" /><path d="m7 8 5-5 5 5" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />',
+  DatabaseBackup: '<ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5v8a9 3 0 0 0 5 2.7" /><path d="M3 13a9 3 0 0 0 5 2.7" /><path d="M16 13a9 3 0 0 0 5-2.7" /><path d="M12 15v7" /><path d="m9 21 3 3 3-3" />',
 };
 
 function icon(name, size, strokeWidth) {

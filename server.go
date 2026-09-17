@@ -31,8 +31,9 @@ type Config struct {
 	AuthSecret          string
 	DBKey               string
 	BackupDir           string
-	BackupDay           time.Weekday
+	BackupDay           time.Weekday // deprecado: los snapshots son diarios (se conserva por compatibilidad)
 	BackupRetentionDays int
+	BackupKeepMonths    int
 }
 
 func loadConfig() Config {
@@ -51,12 +52,20 @@ func loadConfig() Config {
 			log.Printf("BACKUP_DAY inválido (%q), usando 0 (domingo)", v)
 		}
 	}
-	retention := 90 // 3 meses
+	retention := 30 // diarios
 	if v := os.Getenv("BACKUP_RETENTION_DAYS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			retention = n
 		} else {
-			log.Printf("BACKUP_RETENTION_DAYS inválido (%q), usando 90", v)
+			log.Printf("BACKUP_RETENTION_DAYS inválido (%q), usando 30", v)
+		}
+	}
+	keepMonths := 12 // primer día de cada mes
+	if v := os.Getenv("BACKUP_KEEP_MONTHS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			keepMonths = n
+		} else {
+			log.Printf("BACKUP_KEEP_MONTHS inválido (%q), usando 12", v)
 		}
 	}
 	return Config{
@@ -76,6 +85,7 @@ func loadConfig() Config {
 		BackupDir:           envOr("BACKUP_DIR", filepath.Join(dataDir, "backups")),
 		BackupDay:           time.Weekday(backupDay),
 		BackupRetentionDays: retention,
+		BackupKeepMonths:    keepMonths,
 	}
 }
 

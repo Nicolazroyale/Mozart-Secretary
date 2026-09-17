@@ -34,26 +34,72 @@ func TestBackupFileNameAndDate(t *testing.T) {
 
 func TestPruneBackups(t *testing.T) {
 	dir := t.TempDir()
-	old := backupFileName(time.Now().AddDate(0, 0, -95))
-	recent := backupFileName(time.Now().AddDate(0, 0, -10))
+	now := time.Now()
+	old := backupFileName(now.AddDate(0, 0, -95))                                                  // diario viejo → borrar
+	recent := backupFileName(now.AddDate(0, 0, -10))                                               // diario reciente → conservar
+	monthlyOld := backupFileName(time.Date(now.Year(), now.Month()-10, 1, 0, 0, 0, 0, time.Local)) // primer día de mes viejo → conservar
+	monthlyRecent := backupFileName(time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)) // primer día del mes actual → conservar
 	noise := "not_a_backup.txt"
-	for _, f := range []string{old, recent, noise} {
+	for _, f := range []string{old, recent, monthlyOld, monthlyRecent, noise} {
 		if err := os.WriteFile(filepath.Join(dir, f), []byte("x"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	cfg := Config{BackupDir: dir, BackupRetentionDays: 90}
+	cfg := Config{BackupDir: dir, BackupRetentionDays: 30, BackupKeepMonths: 12}
 	if err := pruneBackups(cfg); err != nil {
 		t.Fatalf("pruneBackups: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, old)); !os.IsNotExist(err) {
-		t.Error("el backup viejo debería haberse borrado")
+		t.Error("el backup diario viejo debería haberse borrado")
 	}
 	if _, err := os.Stat(filepath.Join(dir, recent)); err != nil {
-		t.Error("el backup reciente no debería borrarse")
+		t.Error("el backup diario reciente no debería borrarse")
+	}
+	if _, err := os.Stat(filepath.Join(dir, monthlyOld)); err != nil {
+		t.Error("el backup del primer día de mes (dentro de 12 meses) no debería borrarse")
+	}
+	if _, err := os.Stat(filepath.Join(dir, monthlyRecent)); err != nil {
+		t.Error("el backup del primer día del mes actual no debería borrarse")
 	}
 	if _, err := os.Stat(filepath.Join(dir, noise)); err != nil {
 		t.Error("el archivo que no es backup no debería borrarse")
+	}
+}
+
+// TestPruneBackupsMensualViejo verifica que un primer día de mes fuera del
+// rango de meses sí se borra.
+func TestPruneBackupsMensualViejo(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Now()
+	tooOld := backupFileName(time.Date(now.Year(), now.Month()-24, 1, 0, 0, 0, 0, time.Local))
+	if err := os.WriteFile(filepath.Join(dir, tooOld), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{BackupDir: dir, BackupRetentionDays: 30, BackupKeepMonths: 12}
+	if err := pruneBackups(cfg); err != nil {
+		t.Fatalf("pruneBackups: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, tooOld)); !os.IsNotExist(err) {
+		t.Error("el primer día de mes de hace 24 meses debería haberse borrado")
+	}
+}
+
+func TestBackupFilenameValid(t *testing.T) {
+	valid := []string{"mozart_2026-09-14.db"}
+	for _, v := range valid {
+		if !backupFilenameValid(v) {
+			t.Errorf("backupFilenameValid(%q) = false, want true", v)
+		}
+	}
+	invalid := []string{
+		"", "mozart.db", "mozart_sin-fecha.db", "mozart_2026-13-99.db",
+		"../mozart_2026-09-14.db", "a/mozart_2026-09-14.db",
+		"/etc/mozart_2026-09-14.db", "mozart_2026-09-14.db.bak",
+	}
+	for _, v := range invalid {
+		if backupFilenameValid(v) {
+			t.Errorf("backupFilenameValid(%q) = true, want false", v)
+		}
 	}
 }
 

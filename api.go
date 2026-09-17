@@ -39,6 +39,31 @@ func (s *Server) handleApi(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Backups por web: listado y descarga (GET, gate admin propio) y
+	// creación/subida (POST, reusan el gate de admin+CSRF).
+	switch r.URL.Query().Get("action") {
+	case "backups":
+		if r.Method == http.MethodGet || r.Method == http.MethodHead {
+			s.handleBackupsList(w, r)
+			return
+		}
+	case "backup_download":
+		if r.Method == http.MethodGet || r.Method == http.MethodHead {
+			s.handleBackupDownload(w, r)
+			return
+		}
+	case "backup_crear":
+		if r.Method == http.MethodPost {
+			s.handleBackupCreate(w, r)
+			return
+		}
+	case "backup_upload":
+		if r.Method == http.MethodPost {
+			s.handleBackupUpload(w, r)
+			return
+		}
+	}
+
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
 		s.handleApiGet(w, r)

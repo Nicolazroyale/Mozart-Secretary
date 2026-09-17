@@ -16,7 +16,7 @@ const (
 	backupCheckEvery = time.Hour
 )
 
-// runBackups programa backups semanales de la base (VACUUM INTO, consistente
+// runBackups programa snapshots diarios de la base (VACUUM INTO, consistente
 // aunque haya escrituras concurrentes). Conserva los backups según la retención
 // configurada y borra los más viejos. Corre hasta que ctx se cancele.
 func runBackups(ctx context.Context, conn *sql.DB, cfg Config) {
@@ -25,8 +25,8 @@ func runBackups(ctx context.Context, conn *sql.DB, cfg Config) {
 		log.Printf("backups: no se pudo crear %s: %v", dir, err)
 		return
 	}
-	log.Printf("backups: semanales los %s en %s, retención de %d días",
-		cfg.BackupDay, dir, cfg.BackupRetentionDays)
+	log.Printf("backups: diarios en %s, retención de %d días + %d meses (primer día de mes)",
+		dir, cfg.BackupRetentionDays, cfg.BackupKeepMonths)
 
 	ticker := time.NewTicker(backupCheckEvery)
 	defer ticker.Stop()
@@ -37,7 +37,9 @@ func runBackups(ctx context.Context, conn *sql.DB, cfg Config) {
 			log.Println("backups: detenido")
 			return
 		case now := <-ticker.C:
-			if now.Weekday() != cfg.BackupDay || now.Day() == lastDay {
+			// Un snapshot por día natural (el horario exacto queda fijado por
+			// el primer tick del día).
+			if now.Day() == lastDay {
 				continue
 			}
 			lastDay = now.Day()
@@ -70,9 +72,14 @@ func createBackup(conn *sql.DB, cfg Config) error {
 	return nil
 }
 
-// pruneBackups borra los backups mozart_*.db más viejos que la retención.
+// pruneBackups borra los backups mozart_*.db fuera de retención:
+//   - diarios: se conservan los últimos BackupRetentionDays días;
+//   - mensuales: el primer día de cada mes se conserva BackupKeepMonths meses;
+//   - los archivos mozart_*.db con fecha inválida también se eliminan.
 func pruneBackups(cfg Config) error {
-	cutoff := time.Now().AddDate(0, 0, -cfg.BackupRetentionDays)
+	now := time.Now()
+	cutoffDaily := now.AddDate(0, 0, -cfg.BackupRetentionDays)
+	cutoffMonthly := now.AddDate(0, -cfg.BackupKeepMonths, 0)
 	entries, err := os.ReadDir(cfg.BackupDir)
 	if err != nil {
 		return err
@@ -82,13 +89,23 @@ func pruneBackups(cfg Config) error {
 			continue
 		}
 		d, ok := backupDate(e.Name())
-		if !ok || d.Before(cutoff) {
-			path := filepath.Join(cfg.BackupDir, e.Name())
-			if err := os.Remove(path); err != nil {
-				return err
-			}
-			log.Printf("backups: eliminado %s (más viejo que %d días)", path, cfg.BackupRetentionDays)
+		if !ok {
+			// "-wal"/"-shm" no matchean el sufijo .db; aquí llegan solo
+			// mozart_*.db mal formados: no se tocan, por seguridad.
+			continue
 		}
+		keep := !d.Before(cutoffDaily)
+		if d.Day() == 1 && !d.Before(cutoffMonthly) {
+			keep = true
+		}
+		if keep {
+			continue
+		}
+		path := filepath.Join(cfg.BackupDir, e.Name())
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+		log.Printf("backups: eliminado %s (fuera de retención %d días / %d meses)", path, cfg.BackupRetentionDays, cfg.BackupKeepMonths)
 	}
 	return nil
 }

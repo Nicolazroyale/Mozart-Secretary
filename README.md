@@ -53,6 +53,39 @@ en la tabla `audit_log`. Cada registro incluye:
 
 Solo los usuarios con rol `admin` pueden ver el log desde el menú **Log de Auditoría**.
 
+## Backups
+
+La base de datos (SQLCipher) se respalda automáticamente una vez por día dentro del contenedor, en `data/`. La retención es:
+
+- **Diaria**: se conservan los snapshots de los últimos `BACKUP_RETENTION_DAYS` días (por defecto **30**).
+- **Mensual**: además se conserva el primer día de cada mes durante `BACKUP_KEEP_MONTHS` meses (por defecto **12**).
+
+Los archivos se llaman `mozart_YYYY-MM-DD.db`, están **cifrados** con la misma `DB_KEY` del `.env` y se adjuntan al log de auditoría. `BACKUP_DAY` quedó **deprecado** (ya no se usa).
+
+### Panel web de backups (solo administradores)
+
+Desde el botón con ícono de disco en la barra superior:
+
+- **Listar** y **descargar** los snapshots existentes.
+- **Crear backup ahora** (genera el snapshot del día actual si no existe).
+- **Subir** un backup guardado en otra computadora (arrastrando el archivo). Si el backup fue cifrado con una clave distinta a la `DB_KEY` actual, el sistema pide ingresar la clave usada en ese momento. La clave **nunca se guarda en disco ni en la base**.
+
+### Restaurar un backup (procedimiento manual)
+
+> El alta vía web se valida al subir, pero la restauración deliberada de la BD en producción se hace deliberadamente fuera de la web para evitar reemplazar por accidente la base viva.
+
+1. Parar el servicio: `docker compose down`
+2. Elegir un snapshot en `data/`, por ejemplo `data/mozart_2026-09-15.db`
+3. Reemplazar la base ACTUAL (`data/mozart.db`) por ese archivo. Si la clave difiere, exportar antes con sqlcipher a la clave actual.
+4. Borrar los archivos WAL/SHM remanentes: `rm -f data/mozart.db-wal data/mozart.db-shm`
+5. Volver a levantar: `docker compose up -d --build`
+
+### Secretos y copias externas
+
+- `DB_KEY`, `AUTH_SECRET`, `.env` y `secret.key` se guardan **únicamente** en el gestor de contraseñas, nunca junto a los backups ni en el repositorio.
+- Sin un backup que incluya la clave NO es posible descifrar los snapshots.
+- Todavía no hay destino off-site automático; por ahora la copia externa se hace descargando los snapshots por el panel web. Cuando exista servicio, documentar en esta sección el sync (p. ej. rclone → B2/S3/NAS).
+
 ## Estructura del proyecto
 
 ```
@@ -63,6 +96,7 @@ Mozart/
 ├── api_write.go              # Escrituras (POST/PUT/DELETE) + auditoría
 ├── api_write_handlers.go     # Handlers específicos (estudiantes, usuarios, dmc)
 ├── api_export.go             # Exportaciones PDF/Excel con fuentes UTF-8 embebidas
+├── backup.go, backup_api.go  # Backups diarios, retención y panel web (subir/listar)
 ├── login.go, security.go     # Login (bcrypt, lockout), CSRF y headers
 ├── auth/                     # Paquete: hash de contraseñas y sesiones
 ├── db/                       # Esquema SQLite (12 tablas), conexión WAL, seed

@@ -19,6 +19,10 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
+function icon(name) {
+  return '<svg data-icon="' + name + '">';
+}
+
 const TIPOS_DNI = ['DNI Argentino', 'Pasaporte'];
 const CARGOS = ['Titular', 'Suplente'];
 const DIAS = ['Lunes', 'Martes'];
@@ -178,6 +182,45 @@ function applyOcrFields(fields, formEl) {
       el.value = String(val == null ? '' : val);
     }
   });
+}
+
+function backupSize(bytes) {
+  const n = Number(bytes || 0);
+  if (!Number.isFinite(n) || n < 0) return '—';
+  if (n < 1024) return n + ' B';
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let v = n / 1024;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return (v >= 100 ? Math.round(v) : v.toFixed(1)) + ' ' + units[i];
+}
+
+function isMonthlyBackup(name) {
+  const m = /^mozart_(\d{4})-(\d{2})-(\d{2})\.db$/.exec(String(name || ''));
+  return !!(m && m[3] === '01');
+}
+
+function downloadBackupURL(name) {
+  return 'api.php?action=backup_download&file=' + encodeURIComponent(String(name || ''));
+}
+
+function backupsTableHTML(list) {
+  if (!list || list.length === 0) {
+    return '<tr><td colspan="4" class="table-empty">Sin backups todavía. Se generan cada día automáticamente o con “Crear backup ahora”.</td></tr>';
+  }
+  return list
+    .map((b) =>
+      '<tr class="crud-audit-row">' +
+      '<td><strong>' + esc(b.name) + '</strong></td>' +
+      '<td><span class="cell-muted">' + esc(b.modtime || '') + '</span></td>' +
+      '<td><span class="cell-muted">' + esc(backupSize(b.size)) + '</span>' + (b.mensual ? ' <span class="ocr-badge ocr-badge-new">mensual</span>' : '') + '</td>' +
+      '<td><a class="crud-link" href="' + esc(downloadBackupURL(b.name)) + '">' + icon('Download', 14) + ' Descargar</a></td>' +
+      '</tr>'
+    )
+    .join('');
 }
 
 describe('crud_mejora (lógica pura)', () => {
@@ -420,5 +463,47 @@ describe('crud_mejora · OCR planilla', () => {
       expect(values.rj_nombre).toBe('JOSE');
       expect(values.rj_nro_doc).toBe('99123456');
     });
+  });
+});
+
+describe('crud_mejora · Backups', () => {
+  test('backupSize formatea bytes legibles', () => {
+    expect(backupSize(0)).toBe('0 B');
+    expect(backupSize(512)).toBe('512 B');
+    expect(backupSize(2048)).toBe('2.0 KB');
+    expect(backupSize(1536 * 1024)).toBe('1.5 MB');
+    expect(backupSize(2 * 1024 * 1024 * 1024)).toBe('2.0 GB');
+    expect(backupSize(-5)).toBe('—');
+    expect(backupSize(undefined)).toBe('0 B');
+  });
+
+  test('isMonthlyBackup detecta snapshots del primer día del mes', () => {
+    expect(isMonthlyBackup('mozart_2026-09-01.db')).toBe(true);
+    expect(isMonthlyBackup('mozart_2026-09-15.db')).toBe(false);
+    expect(isMonthlyBackup('otro_archivo.db')).toBe(false);
+    expect(isMonthlyBackup(null)).toBe(false);
+  });
+
+  test('downloadBackupURL arma enlace con encoderURIComponent', () => {
+    expect(downloadBackupURL('mozart_2026-09-15.db')).toBe('api.php?action=backup_download&file=mozart_2026-09-15.db');
+    expect(downloadBackupURL('mo zart.db')).toContain(encodeURIComponent('mo zart.db'));
+  });
+
+  test('backupsTableHTML lista snapshots y badge mensual', () => {
+    const html = backupsTableHTML([
+      { name: 'mozart_2026-09-01.db', size: 204800, modtime: '2026-09-01 00:00', mensual: true },
+      { name: 'mozart_2026-09-15.db', size: 332800, modtime: '2026-09-15 10:32', mensual: false },
+    ]);
+    expect(html).toContain('mozart_2026-09-01.db');
+    expect(html).toContain('200 KB');
+    expect(html).toContain('325 KB');
+    expect(html).toContain('>mensual<');
+    expect(html).toContain('backup_download&amp;file=mozart_2026-09-15.db');
+    expect(html).toContain('data-icon="Download"');
+  });
+
+  test('backupsTableHTML muestra vacío sin snapshots', () => {
+    const html = backupsTableHTML([]);
+    expect(html).toContain('Sin backups todavía');
   });
 });

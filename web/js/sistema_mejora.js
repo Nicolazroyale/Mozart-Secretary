@@ -417,6 +417,7 @@ export function buildShellHTML(opts, section, counts) {
     '<div class="breadcrumbs"><span>Establecimiento</span>' + icon('ChevronRight', 15) + '<strong data-breadcrumb>' + esc(breadcrumb) + '</strong></div>' +
     '<div class="topbar-actions">' +
     '<div class="top-search">' + icon('Search', 17) + '<input id="global-search" placeholder="Buscar en el sistema" aria-label="Buscar en el sistema" /></div>' +
+    (rol === 'admin' ? '<button class="icon-button" type="button" data-crud="backups" title="Backups de la base" aria-label="Backups de la base">' + icon('DatabaseBackup', 19) + '</button>' : '') +
     '<button class="icon-button notification" aria-label="Notificaciones" type="button">' + icon('Bell', 19) + '<i></i></button>' +
     '<a class="icon-button" href="../logout.php" aria-label="Salir de la sesión" title="Salir">' + icon('LogOut', 19) + '</a>' +
     '<div class="top-avatar">' + esc(iniciales) + '</div>' +

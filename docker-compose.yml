@@ -21,8 +21,8 @@ services:
       - AUTH_SECRET=${AUTH_SECRET:-}
       - DB_KEY=${DB_KEY:-}
       - BACKUP_DIR=${BACKUP_DIR:-/data/backups}
-      - BACKUP_DAY=${BACKUP_DAY:-0}
-      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-90}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
+      - BACKUP_KEEP_MONTHS=${BACKUP_KEEP_MONTHS:-12}
     volumes:
       - ./data:/data
     restart: unless-stopped
