@@ -340,8 +340,8 @@ button {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  max-width: 1440px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
   padding: 40px 42px 55px;
 }
 
@@ -420,7 +420,7 @@ button {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 17px;
   margin-top: 35px;
 }
@@ -561,7 +561,7 @@ button {
 
 .quick-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
   gap: 15px;
   margin-top: 17px;
 }
@@ -613,7 +613,7 @@ button {
 
 .dashboard-columns {
   display: grid;
-  grid-template-columns: 1.18fr .82fr;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 17px;
   margin-top: 29px;
 }
@@ -909,7 +909,7 @@ td {
 
 .teacher-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
   gap: 16px;
 }
 
@@ -988,7 +988,7 @@ td {
 
 .course-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
   gap: 16px;
 }
 
@@ -1234,22 +1234,6 @@ td {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@media (max-width: 1050px) {
-  .stats-grid,
-  .quick-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .dashboard-columns {
-    grid-template-columns: 1fr;
-  }
-
-  .teacher-grid,
-  .course-grid {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 

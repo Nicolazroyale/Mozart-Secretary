@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interfaz · Gestión Escolar</title>
     <script>try { if (localStorage.getItem('mozart-theme') === 'dark') document.documentElement.classList.add('dark'); } catch (e) {}</script>
-    <link rel="stylesheet" href="../css/app.css?v=10">
+    <link rel="stylesheet" href="../css/app.css?v=11">
     <link rel="icon" href="../imagenes/logo.png?v=1" type="image/png">
 </head>
 <body>
     <div id="app" data-nombre="{{.Nombre}}" data-rol="{{.Rol}}"></div>
     <script type="module">
-        import { initInterfaz } from '../js/interfaz.js?v=11';
+        import { initInterfaz } from '../js/interfaz.js?v=15';
         const app = document.getElementById('app');
         if (app) {
             initInterfaz(app, {

@@ -10,8 +10,8 @@
  *   initMain(document.getElementById('app'), opts);
  */
 
-import { icon, esc } from './interfaz.js?v=11';
-import { createCrud } from './crud.js?v=11';
+import { icon, esc, apiGet } from './interfaz.js?v=15';
+import { createCrud } from './crud.js?v=15';
 import { hasPerm, PERM, SECTION_READ, SECTION_WRITE } from './permissions.js?v=8';
 
 // ---------------------------------------------------------------------------
@@ -365,7 +365,7 @@ export function searchRowsHTML(rows) {
 // ---------------------------------------------------------------------------
 
 async function apiRows(url) {
-  const res = await fetch(url);
+  const res = await apiGet(url);
   if (!res.ok) throw new Error('Error HTTP ' + res.status);
   const d = await res.json();
   if (Array.isArray(d)) return d;
@@ -467,10 +467,10 @@ export function buildShellHTML(opts, section, counts) {
     '<button class="mobile-menu" aria-label="Abrir menú" type="button">' + icon('Menu', 22) + '</button>' +
     '<div class="breadcrumbs"><span>Establecimiento</span>' + icon('ChevronRight', 15) + '<strong data-breadcrumb>' + esc(breadcrumb) + '</strong></div>' +
     '<div class="topbar-actions">' +
-    '<div class="top-search">' + icon('Search', 17) + '<input id="global-search" placeholder="Buscar en el sistema" aria-label="Buscar en el sistema" autocomplete="off" /></div>' +
     '<button class="icon-button theme-toggle" aria-label="Cambiar tema claro u oscuro" title="Cambiar apariencia" type="button">' + icon(opts.theme === 'dark' ? 'Moon' : 'Sun', 19) + '</button>' +
     '<a class="icon-button" href="/logout" aria-label="Salir de la sesión" title="Salir">' + icon('LogOut', 19) + '</a>' +
     '<div class="top-avatar">' + esc(iniciales) + '</div>' +
+    '<div class="top-search">' + icon('Search', 17) + '<input id="global-search" placeholder="Buscar en el sistema" aria-label="Buscar en el sistema" autocomplete="off" /></div>' +
     '</div>' +
     '</header>' +
     '<div class="content-wrap" data-content></div>' +
@@ -503,7 +503,6 @@ function toolbarHTML(state, section) {
     : '';
   return (
     '<div class="view-toolbar">' +
-    '<div class="local-search">' + icon('Search', 17) + '<input id="local-search-' + esc(section) + '" placeholder="Buscar ' + esc(section.toLowerCase()) + '..." aria-label="Buscar ' + esc(section.toLowerCase()) + '" autocomplete="off" /></div>' +
     exports +
     '</div>'
   );

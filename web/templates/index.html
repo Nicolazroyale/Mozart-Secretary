@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{.CSRF}}">
     <title>Sistema · Gestión Escolar</title>
     <script>try { if (localStorage.getItem('mozart-theme') === 'dark') document.documentElement.classList.add('dark'); } catch (e) {}</script>
-    <link rel="stylesheet" href="/css/app.css?v=10">
+    <link rel="stylesheet" href="/css/app.css?v=11">
     <link rel="stylesheet" href="/css/crud.css?v=10">
     <link rel="icon" href="/imagenes/logo.png?v=1" type="image/png">
 </head>
@@ -19,7 +19,7 @@
          data-permisos="{{.Permisos}}"
          data-ultimo-backup="{{.UltimoBackup}}"></div>
     <script type="module">
-        import { initMain } from '/js/main.js?v=11';
+        import { initMain } from '/js/main.js?v=15';
         const app = document.getElementById('app');
         if (app) {
             initMain(app, {

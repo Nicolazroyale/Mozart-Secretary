@@ -4,6 +4,8 @@ import (
 	"crypto/subtle"
 	"net/http"
 	"strconv"
+
+	"mozart/auth"
 )
 
 func (s *Server) handleApi(w http.ResponseWriter, r *http.Request) {
@@ -18,6 +20,12 @@ func (s *Server) handleApi(w http.ResponseWriter, r *http.Request) {
 	if sess == nil {
 		jsonError(w, http.StatusUnauthorized, "No autorizado o sesión expirada.")
 		return
+	}
+
+	// Sesión deslizante: mientras la app haga llamadas al API se renueva la
+	// vigencia, para que una sesión activa no expire a mitad de uso.
+	if s.cfg.AutoLogin == "" {
+		auth.RefreshSession(w, sess, s.secret)
 	}
 
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {

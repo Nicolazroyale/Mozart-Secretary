@@ -9,7 +9,7 @@
  * atados a un state del sistema.
  */
 
-import { icon, esc } from './interfaz.js?v=11';
+import { icon, esc, apiGet } from './interfaz.js?v=15';
 import { hasPerm, PERM, PERM_GROUPS } from './permissions.js?v=8';
 
 function isSet(x) {
@@ -355,7 +355,7 @@ export function assignRowsData(formEl) {
 // ---------------------------------------------------------------------------
 
 async function apiWrite(state, path, method, body) {
-  const res = await fetch(path, {
+  const res = await apiGet(path, {
     method: method,
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': state.csrf || '' },
     body: JSON.stringify(body),
@@ -367,19 +367,19 @@ async function apiWrite(state, path, method, body) {
 
 async function selCursos(state) {
   if (!state.crudSel) state.crudSel = {};
-  if (!state.crudSel.cursos) state.crudSel.cursos = fetch('api.php?table=lista_cursos&limit=100').then((r) => r.json());
+  if (!state.crudSel.cursos) state.crudSel.cursos = apiGet('api.php?table=lista_cursos&limit=100').then((r) => r.json());
   return state.crudSel.cursos;
 }
 
 async function selDocentes(state) {
   if (!state.crudSel) state.crudSel = {};
-  if (!state.crudSel.docentes) state.crudSel.docentes = fetch('api.php?table=docentes&limit=100').then((r) => r.json());
+  if (!state.crudSel.docentes) state.crudSel.docentes = apiGet('api.php?table=docentes&limit=100').then((r) => r.json());
   return state.crudSel.docentes;
 }
 
 async function selMaterias(state) {
   if (!state.crudSel) state.crudSel = {};
-  if (!state.crudSel.materias) state.crudSel.materias = fetch('api.php?table=materias&limit=100').then((r) => r.json());
+  if (!state.crudSel.materias) state.crudSel.materias = apiGet('api.php?table=materias&limit=100').then((r) => r.json());
   return state.crudSel.materias;
 }
 
@@ -457,7 +457,7 @@ export function mergePrefill(dbRow, planillaFields) {
 export async function findAlumnoMatch(state, dni) {
   const nd = normalizeDNI(dni);
   if (!nd || nd.length < 7) return null;
-  const res = await fetch('api.php?table=search&search=' + encodeURIComponent(nd));
+  const res = await apiGet('api.php?table=search&search=' + encodeURIComponent(nd));
   const rows = await res.json().catch(() => []);
   const list = Array.isArray(rows) ? rows : (rows && rows.data) || [];
   return list.find((r) => String(r.rol || '').toLowerCase() === 'alumno' && normalizeDNI(r.dni) === nd) || null;
@@ -466,7 +466,7 @@ export async function findAlumnoMatch(state, dni) {
 export async function runOcr(state, files) {
   const fd = new FormData();
   Array.from(files).forEach((f) => fd.append('planilla', f));
-  const res = await fetch('api.php?action=ocr', {
+  const res = await apiGet('api.php?action=ocr', {
     method: 'POST',
     headers: { 'X-CSRF-Token': state.csrf || '' },
     body: fd,
@@ -752,13 +752,13 @@ export function createCrud(state) {
     let asignaciones = [];
     let body = '';
     if (mode === 'edit') {
-      if (tipo === 'estudiantes') data = await fetch('api.php?table=estudiantes&id=' + encodeURIComponent(id)).then((r) => r.json());
-      else if (tipo !== 'usuarios') data = await fetch('api.php?table=' + encodeURIComponent(tipo) + '&id=' + encodeURIComponent(id)).then((r) => r.json());
+      if (tipo === 'estudiantes') data = await apiGet('api.php?table=estudiantes&id=' + encodeURIComponent(id)).then((r) => r.json());
+      else if (tipo !== 'usuarios') data = await apiGet('api.php?table=' + encodeURIComponent(tipo) + '&id=' + encodeURIComponent(id)).then((r) => r.json());
     }
     const sels = await loadFormSel(tipo);
     if (tipo === 'docentes' && mode === 'edit') {
       try {
-        asignaciones = await fetch('api.php?table=docente_cursos&id=' + encodeURIComponent(id)).then((r) => r.json());
+        asignaciones = await apiGet('api.php?table=docente_cursos&id=' + encodeURIComponent(id)).then((r) => r.json());
       } catch (e) {
         asignaciones = [];
       }
@@ -914,7 +914,7 @@ export function createCrud(state) {
   async function auditorsBody(page, filtro) {
     const q = new URLSearchParams({ table: 'audit_log', page: String(page || 1), limit: '30' });
     if (filtro) q.set('filtro_tabla', filtro);
-    const res = await fetch('api.php?' + q.toString());
+    const res = await apiGet('api.php?' + q.toString());
     const d = await res.json();
     const rows = Array.isArray(d) ? d : (d && d.data) || [];
     const meta = d && d.data ? d : { total: rows.length, page: 1, pages: 1 };
@@ -1015,7 +1015,7 @@ export function createCrud(state) {
 
     async function load() {
       try {
-        const res = await fetch('api.php?action=backups');
+        const res = await apiGet('api.php?action=backups');
         const d = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(d.error || 'Error listando backups (' + res.status + ')');
         rows.innerHTML = backupsTableHTML(Array.isArray(d) ? d : []);
@@ -1047,7 +1047,7 @@ export function createCrud(state) {
         const fd = new FormData();
         fd.append('archivo', file);
         if (claveInput && claveInput.value.trim()) fd.append('clave', claveInput.value.trim());
-        const res = await fetch('api.php?action=backup_upload', {
+        const res = await apiGet('api.php?action=backup_upload', {
           method: 'POST',
           headers: { 'X-CSRF-Token': state.csrf || '' },
           body: fd,

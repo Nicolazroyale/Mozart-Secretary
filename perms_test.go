@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"mozart/auth"
 	"mozart/db"
@@ -414,4 +415,50 @@ func hasColumn(t *testing.T, conn *sql.DB, table, column string) bool {
 		}
 	}
 	return false
+}
+
+// TestAPISesionDeslizante verifica que cada llamada autenticada al API renueva
+// la vigencia de la sesión (sliding), y que una sesión vencida responde 401 sin
+// renovar la cookie.
+func TestAPISesionDeslizante(t *testing.T) {
+	s, conn := testPermsServer(t)
+	defer conn.Close()
+
+	admin := auth.NewSession(1, "admin", "Admin", "admin", "")
+	admin.Exp = time.Now().Add(20 * time.Second).Unix() // por vencer
+
+	rr := backupReq(t, admin, s, http.MethodGet, "/api.php?table=docentes", nil, "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET con sesión vigente: %d, esperaba 200", rr.Code)
+	}
+	cookies := rr.Result().Cookies()
+	var renewed *http.Cookie
+	for _, c := range cookies {
+		if c.Name == auth.CookieName && c.Value != "" {
+			renewed = c
+			break
+		}
+	}
+	if renewed == nil {
+		t.Fatal("la respuesta no renovó la cookie de sesión")
+	}
+	sess, err := auth.Decode(renewed.Value, s.secret)
+	if err != nil {
+		t.Fatalf("decode cookie renovada: %v", err)
+	}
+	if sess.Exp <= admin.Exp {
+		t.Fatalf("la sesión no se deslizó: antes %d, después %d", admin.Exp, sess.Exp)
+	}
+
+	vencida := auth.NewSession(1, "admin", "Admin", "admin", "")
+	vencida.Exp = time.Now().Add(-time.Minute).Unix()
+	rr = backupReq(t, vencida, s, http.MethodGet, "/api.php?table=docentes", nil, "")
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("sesión vencida: %d, esperaba 401", rr.Code)
+	}
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == auth.CookieName && c.Value != "" {
+			t.Fatal("una sesión vencida no debe renovar la cookie")
+		}
+	}
 }

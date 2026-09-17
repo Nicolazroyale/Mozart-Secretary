@@ -164,6 +164,15 @@ function icon(name, size, strokeWidth) {
 }
 export { ICON_SVG, icon };
 
+export async function apiGet(url, init) {
+  const res = await fetch(url, init);
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') window.location.href = '/login';
+    throw new Error('Sesión expirada. Iniciá sesión nuevamente.');
+  }
+  return res;
+}
+
 function getStoredTheme() {
   try {
     return localStorage.getItem('mozart-theme') === 'dark' ? 'dark' : 'light';
@@ -438,7 +447,6 @@ function sectionViewHTML(section) {
     '<button class="primary-button" type="button">' + icon('Plus', 18) + ' Agregar ' + esc(agregar) + '</button>' +
     '</div>' +
     '<div class="view-toolbar">' +
-    '<div class="local-search">' + icon('Search', 17) + '<input placeholder="Buscar ' + esc(section.toLowerCase()) + '..." aria-label="Buscar ' + esc(section.toLowerCase()) + '" autocomplete="off" /></div>' +
     '<button class="filter-button" type="button">' + icon('Filter', 16) + ' Filtros</button>' +
     '<button class="filter-button" type="button">' + icon('CalendarDays', 17) + ' Este ciclo lectivo</button>' +
     '<button class="filter-button" type="button">' + icon('Download', 16) + ' Exportar</button>' +
@@ -501,9 +509,9 @@ function buildShellHTML(opts, activeSection) {
     '<button class="mobile-menu" aria-label="Abrir menú" type="button">' + icon('Menu', 22) + '</button>' +
     '<div class="breadcrumbs"><span>Establecimiento</span>' + icon('ChevronRight', 15) + '<strong>' + esc(breadcrumb) + '</strong></div>' +
     '<div class="topbar-actions">' +
-    '<div class="top-search">' + icon('Search', 17) + '<input placeholder="Buscar en el sistema" aria-label="Buscar en el sistema" autocomplete="off" /></div>' +
     '<button class="icon-button theme-toggle" aria-label="Cambiar tema claro u oscuro" title="Cambiar apariencia" type="button">' + icon(opts.theme === 'dark' ? 'Moon' : 'Sun', 19) + '</button>' +
     '<div class="top-avatar">' + esc(iniciales) + '</div>' +
+    '<div class="top-search">' + icon('Search', 17) + '<input placeholder="Buscar en el sistema" aria-label="Buscar en el sistema" autocomplete="off" /></div>' +
     '</div>' +
     '</header>' +
     '<div class="content-wrap" data-content>' + buildContentHTML(activeSection) + '</div>' +
