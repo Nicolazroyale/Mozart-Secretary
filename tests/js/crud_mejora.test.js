@@ -125,6 +125,61 @@ function auditAccionClass(accion) {
   return 'status ';
 }
 
+function normalizeDNI(v) {
+  return String(v || '').replace(/[^0-9]/g, '').replace(/^0+/, '');
+}
+
+function ocrZoneHTML() {
+  return (
+    '<div class="ocr-zone" data-ocr-zone>' +
+    '<input type="file" class="ocr-input" data-ocr-file accept="application/pdf,image/png,image/jpeg,image/webp,image/bmp" multiple hidden>' +
+    '<div class="ocr-drop" data-ocr-drop>' +
+    '<p><strong>Escanear planilla</strong> o arrastrá la foto/PDF acá</p>' +
+    '</div>' +
+    '<div class="ocr-status" data-ocr-status hidden></div>' +
+    '</div>'
+  );
+}
+
+function reinscripcionBannerHTML() {
+  return '<div class="reinscripcion-banner"><strong>Reinscripción de alumno</strong><p>El DNI ya existe.</p></div>';
+}
+
+function mergePrefill(dbRow, planillaFields) {
+  const out = Object.assign({}, dbRow || {}, planillaFields || {});
+  delete out.id_curso;
+  return out;
+}
+
+function setSelectValue(sel, val) {
+  const s = String(val);
+  let matched = false;
+  Array.from(sel.options).forEach((o) => { if (o.value === s) { o.selected = true; matched = true; } });
+  if (!matched) {
+    const o = document.createElement('option');
+    o.value = s;
+    o.text = s;
+    o.selected = true;
+    sel.appendChild(o);
+  }
+}
+
+function applyOcrFields(fields, formEl) {
+  if (!fields || !formEl) return;
+  formEl.querySelectorAll('[name]').forEach((el) => {
+    const name = el.getAttribute('name');
+    if (!(name in fields) || name === 'id_curso') return;
+    const val = fields[name];
+    if (el.type === 'checkbox') {
+      el.checked = !!val && val !== '0';
+    } else if (el.tagName === 'SELECT') {
+      setSelectValue(el, val);
+    } else if (el.type !== 'file') {
+      el.value = String(val == null ? '' : val);
+    }
+  });
+}
+
 describe('crud_mejora (lógica pura)', () => {
   test('selectOptions marca la opción seleccionada', () => {
     expect(selectOptions(CARGOS, 'Suplente')).toContain('value="Suplente" selected');
@@ -174,5 +229,196 @@ describe('crud_mejora (lógica pura)', () => {
     expect(auditAccionText('DELETE')).toBe('Baja');
     expect(auditAccionClass('DELETE')).toBe('status status-pending');
     expect(auditAccionClass('INSERT')).toBe('status status-active');
+  });
+});
+
+describe('crud_mejora · OCR planilla', () => {
+  test('normalizeDNI limpia ceros y separadores', () => {
+    expect(normalizeDNI('38541236')).toBe('38541236');
+    expect(normalizeDNI('  38.541.236 ')).toBe('38541236');
+    expect(normalizeDNI('0038541236')).toBe('38541236');
+    expect(normalizeDNI('')).toBe('');
+    expect(normalizeDNI('AB-1234567-X')).toBe('1234567');
+  });
+
+  test('ocrZoneHTML expone la dropzone y el input de archivo', () => {
+    const html = ocrZoneHTML();
+    expect(html).toContain('data-ocr-zone');
+    expect(html).toContain('data-ocr-file');
+    expect(html).toContain('accept="application/pdf,image/png,image/jpeg,image/webp,image/bmp"');
+    expect(html).toMatch(/Escanear planilla/);
+  });
+
+  test('reinscripcionBannerHTML muestra el aviso de reinscripción', () => {
+    const html = reinscripcionBannerHTML();
+    expect(html).toContain('reinscripcion-banner');
+    expect(html).toContain('Reinscripción de alumno');
+  });
+
+  test('mergePrefill da prioridad a la planilla y omite id_curso', () => {
+    const merged = mergePrefill(
+      { apellido: 'PEREZ', nombre: 'MARÍA', dni: '38541236', id_curso: 3, telefono_celular: '011155566' },
+      { nombre: 'MARÍA JOSÉ', dni: '38541236', id_curso: 9, lugar_nacimiento: 'Lomas de Zamora' }
+    );
+    expect(merged.nombre).toBe('MARÍA JOSÉ');
+    expect(merged.apellido).toBe('PEREZ');
+    expect(merged.lugar_nacimiento).toBe('Lomas de Zamora');
+    expect(merged).not.toHaveProperty('id_curso');
+  });
+
+  test('applyOcrFields rellena inputs/selects y salta id_curso', () => {
+    const form = document.createElement('form');
+    form.innerHTML =
+      '<input name="apellido" value="">' +
+      '<input name="nombre" value="">' +
+      '<select name="tipo_dni"><option>DNI Argentino</option></select>' +
+      '<select name="id_curso"><option value="">—</option></select>' +
+      '<input type="checkbox" name="resp1_convive">';
+
+    applyOcrFields(
+      {
+        apellido: 'PEREZ',
+        nombre: 'MARÍA JOSÉ',
+        tipo_dni: 'DNI Argentino',
+        resp1_convive: 1,
+        id_curso: '7',
+      },
+      form
+    );
+
+    expect(form.querySelector('[name="apellido"]').value).toBe('PEREZ');
+    expect(form.querySelector('[name="nombre"]').value).toBe('MARÍA JOSÉ');
+    expect(form.querySelector('[name="tipo_dni"]').value).toBe('DNI Argentino');
+    expect(form.querySelector('[name="resp1_convive"]').checked).toBe(true);
+    expect(form.querySelector('[name="id_curso"]').value).toBe('');
+  });
+
+  test('applyOcrFields agrega opción si el valor no existe en el select', () => {
+    const form = document.createElement('form');
+    form.innerHTML = '<select name="tipo_dni"><option value="DNI Argentino">DNI Argentino</option></select>';
+    applyOcrFields({ tipo_dni: 'Documento Extranjero' }, form);
+    const sel = form.querySelector('[name="tipo_dni"]');
+    expect(sel.value).toBe('Documento Extranjero');
+  });
+
+  describe('ocrFieldsHTML (revisión de campos detectados)', () => {
+    const OCR_GROUPS = [
+      { prefix: '', label: 'Datos del estudiante' },
+      { prefix: 'resp1_', label: 'Responsable 1' },
+      { prefix: 'resp2_', label: 'Responsable 2' },
+      { prefix: 'salud_', label: 'Salud' },
+      { prefix: 'rj_', label: 'Restricciones judiciales' },
+    ];
+    const OCR_LABELS = {
+      apellido: 'Apellido/s', nombre: 'Nombre/s', dni: 'DNI',
+      salud_obra_social_nombre: 'Obra social', rj_nombre: 'Nombre',
+    };
+    const OCR_IGNORE = ['id_curso', 'fecha_ingreso'];
+
+    function icon(name) {
+      return '<svg data-icon="' + name + '"></svg>';
+    }
+
+    function ocrFieldsHTML(fields, base) {
+      if (!fields) return '';
+      const entries = Object.entries(fields).filter(([k]) => !OCR_IGNORE.includes(k));
+      const groups = OCR_GROUPS
+        .map((g) => ({
+          ...g,
+          items: entries.filter(([k]) => (g.prefix ? k.startsWith(g.prefix) : !OCR_GROUPS.some((o) => o.prefix && k.startsWith(o.prefix)))),
+        }))
+        .filter((g) => g.items.length)
+        .map((g) => {
+          const rows = g.items
+            .map(([k, v]) => {
+              const val = v == null ? '' : String(v);
+              const dbv = base && base[k] != null ? String(base[k]) : '';
+              let badge = '';
+              if (base) {
+                if (val === '') badge = 'ocr-badge-del';
+                else if (dbv === '') badge = 'ocr-badge-new';
+                else if (val !== dbv) badge = 'ocr-badge-up';
+              }
+              return (
+                '<label class="ocr-frow' + (badge ? ' ocr-frow-alert' : '') + '">' +
+                '<span class="ocr-flabel">' +
+                esc(OCR_LABELS[k] || k.replace(/^[^_]+_/, '').replace(/_/g, ' ')) +
+                (badge ? '<span class="ocr-badge ' + badge + '">' + (badge === 'ocr-badge-del' ? 'vacío' : badge === 'ocr-badge-new' ? 'nuevo' : 'sobrescribe') + '</span>' : '') +
+                '</span>' +
+                '<input class="crud-input" data-ocr-field name="' + esc(k) + '" value="' + esc(val) + '">' +
+                '</label>'
+              );
+            })
+            .join('');
+          return '<fieldset class="ocr-fgroup"><legend>' + esc(g.label) + '</legend>' + rows + '</fieldset>';
+        });
+      if (!groups.length) return '';
+      return (
+        '<div class="ocr-fields" data-ocr-fields>' +
+        '<div class="ocr-fhead"></div>' +
+        groups.join('') +
+        '<button class="crud-btn crud-btn-primary" type="button" data-ocr-apply>' + icon('Check') + ' Aplicar al formulario</button>' +
+        '</div>'
+      );
+    }
+
+    function collectOcrValues(zone) {
+      const values = {};
+      const els = zone ? zone.querySelectorAll('[data-ocr-field]') : [];
+      Array.from(els).forEach((el) => { values[el.getAttribute('name')] = el.value; });
+      return values;
+    }
+
+    test('agrupa por sección, etiqueta y omite id_curso/fecha_ingreso', () => {
+      const html = ocrFieldsHTML(
+        {
+          apellido: 'PEREZ', nombre: 'MARÍA', dni: '38541236',
+          resp1_apellido: 'GONZALEZ', resp1_nombre: 'ANA',
+          rj_nombre: 'JUAN PEREZ', rj_nro_doc: '99123456',
+          id_curso: 5, fecha_ingreso: '2020-03-01',
+        },
+        null
+      );
+      expect(html).toContain('data-ocr-fields');
+      expect(html).toContain('Datos del estudiante');
+      expect(html).toContain('Responsable 1');
+      expect(html).toContain('Restricciones judiciales');
+      expect(html).toContain('Apellido/s');
+      expect(html).toContain('name="rj_nro_doc"');
+      expect(html).not.toContain('id_curso');
+      expect(html).not.toContain('fecha_ingreso');
+      expect(html).toContain('data-ocr-apply');
+      expect(html).toContain('name="apellido" value="PEREZ"');
+    });
+
+    test('sin base no marca badges', () => {
+      const html = ocrFieldsHTML({ apellido: 'PEREZ' }, null);
+      expect(html).not.toContain('sobrescribe');
+      expect(html).not.toContain('ocr-badge');
+    });
+
+    test('con base marca nuevo/sobrescribe/vacío', () => {
+      const html = ocrFieldsHTML(
+        { apellido: 'PEREZ', resp1_nombre: 'ANA', salud_obra_social_nombre: '' },
+        { apellido: 'PEREZ GARCIA', nombre: 'MARIA' }
+      );
+      expect(html).toContain('sobrescribe');
+      expect(html).toContain('sobrescribe</span>');
+      expect(html).toContain('vacío');
+    });
+
+    test('collectOcrValues lee los inputs editados', () => {
+      const doc = document.createElement('div');
+      doc.innerHTML =
+        '<div data-ocr-zone>' +
+        ocrFieldsHTML({ apellido: 'PEREZ', rj_nombre: 'JUAN', rj_nro_doc: '99123456' }, null) +
+        '</div>';
+      const zone = doc.querySelector('[data-ocr-zone]');
+      zone.querySelector('[name="rj_nombre"]').value = 'JOSE';
+      const values = collectOcrValues(zone);
+      expect(values.apellido).toBe('PEREZ');
+      expect(values.rj_nombre).toBe('JOSE');
+      expect(values.rj_nro_doc).toBe('99123456');
+    });
   });
 });

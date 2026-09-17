@@ -33,6 +33,12 @@ func (s *Server) handleApi(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// OCR de planillas: multipart (PDF o fotos). Reusa el gate de admin+CSRF.
+	if r.Method == http.MethodPost && r.URL.Query().Get("action") == "ocr" {
+		s.handleOcr(w, r)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
 		s.handleApiGet(w, r)

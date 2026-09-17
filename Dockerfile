@@ -10,10 +10,12 @@ COPY . .
 ENV CGO_ENABLED=1
 RUN go build -trimpath -ldflags="-s -w" -o /out/mozart .
 
-# ---- Imagen final (glibc + libcrypto para SQLCipher) ----
+# ---- Imagen final (glibc + libcrypto para SQLCipher + OCR) ----
 FROM debian:bookworm-slim
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates libssl3 \
+       tesseract-ocr tesseract-ocr-spa poppler-utils \
+    && tesseract --list-langs 2>/dev/null | grep -q spa \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /srv
 COPY --from=build /out/mozart /usr/local/bin/mozart

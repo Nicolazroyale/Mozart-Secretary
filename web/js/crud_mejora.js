@@ -374,6 +374,189 @@ async function selContentHTML(state) {
 }
 
 // ---------------------------------------------------------------------------
+// OCR Planilla — helpers puros (exportados para tests)
+// ---------------------------------------------------------------------------
+
+export function normalizeDNI(v) {
+  return String(v || '').replace(/[^0-9]/g, '').replace(/^0+/, '');
+}
+
+export function ocrZoneHTML() {
+  return (
+    '<div class="ocr-zone" data-ocr-zone>' +
+    '<input type="file" class="ocr-input" data-ocr-file accept="application/pdf,image/png,image/jpeg,image/webp,image/bmp" multiple hidden>' +
+    '<div class="ocr-drop" data-ocr-drop>' +
+    icon('ScanText', 20) +
+    '<p><strong>Escanear planilla</strong> o arrastrá la foto/PDF acá</p>' +
+    '<span>Se autocompleta el formulario con el OCR offline</span>' +
+    '</div>' +
+    '<div class="ocr-status" data-ocr-status hidden></div>' +
+    '</div>'
+  );
+}
+
+export function reinscripcionBannerHTML() {
+  return (
+    '<div class="reinscripcion-banner">' +
+    icon('BadgeCheck', 18) +
+    '<div><strong>Reinscripción de alumno</strong><p>El DNI ya existe. Se editará el registro actualizado con los datos de la planilla.</p></div>' +
+    '</div>'
+  );
+}
+
+export function applyOcrFields(fields, formEl) {
+  if (!fields || !formEl) return;
+  formEl.querySelectorAll('[name]').forEach((el) => {
+    const name = el.getAttribute('name');
+    if (!(name in fields) || name === 'id_curso') return;
+    const val = fields[name];
+    if (el.type === 'checkbox') {
+      el.checked = !!val && val !== '0';
+    } else if (el.tagName === 'SELECT') {
+      setSelectValue(el, val);
+    } else if (el.type !== 'file') {
+      el.value = String(val === undefined || val === null ? '' : val);
+    }
+  });
+}
+
+function setSelectValue(sel, val) {
+  const s = String(val);
+  let matched = false;
+  Array.from(sel.options).forEach((o) => { if (o.value === s) { o.selected = true; matched = true; } });
+  if (!matched) {
+    const o = document.createElement('option');
+    o.value = s;
+    o.text = s;
+    o.selected = true;
+    sel.appendChild(o);
+  }
+}
+
+export function mergePrefill(dbRow, planillaFields) {
+  const out = Object.assign({}, dbRow || {}, planillaFields || {});
+  delete out.id_curso;
+  return out;
+}
+
+export async function findAlumnoMatch(state, dni) {
+  const nd = normalizeDNI(dni);
+  if (!nd || nd.length < 7) return null;
+  const res = await fetch('api.php?table=search&search=' + encodeURIComponent(nd));
+  const rows = await res.json().catch(() => []);
+  const list = Array.isArray(rows) ? rows : (rows && rows.data) || [];
+  return list.find((r) => String(r.rol || '').toLowerCase() === 'alumno' && normalizeDNI(r.dni) === nd) || null;
+}
+
+export async function runOcr(state, files) {
+  const fd = new FormData();
+  Array.from(files).forEach((f) => fd.append('planilla', f));
+  const res = await fetch('api.php?action=ocr', {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': state.csrf || '' },
+    body: fd,
+  });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok || d.error) throw new Error(d.error || 'Error de OCR (' + res.status + ')');
+  return d;
+}
+
+function showOcrPreview(state, zone, d) {
+  let prev = zone.querySelector('.ocr-preview');
+  if (prev) prev.remove();
+  prev = document.createElement('div');
+  prev.className = 'ocr-preview';
+  prev.innerHTML = '<details><summary>' + icon('ScanText', 15) + ' Texto OCR detectado</summary><pre>' + esc((d.text || []).join('\n')) + '</pre></details>';
+  zone.appendChild(prev);
+}
+
+// ---------------------------------------------------------------------------
+// OCR — revisión de campos detectados
+// ---------------------------------------------------------------------------
+
+const OCR_GROUPS = [
+  { prefix: '', label: 'Datos del estudiante' },
+  { prefix: 'resp1_', label: 'Responsable 1' },
+  { prefix: 'resp2_', label: 'Responsable 2' },
+  { prefix: 'salud_', label: 'Salud' },
+  { prefix: 'rj_', label: 'Restricciones judiciales' },
+];
+
+const OCR_LABELS = {
+  apellido: 'Apellido/s', nombre: 'Nombre/s', dni: 'DNI', cuil: 'CUIL',
+  fecha_nacimiento: 'Fecha de nacimiento', lugar_nacimiento: 'Lugar de nacimiento',
+  nacionalidad: 'Nacionalidad', tipo_dni: 'Tipo de DNI',
+  calle: 'Calle', numero: 'Número', piso: 'Piso', depto: 'Depto',
+  entre_calles: 'Entre calles', provincia: 'Provincia', distrito: 'Distrito', localidad: 'Localidad',
+  telefono_fijo: 'Teléfono fijo', telefono_celular: 'Teléfono celular',
+  email: 'Correo electrónico', correo: 'Correo electrónico',
+  salud_obra_social_nombre: 'Obra social', salud_obra_social_nro: 'N° afiliado',
+  rj_nombre: 'Nombre', rj_tipo_doc: 'Tipo de doc', rj_nro_doc: 'N° de doc', rj_descripcion: 'Restricción',
+};
+
+// Campos que jamás deben autocompletarse desde el OCR.
+const OCR_IGNORE = new Set(['id_curso', 'fecha_ingreso']);
+
+function ocrFieldLabel(name) {
+  if (OCR_LABELS[name]) return OCR_LABELS[name];
+  return name.replace(/^[^_]+_/, '').replace(/_/g, ' ');
+}
+
+// ocrFieldsHTML arma las tarjetas editables con los campos detectados.
+// Si `base` es un registro existente (reinscripción), marca con badge si el
+// valor detectado es nuevo, sobrescribe o dejaría el campo vacío.
+export function ocrFieldsHTML(fields, base) {
+  if (!fields) return '';
+  const entries = Object.entries(fields).filter(([k]) => !OCR_IGNORE.has(k));
+  const groups = OCR_GROUPS
+    .map((g) => ({
+      ...g,
+      items: entries.filter(([k]) => (g.prefix ? k.startsWith(g.prefix) : !OCR_GROUPS.some((o) => o.prefix && k.startsWith(o.prefix)))).sort((a, b) => a[0].localeCompare(b[0])),
+    }))
+    .filter((g) => g.items.length)
+    .map((g) => {
+      const rows = g.items.map(([k, v]) => {
+        const val = v === null || v === undefined ? '' : String(v);
+        const dbv = base && base[k] !== null && base[k] !== undefined ? String(base[k]) : '';
+        let badge = '';
+        if (base) {
+          if (val === '') badge = '<span class="ocr-badge ocr-badge-del" title="Estaría vacío al guardar">vacío</span>';
+          else if (dbv === '') badge = '<span class="ocr-badge ocr-badge-new" title="No estaba cargado">nuevo</span>';
+          else if (val !== dbv) badge = '<span class="ocr-badge ocr-badge-up" title="Cambiará el valor actual">sobrescribe</span>';
+        }
+        return '<label class="ocr-frow' + (badge ? ' ocr-frow-alert' : '') + '">' +
+          '<span class="ocr-flabel">' + esc(ocrFieldLabel(k)) + badge + '</span>' +
+          '<input class="crud-input" data-ocr-field name="' + esc(k) + '" value="' + esc(val) + '">' +
+          '</label>';
+      }).join('');
+      return '<fieldset class="ocr-fgroup"><legend>' + esc(g.label) + '</legend>' + rows + '</fieldset>';
+    });
+  if (!groups.length) return '';
+  return '<div class="ocr-fields" data-ocr-fields>' +
+    '<div class="ocr-fhead"><strong>Campos detectados por OCR</strong><span>Revisá y corregí antes de aplicarlos al formulario</span></div>' +
+    groups.join('') +
+    '<button class="crud-btn crud-btn-primary" type="button" data-ocr-apply>' + icon('Check', 15) + ' Aplicar al formulario</button>' +
+    '</div>';
+}
+
+export function collectOcrValues(zone) {
+  const values = {};
+  const els = zone ? zone.querySelectorAll('[data-ocr-field]') : [];
+  Array.from(els).forEach((el) => { values[el.getAttribute('name')] = el.value; });
+  return values;
+}
+
+function renderOcrFields(zone, fields, base) {
+  if (!fields || !Object.keys(fields).some((k) => !OCR_IGNORE.has(k))) return;
+  const old = zone.querySelector('[data-ocr-fields]');
+  if (old) old.remove();
+  const holder = document.createElement('div');
+  holder.innerHTML = ocrFieldsHTML(fields, base);
+  const panel = holder.firstElementChild;
+  if (panel) zone.appendChild(panel);
+}
+
+// ---------------------------------------------------------------------------
 // Modal + toast
 // ---------------------------------------------------------------------------
 
@@ -483,7 +666,7 @@ export function createCrud(state) {
     );
   }
 
-  async function formModal(tipo, mode, id) {
+  async function formModal(tipo, mode, id, opts) {
     const meta = TIPOS[tipo];
     let data = {};
     let asignaciones = [];
@@ -500,14 +683,30 @@ export function createCrud(state) {
         asignaciones = [];
       }
     }
+    if (opts && opts.prefill && tipo === 'estudiantes') {
+      data = Object.assign({}, data, opts.prefill);
+      delete data.id_curso;
+    }
     body = buildFormHTML(tipo, data, sels, { edit: mode === 'edit', asignaciones: asignaciones });
 
+    const ocr = tipo === 'estudiantes';
+    const formBody =
+      (opts && opts.banner ? opts.banner : '') +
+      (ocr ? ocrZoneHTML() : '') +
+      '<form data-crud-form data-tipo="' + esc(tipo) + '" data-id="' + esc(id || '') + '">' + body + '</form>';
     const html = modalHTML(
       headHTML(meta.icon, meta.color, mode === 'edit' ? 'Editar ' + meta.singular : meta.newTitle, meta.title + (mode === 'edit' ? ' · ID ' + id : '')),
-      '<form data-crud-form data-tipo="' + esc(tipo) + '" data-id="' + esc(id || '') + '">' + body + '</form>',
+      formBody,
       actionsFooter(tipo, mode, id, mode === 'edit' ? '<button class="crud-btn crud-btn-danger" type="button" data-crud="del" data-tipo="' + esc(tipo) + '" data-id="' + esc(id) + '">' + icon('Trash2', 15) + ' Eliminar</button>' : '')
     );
     openCrudModal(state, html);
+    if (ocr) wireOcr(state);
+    if (ocr && opts && opts.ocrFields) {
+      const zoneEl = state.root.querySelector('[data-ocr-zone]');
+      if (zoneEl && state.user && (state.user.rol || state.user.role) === 'admin') {
+        renderOcrFields(zoneEl, opts.ocrFields, opts.ocrBase || null);
+      }
+    }
   }
 
   async function remove(tipo, id, label) {
@@ -613,6 +812,71 @@ export function createCrud(state) {
       '<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Tabla</th><th>Acción</th><th>Registro</th><th>IP</th></tr></thead><tbody>' + auditoriaRowsHTML(rows) + '</tbody></table></div>' +
       pag +
       '</div>';
+  }
+
+  function wireOcr(state) {
+    const wrap = state.root.querySelector('.crud-root-append');
+    const zone = wrap && wrap.querySelector('[data-ocr-zone]');
+    if (!zone) return;
+    const form = wrap.querySelector('[data-crud-form]');
+    const input = zone.querySelector('[data-ocr-file]');
+    const drop = zone.querySelector('[data-ocr-drop]');
+    const status = zone.querySelector('[data-ocr-status]');
+    if (!input || !drop || !status || !form) return;
+
+    const setStatus = (msg, ok) => {
+      status.hidden = false;
+      status.textContent = msg;
+      status.className = 'ocr-status' + (ok ? ' ok' : ' err');
+    };
+
+    drop.addEventListener('click', () => input.click());
+    ['dragover', 'dragenter'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('drag'); }));
+    ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('drag'); }));
+    drop.addEventListener('drop', (e) => { if (e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+    input.addEventListener('change', () => { if (input.files && input.files.length) handleFiles(input.files); input.value = ''; });
+    zone.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-ocr-apply]');
+      if (btn) {
+        applyOcrFields(collectOcrValues(zone), form);
+        setStatus('Campos aplicados al formulario. Revisá y guardá.', true);
+      }
+    });
+
+    async function handleFiles(files) {
+      setStatus('Procesando planilla con OCR…', true);
+      try {
+        const d = await runOcr(state, files);
+        if (!d.ok) throw new Error(d.error || 'No se pudo leer la planilla');
+        applyOcrFields(d.fields || {}, form);
+        const isAdmin = state.user && (state.user.rol || state.user.role) === 'admin';
+        if (isAdmin) {
+          renderOcrFields(zone, d.fields || {}, null);
+          if (Array.isArray(d.text) && d.text.length) {
+            showOcrPreview(state, zone, d);
+          }
+        }
+        const dni = normalizeDNI((d.fields || {}).dni);
+        if (dni) {
+          const hit = await findAlumnoMatch(state, dni);
+          const currentId = form.getAttribute('data-id') || '';
+          if (hit && String(hit.id) !== String(currentId)) {
+            closeCrudModal(state);
+            await formModal('estudiantes', 'edit', hit.id, { banner: reinscripcionBannerHTML(), prefill: mergePrefill({}, d.fields || {}), ocrFields: d.fields, ocrBase: hit });
+            toast(state, 'Alumno existente: se abre en edición (reinscripción)', true);
+            return;
+          }
+          if (hit) {
+            setStatus('Este DNI corresponde al registro actual', true);
+            return;
+          }
+        }
+        toast(state, 'Campos autocompletados desde la planilla', true);
+      } catch (err) {
+        setStatus('OCR falló: ' + err.message, false);
+        toast(state, 'OCR falló: ' + err.message, false);
+      }
+    }
   }
 
   return {

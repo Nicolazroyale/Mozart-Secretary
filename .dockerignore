@@ -1,6 +1,7 @@
 node_modules
 tests
 data
+mozart
 .mozart.db
 *.log
 .git

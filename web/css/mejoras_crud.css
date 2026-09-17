@@ -419,3 +419,216 @@
   align-items: center;
   gap: 8px;
 }
+
+/* ------------------------------------------------------------------ */
+/* OCR Planilla (dropzone + preview)                                   */
+/* ------------------------------------------------------------------ */
+
+.reinscripcion-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 14px 22px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #e3f6ea;
+  border: 1px solid #bfe8cf;
+  color: #14673a;
+}
+
+.reinscripcion-banner svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #1e9150;
+}
+
+.reinscripcion-banner strong {
+  display: block;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+}
+
+.reinscripcion-banner p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: #2d7a4b;
+}
+
+.ocr-zone {
+  margin: 14px 22px 0;
+}
+
+.ocr-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 16px;
+  border: 1.5px dashed #9fb8d6;
+  border-radius: 14px;
+  background: #f7faff;
+  color: #5c7391;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.ocr-drop svg {
+  color: #3b82c4;
+}
+
+.ocr-drop p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.ocr-drop p strong {
+  color: #25415f;
+}
+
+.ocr-drop span {
+  font-size: 11.5px;
+  color: #8494aa;
+}
+
+.ocr-drop:hover,
+.ocr-drop.drag {
+  border-color: #3b82c4;
+  background: #edf5ff;
+}
+
+.ocr-status {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  background: #f0f4f9;
+  color: #41526a;
+}
+
+.ocr-status.ok {
+  background: #e3f6ea;
+  color: #1e9150;
+}
+
+.ocr-status.err {
+  background: #fdeaea;
+  color: #c0392b;
+}
+
+.ocr-preview {
+  margin-top: 10px;
+  border: 1px solid #dde5ef;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.ocr-preview summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #41526a;
+}
+
+.ocr-preview pre {
+  margin: 0;
+  padding: 10px 14px 14px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #5c7391;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-top: 1px solid #eef1f6;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.ocr-fields {
+  margin: 10px 0;
+  border: 1px solid #e3e9f2;
+  border-radius: 10px;
+  background: #fbfcfe;
+  overflow: hidden;
+}
+
+.ocr-fhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #f2f6fb;
+  border-bottom: 1px solid #e3e9f2;
+}
+
+.ocr-fhead strong {
+  font-size: 13px;
+  color: #1d2b3f;
+}
+
+.ocr-fhead span {
+  font-size: 11.5px;
+  color: #5c7391;
+}
+
+.ocr-fgroup {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid #eef1f6;
+  padding: 10px 14px 14px;
+}
+
+.ocr-fgroup legend {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #7c8ba0;
+  padding: 0 4px;
+}
+
+.ocr-frow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 0;
+}
+
+.ocr-frow-alert .crud-input {
+  border-color: #f2c14e;
+}
+
+.ocr-flabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #41526a;
+}
+
+.ocr-badge {
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 20px;
+  padding: 1px 8px;
+  color: #fff;
+  background: #d97706;
+  white-space: nowrap;
+}
+
+.ocr-badge-new {
+  background: #059669;
+}
+
+.ocr-badge-del {
+  background: #9aa6b5;
+}
+
+.ocr-fields .crud-btn {
+  margin: 0 14px 14px;
+}
