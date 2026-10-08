@@ -94,7 +94,7 @@ Cada cuenta tiene un rol (`admin` o `lectura`) y una lista individual de permiso
 
 Segmentos editables desde **Usuarios → Nuevo/Editar** (grilla según el rol; si el rol es `admin` la grilla se deshabilita):
 
-- **Datos · Lectura**: `ver_estudiantes`, `ver_docentes`, `ver_cursos`, `ver_materias`, `ver_nomina`, `exportar`.
+- **Datos · Lectura**: `ver_estudiantes`, `ver_docentes`, `ver_cursos` (incluye las nóminas por curso), `ver_materias`, `exportar`.
 - **Datos · Modificar**: `modificar_estudiantes` (incluye el OCR de planillas), `modificar_docentes` (incluye asignaciones docente-materia-curso), `modificar_cursos`, `modificar_materias`.
 - **Administración**: `ver_usuarios`, `gestion_usuarios` (implica `ver_usuarios`), `ver_auditoria`, `ver_backups`, `gestion_backups` (implica `ver_backups`).
 

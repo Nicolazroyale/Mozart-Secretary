@@ -518,10 +518,10 @@ button {
 
 .stat-lines {
   position: absolute;
-  right: -10px;
-  bottom: -20px;
-  width: 93px;
-  height: 63px;
+  right: -40px;
+  bottom: -18px;
+  width: 58px;
+  height: 38px;
   border-top: 2px solid #dcecff;
   border-radius: 50%;
   transform: rotate(-19deg);
@@ -801,6 +801,73 @@ button {
   font-size: 11px;
 }
 
+/* Toggle de vista (sección Cursos): botón de vista activa. */
+.filter-button.active {
+  border-color: #2a83e8;
+  color: #176ccc;
+  background: rgba(42, 131, 232, .1);
+  font-weight: 700;
+}
+
+/* Menús desplegables del toolbar de Cursos (filtrar / ordenar). */
+.filter-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.filter-menu .filter-button {
+  gap: 7px;
+}
+
+.filter-menu-panel {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  z-index: 40;
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid #e4e9f1;
+  border-radius: 11px;
+  background: white;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, .14);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.filter-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #4b5568;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.filter-menu-item:hover {
+  background: #f1f5fb;
+}
+
+.filter-menu-item.active {
+  color: #176ccc;
+  background: rgba(42, 131, 232, .1);
+  font-weight: 700;
+}
+
+.filter-menu-mark {
+  display: inline-block;
+  width: 13px;
+  flex: 0 0 13px;
+  font-size: 11px;
+  line-height: 1;
+}
+
 .data-panel {
   padding: 22px 0 0;
   overflow: hidden;
@@ -833,6 +900,26 @@ td {
   border-top: 1px solid #f0f2f6;
   color: #718097;
   font-size: 11px;
+}
+
+/* Fila de encabezado de grupo dentro de una tabla (Estudiantes agrupados). */
+tr.group-row th {
+  padding: 13px 23px;
+  color: #2b3f5e;
+  background: linear-gradient(90deg, #f8fbff, #f3f7fd);
+  border-top: 1px solid #e8edf4;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.group-row .group-count {
+  margin-left: 10px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(42, 131, 232, .12);
+  color: #2a83e8;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .table-person {
@@ -1566,6 +1653,17 @@ html.dark th {
   background: #131f38;
 }
 
+html.dark tr.group-row th {
+  color: #dfe7f3;
+  background: linear-gradient(90deg, #1a2a49, #16233c);
+  border-top-color: #24344f;
+}
+
+html.dark .group-row .group-count {
+  background: rgba(42, 131, 232, .22);
+  color: #a9d2ff;
+}
+
 html.dark td {
   border-top-color: #24344f;
   color: #a5b4cd;
@@ -1576,6 +1674,31 @@ html.dark .outline-button {
   border-color: #2a3b58;
   color: #7fb4f4;
   background: #131f38;
+}
+
+html.dark .filter-button.active {
+  border-color: #2a83e8;
+  color: #a9d2ff;
+  background: rgba(42, 131, 232, .22);
+}
+
+html.dark .filter-menu-panel {
+  border-color: #2a3b58;
+  background: #131f38;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .5);
+}
+
+html.dark .filter-menu-item {
+  color: #a5b4cd;
+}
+
+html.dark .filter-menu-item:hover {
+  background: #1b2a48;
+}
+
+html.dark .filter-menu-item.active {
+  color: #a9d2ff;
+  background: rgba(42, 131, 232, .22);
 }
 
 html.dark .circle-button {

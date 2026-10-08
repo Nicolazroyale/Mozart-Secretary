@@ -35,9 +35,8 @@ function permissionGroups() {
       items: [
         { v: 'ver_estudiantes', l: 'Ver estudiantes' },
         { v: 'ver_docentes', l: 'Ver docentes' },
-        { v: 'ver_cursos', l: 'Ver cursos' },
+        { v: 'ver_cursos', l: 'Ver cursos y nóminas por división' },
         { v: 'ver_materias', l: 'Ver materias' },
-        { v: 'ver_nomina', l: 'Ver listado por cursos (nóminas)' },
         { v: 'exportar', l: 'Exportar PDF/Excel' },
       ],
     },

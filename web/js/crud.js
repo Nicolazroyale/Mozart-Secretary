@@ -9,8 +9,8 @@
  * atados a un state del sistema.
  */
 
-import { icon, esc, apiGet } from './interfaz.js?v=15';
-import { hasPerm, PERM, PERM_GROUPS } from './permissions.js?v=8';
+import { icon, esc, apiGet } from './interfaz.js?v=20';
+import { hasPerm, PERM, PERM_GROUPS } from './permissions.js?v=9';
 
 function isSet(x) {
   return x !== undefined && x !== null;
@@ -168,7 +168,7 @@ function docenteGroups(edit) {
 }
 
 function cursoGroups() {
-  return [{ t: 'Datos del Curso', f: [{ n: 'anio', l: 'Año (1 a 7)', t: 'select', opts: [1, 2, 3, 4, 5, 6, 7], req: 1 }, { n: 'division', l: 'División', t: 'number', req: 1, hint: 'Solo el número, ej: 1' }, { n: 'turno', l: 'Turno', t: 'select', opts: TURNOS, req: 1 }, { n: 'ciclo', l: 'Ciclo', t: 'select', opts: CICLOS, req: 1 }, { n: 'jornada', l: 'Jornada', t: 'select', opts: JORNADAS, req: 1 }] }];
+  return [{ t: 'Datos del Curso', f: [{ n: 'anio', l: 'Año (1 a 7)', t: 'select', opts: [1, 2, 3, 4, 5, 6, 7], req: 1 }, { n: 'division', l: 'División', t: 'number', req: 1, hint: 'Solo el número, ej: 1' }, { n: 'turno', l: 'Turno', t: 'select', opts: TURNOS, req: 1 }, { n: 'ciclo', l: 'Ciclo', t: 'select', opts: CICLOS, req: 1 }, { n: 'jornada', l: 'Jornada', t: 'select', opts: JORNADAS, req: 1 }, { n: 'orientacion', l: 'Especialidad', t: 'text', hint: 'Ej: Técnico en Instrumentación' }] }];
 }
 
 function materiaGroups() {
@@ -825,7 +825,7 @@ export function createCrud(state) {
     try {
       await apiWrite(state, 'api.php?table=asignaciones&id=' + encodeURIComponent(id), 'DELETE', {});
       toast(state, 'Asignación eliminada', true);
-      state.crudRefresh('Listado por Cursos');
+      state.crudRefresh('Cursos');
     } catch (err) {
       toast(state, 'Error: ' + err.message, false);
     }
@@ -1202,7 +1202,7 @@ export function createCrud(state) {
           await apiWrite(state, 'api.php?table=asignaciones', 'POST', asignacionData(formEl, id));
           closeCrudModal(state);
           toast(state, 'Asignación guardada con éxito', true);
-          state.crudRefresh('Listado por Cursos');
+          state.crudRefresh('Cursos');
           return;
         } catch (err) {
           toast(state, 'Error: ' + err.message, false);

@@ -29,15 +29,9 @@ export const SECTIONS = [
   },
   {
     label: 'Cursos',
-    description: 'Organiza la oferta educativa',
+    description: 'Organiza la oferta y consultá nóminas por división',
     color: 'orange',
     icon: 'BookOpen',
-  },
-  {
-    label: 'Listado por Cursos',
-    description: 'Consulta grupos y asignaciones',
-    color: 'violet',
-    icon: 'ClipboardList',
   },
 ];
 
@@ -59,53 +53,211 @@ const TEACHERS = [
   { name: 'Patricia Núñez', initials: 'PN', subject: 'Geografía', classes: 3, status: 'Activo', tone: 'blue', email: 'pnunez@escuela.edu', phone: '+54 11 5512-7765' },
 ];
 
+// Cursos demo: cada entrada lleva turno y especialidad para que los menús
+// "Filtrar por" / "Ordenar" del mockup tengan datos reales que agrupar.
 const COURSES = [
-  { name: 'Matemática', level: '5° B', students: 28, teacher: 'Diego Pereyra', schedule: 'Lun · Mié · Vie', tone: 'orange', icon: '📐' },
-  { name: 'Lengua y Literatura', level: '3° A', students: 31, teacher: 'Laura Sánchez', schedule: 'Mar · Jue', tone: 'blue', icon: '📖' },
-  { name: 'Física', level: '5° A', students: 24, teacher: 'Marcos Fernández', schedule: 'Lun · Vie', tone: 'teal', icon: '🔬' },
-  { name: 'Historia', level: '2° B', students: 33, teacher: 'Carolina Ríos', schedule: 'Mié · Jue', tone: 'violet', icon: '🏛️' },
-  { name: 'Biología', level: '4° A', students: 27, teacher: 'Andrés Sosa', schedule: 'Mar · Vie', tone: 'teal', icon: '🧬' },
-  { name: 'Geografía', level: '1° C', students: 30, teacher: 'Patricia Núñez', schedule: 'Lun · Mié', tone: 'blue', icon: '🌍' },
+  { name: 'Matemática', level: '5° B', students: 28, teacher: 'Diego Pereyra', schedule: 'Lun · Mié · Vie', turno: 'Mañana', especialidad: 'Técnico en Informática', tone: 'orange', icon: '📐' },
+  { name: 'Lengua y Literatura', level: '3° A', students: 31, teacher: 'Laura Sánchez', schedule: 'Mar · Jue', turno: 'Mañana', especialidad: '', tone: 'blue', icon: '📖' },
+  { name: 'Física', level: '5° A', students: 24, teacher: 'Marcos Fernández', schedule: 'Lun · Vie', turno: 'Tarde', especialidad: 'Electrónica', tone: 'teal', icon: '🔬' },
+  { name: 'Historia', level: '2° B', students: 33, teacher: 'Carolina Ríos', schedule: 'Mié · Jue', turno: 'Mañana', especialidad: 'Electrónica', tone: 'violet', icon: '🏛️' },
+  { name: 'Biología', level: '4° A', students: 27, teacher: 'Andrés Sosa', schedule: 'Mar · Vie', turno: 'Tarde', especialidad: 'Técnico en Informática', tone: 'teal', icon: '🧬' },
+  { name: 'Geografía', level: '1° C', students: 30, teacher: 'Patricia Núñez', schedule: 'Lun · Mié', turno: 'Mañana', especialidad: '', tone: 'blue', icon: '🌍' },
+  { name: 'Química', level: '3° B', students: 26, teacher: 'Marcos Fernández', schedule: 'Mar · Vie', turno: 'Tarde', especialidad: 'Electrónica', tone: 'violet', icon: '⚗️' },
+  { name: 'Programación', level: '5° A', students: 24, teacher: 'Diego Pereyra', schedule: 'Lun · Mié', turno: 'Mañana', especialidad: 'Técnico en Informática', tone: 'orange', icon: '💻' },
+  { name: 'Dibujo Técnico', level: '1° A', students: 32, teacher: 'Laura Sánchez', schedule: 'Jue', turno: 'Mañana', especialidad: '', tone: 'blue', icon: '📐' },
+  { name: 'Educación Física', level: '4° B', students: 29, teacher: 'Andrés Sosa', schedule: 'Vie', turno: 'Tarde', especialidad: '', tone: 'teal', icon: '⚽' },
 ];
 
-const COURSE_GROUPS = [
-  {
-    level: '1° Año',
-    sections: [
-      { name: '1° A', students: 32, teacher: 'Laura Sánchez' },
-      { name: '1° B', students: 30, teacher: 'Diego Pereyra' },
-      { name: '1° C', students: 28, teacher: 'Patricia Núñez' },
-    ],
+// Menús "Filtrar por" de cada sección del mockup (mismo patrón que la app
+// real; los criterios se adaptan a los datos demo de cada vista).
+const SECTION_FILTERS = {
+  Estudiantes: [
+    { v: 'none', l: 'Ninguno' },
+    { v: 'estado', l: 'Estado' },
+    { v: 'curso', l: 'Curso' },
+    { v: 'anio', l: 'Año' },
+  ],
+  Docentes: [
+    { v: 'none', l: 'Ninguno' },
+    { v: 'estado', l: 'Estado' },
+    { v: 'materia', l: 'Materia' },
+    { v: 'letra', l: 'Letra' },
+  ],
+  Cursos: [
+    { v: 'none', l: 'Ninguno' },
+    { v: 'anio', l: 'Año' },
+    { v: 'especialidad', l: 'Especialidad' },
+    { v: 'turno', l: 'Turno' },
+  ],
+};
+
+// Título de las secciones del mockup según el criterio de agrupación activo.
+const SECTION_TITLES = {
+  Estudiantes: {
+    none: 'Registro de estudiantes',
+    estado: 'Estudiantes por estado',
+    curso: 'Estudiantes por curso',
+    anio: 'Estudiantes por año',
   },
-  {
-    level: '2° Año',
-    sections: [
-      { name: '2° A', students: 29, teacher: 'Marcos Fernández' },
-      { name: '2° B', students: 33, teacher: 'Carolina Ríos' },
-    ],
+  Docentes: {
+    none: 'Equipo docente',
+    estado: 'Docentes por estado',
+    materia: 'Docentes por materia',
+    letra: 'Docentes por apellido',
   },
-  {
-    level: '3° Año',
-    sections: [
-      { name: '3° A', students: 31, teacher: 'Laura Sánchez' },
-      { name: '3° B', students: 27, teacher: 'Andrés Sosa' },
-    ],
-  },
-  {
-    level: '4° Año',
-    sections: [
-      { name: '4° A', students: 26, teacher: 'Andrés Sosa' },
-      { name: '4° B', students: 30, teacher: 'Diego Pereyra' },
-    ],
-  },
-  {
-    level: '5° Año',
-    sections: [
-      { name: '5° A', students: 24, teacher: 'Marcos Fernández' },
-      { name: '5° B', students: 28, teacher: 'Diego Pereyra' },
-    ],
-  },
-];
+};
+
+const TURNO_ORDER = { Mañana: 1, Tarde: 2, Noche: 3 };
+
+function courseYear(c) {
+  const m = /^(\d+)/.exec(String(c.level || ''));
+  return m ? Number(m[1]) : 0;
+}
+
+// Orden siempre por año y división; solo cambia la dirección.
+function demoSortCourses(rows, dir) {
+  const out = rows.slice();
+  out.sort((a, b) => {
+    let d = courseYear(a) - courseYear(b);
+    if (d === 0) d = a.level.localeCompare(b.level, 'es');
+    return d;
+  });
+  if (dir === 'desc') out.reverse();
+  return out;
+}
+
+function demoGroupCourses(rows, criterio, dir) {
+  const key = criterio === 'turno' || criterio === 'especialidad' ? criterio : 'anio';
+  const buckets = [];
+  const index = {};
+  rows.forEach((c) => {
+    let id;
+    let title;
+    if (key === 'turno') {
+      id = c.turno || 'Sin turno';
+      title = id;
+    } else if (key === 'especialidad') {
+      id = c.especialidad || 'Sin especialidad';
+      title = id;
+    } else {
+      id = courseYear(c);
+      title = id + '° Año';
+    }
+    if (!index[id]) {
+      index[id] = { id: id, title: title, items: [] };
+      buckets.push(index[id]);
+    }
+    index[id].items.push(c);
+  });
+  buckets.sort((a, b) => {
+    if (key === 'anio') return Number(a.id) - Number(b.id);
+    if (key === 'turno') return (TURNO_ORDER[a.id] || 9) - (TURNO_ORDER[b.id] || 9);
+    return String(a.title).localeCompare(String(b.title), 'es');
+  });
+  const ordered = dir === 'desc' ? buckets.slice().reverse() : buckets;
+  return ordered.map((g) => ({ title: g.title, items: g.items }));
+}
+
+// demoGroupRows: agrupador genérico del mockup. El extractor recibe
+// (criterio, fila) y devuelve { id, title, rank } (paridad con groupRowsBy()
+// de la app real): los grupos se ordenan por rank o, si no es numérico, por
+// título; dir='desc' invierte el orden final.
+function demoGroupRows(rows, criterio, dir, extract) {
+  const buckets = [];
+  const index = Object.create(null);
+  (rows || []).forEach((r) => {
+    const g = extract(criterio, r) || {};
+    const id = g.id;
+    if (!index[id]) {
+      index[id] = { id: id, title: g.title, rank: g.rank, items: [] };
+      buckets.push(index[id]);
+    }
+    index[id].items.push(r);
+  });
+  buckets.sort((a, b) => {
+    const ra = Number(a.rank);
+    const rb = Number(b.rank);
+    if (!isNaN(ra) && !isNaN(rb)) return ra - rb;
+    return String(a.title).localeCompare(String(b.title), 'es');
+  });
+  const ordered = dir === 'desc' ? buckets.slice().reverse() : buckets;
+  return ordered.map((g) => ({ title: g.title, items: g.items }));
+}
+
+const ESTADO_ORDER = { 'Activo': 0, 'Pendiente': 1, 'Licencia': 2 };
+const LETRA_RE = /^[A-ZÁÉÍÓÚÜÑ]$/;
+
+function courseParts(course) {
+  const parts = String(course || '').split('°');
+  return { anio: Number(parts[0]) || 0, resto: String(parts[1] || '').trim() };
+}
+
+function estadoRank(status) {
+  return ESTADO_ORDER[status] !== undefined ? ESTADO_ORDER[status] : 9;
+}
+
+function letraDe(nombre) {
+  const c = String(nombre || '').trim().charAt(0).toUpperCase();
+  return LETRA_RE.test(c) ? c : '#';
+}
+
+// studentGroupKey: grupos de la vista Estudiantes (estado, curso o año).
+function studentGroupKey(criterio, s) {
+  const p = courseParts(s.course);
+  if (criterio === 'curso') {
+    const id = s.course || 'Sin curso';
+    return { id: id, title: id, rank: p.anio * 100 + (p.resto ? p.resto.charCodeAt(0) : 0) };
+  }
+  if (criterio === 'anio') {
+    return { id: p.anio, title: p.anio ? p.anio + '° Año' : 'Sin año', rank: p.anio };
+  }
+  const id = s.status || 'Sin estado';
+  return { id: id, title: id, rank: estadoRank(s.status) };
+}
+
+// teacherGroupKey: grupos de la vista Docentes (estado, materia o letra).
+function teacherGroupKey(criterio, t) {
+  if (criterio === 'materia') {
+    const id = t.subject || 'Sin materia';
+    return { id: id, title: id, rank: NaN };
+  }
+  if (criterio === 'letra') {
+    const letra = letraDe(t.name);
+    return { id: letra, title: letra, rank: NaN };
+  }
+  const id = t.status || 'Sin estado';
+  return { id: id, title: id, rank: estadoRank(t.status) };
+}
+
+// demoSortByName: orden natural (A→Z) por nombre; dir='desc' lo invierte.
+function demoSortByName(rows, dir) {
+  const out = rows.slice();
+  out.sort((a, b) => String(a.name).localeCompare(String(b.name), 'es'));
+  if (dir === 'desc') out.reverse();
+  return out;
+}
+
+// demoGroupRowHTML: fila de encabezado de grupo dentro de una tabla.
+function demoGroupRowHTML(title, count, colspan, unidad) {
+  return (
+    '<tr class="group-row">' +
+    '<th colspan="' + colspan + '">' + esc(title) +
+    '<span class="group-count">' + count + ' ' + esc(unidad) + '</span>' +
+    '</th></tr>'
+  );
+}
+
+// demoGroupBlock: bloque con encabezado + contenido (tarjetas o listas).
+function demoGroupBlock(title, count, unidad, iconName, inner) {
+  return (
+    '<div class="course-group">' +
+    '<div class="course-group-header">' +
+    '<div class="group-icon">' + icon(iconName, 18) + '</div>' +
+    '<div><strong>' + esc(title) + '</strong><span>' + count + ' ' + esc(unidad) + '</span></div>' +
+    '</div>' + inner +
+    '</div>'
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Íconos lucide (SVG inline; mismos glifos que lucide-react)
@@ -122,6 +274,8 @@ const ICON_SVG = {
   CalendarDays: '<path d="M8 2v3" /><path d="M16 2v3" /><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M8 13h.01" /><path d="M12 13h.01" /><path d="M16 13h.01" /><path d="M8 17h.01" /><path d="M12 17h.01" /><path d="M16 17h.01" />',
   CheckCircle2: '<circle cx="12" cy="12" r="10" /><path d="m16 9-5.5 5.5L8 12" />',
   ChevronRight: '<path d="m9 18 6-6-6-6" />',
+  ChevronDown: '<path d="m6 9 6 6 6-6" />',
+  ArrowUpDown: '<path d="m21 16-4 4-4-4" /><path d="M17 20V4" /><path d="m3 8 4-4 4 4" /><path d="M7 4v16" />',
   ClipboardList: '<rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M12 11h4" /><path d="M12 16h4" /><path d="M8 11h.01" /><path d="M8 16h.01" />',
   Clock: '<circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />',
   Download: '<path d="M12 15V3" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" />',
@@ -129,6 +283,7 @@ const ICON_SVG = {
   Filter: '<path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" />',
   GraduationCap: '<path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z" /><path d="M22 10v6" /><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" />',
   LayoutDashboard: '<rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" />',
+  LayoutGrid: '<rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" />',
   LogOut: '<path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />',
   Mail: '<path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7" /><rect x="2" y="4" width="20" height="16" rx="2" />',
   Menu: '<path d="M4 5h16" /><path d="M4 12h16" /><path d="M4 19h16" />',
@@ -254,7 +409,7 @@ function dashboardHTML() {
     activity('Users', 'Nuevo estudiante registrado', 'Valentina Gómez · 3° A', 'Hace 12 min', 'blue'),
     activity('BookOpen', 'Curso actualizado', 'Matemática · 5° B', 'Hace 46 min', 'orange'),
     activity('GraduationCap', 'Docente asignado', 'Marcos Fernández · Física', 'Hace 2 h', 'teal'),
-    activity('ClipboardList', 'Listado exportado', 'Listado por Cursos · 2° ciclo', 'Ayer', 'violet'),
+    activity('ClipboardList', 'Listado exportado', 'Cursos · nóminas · 2° ciclo', 'Ayer', 'violet'),
   ].join('');
   const homeStudents = STUDENTS.slice(0, 3).map(studentRowHome).join('');
 
@@ -304,23 +459,35 @@ function dashboardHTML() {
   );
 }
 
+function studentRowHTML(s) {
+  return (
+    '<tr>' +
+    '<td><div class="table-person"><div class="avatar avatar-' + s.tone + '">' + esc(s.initials) + '</div><strong>' + esc(s.name) + '</strong></div></td>' +
+    '<td>' + esc(s.course) + '</td>' +
+    '<td><span class="' + statusClass(s.status) + '">' + esc(s.status) + '</span></td>' +
+    '<td><span class="cell-muted">' + esc(s.email) + '</span></td>' +
+    '<td><span class="cell-muted">' + esc(s.updated) + '</span></td>' +
+    '<td><button class="row-action" aria-label="Abrir ' + esc(s.name) + '" type="button">' + icon('MoreHorizontal', 18) + '</button></td>' +
+    '</tr>'
+  );
+}
+
 function studentsViewHTML() {
-  const rows = STUDENTS.map(
-    (s) =>
-      '<tr>' +
-      '<td><div class="table-person"><div class="avatar avatar-' + s.tone + '">' + esc(s.initials) + '</div><strong>' + esc(s.name) + '</strong></div></td>' +
-      '<td>' + esc(s.course) + '</td>' +
-      '<td><span class="' + statusClass(s.status) + '">' + esc(s.status) + '</span></td>' +
-      '<td><span class="cell-muted">' + esc(s.email) + '</span></td>' +
-      '<td><span class="cell-muted">' + esc(s.updated) + '</span></td>' +
-      '<td><button class="row-action" aria-label="Abrir ' + esc(s.name) + '" type="button">' + icon('MoreHorizontal', 18) + '</button></td>' +
-      '</tr>'
-  ).join('');
+  const filter = sectionFilters.Estudiantes;
+  const dir = sectionSortDirs.Estudiantes;
+  const ordered = demoSortByName(STUDENTS, dir);
+  // 'none' (default) = filas planas; el resto agrupa con fila de encabezado.
+  const rows = filter === 'none'
+    ? ordered.map(studentRowHTML).join('')
+    : demoGroupRows(ordered, filter, dir, studentGroupKey)
+        .map((g) => demoGroupRowHTML(g.title, g.items.length, 6, 'estudiantes') + g.items.map(studentRowHTML).join(''))
+        .join('');
+  const title = SECTION_TITLES.Estudiantes[filter] || SECTION_TITLES.Estudiantes.none;
 
   return (
     '<div class="data-panel">' +
     '<div class="panel-heading">' +
-    '<div><h2>Registro de estudiantes</h2><p>' + STUDENTS.length + ' registros encontrados</p></div>' +
+    '<div><h2>' + esc(title) + '</h2><p>' + STUDENTS.length + ' registros encontrados</p></div>' +
     '<button class="text-button" type="button">Exportar ' + icon('ArrowUpRight', 15) + '</button>' +
     '</div>' +
     '<div class="table-wrap"><table><thead><tr>' +
@@ -330,23 +497,39 @@ function studentsViewHTML() {
   );
 }
 
+function teacherCardHTML(t) {
+  return (
+    '<div class="teacher-card">' +
+    '<div class="teacher-top">' +
+    '<div class="teacher-avatar avatar-' + t.tone + '">' + esc(t.initials) + '</div>' +
+    '<span class="' + statusClass(t.status) + '">' + esc(t.status) + '</span>' +
+    '</div>' +
+    '<div class="teacher-body"><strong>' + esc(t.name) + '</strong><span class="teacher-subject">' + esc(t.subject) + '</span></div>' +
+    '<div class="teacher-meta">' +
+    '<div class="meta-row">' + icon('BookOpen', 14) + '<span>' + t.classes + ' cursos asignados</span></div>' +
+    '<div class="meta-row">' + icon('Mail', 14) + '<span class="cell-muted">' + esc(t.email) + '</span></div>' +
+    '<div class="meta-row">' + icon('Phone', 14) + '<span class="cell-muted">' + esc(t.phone) + '</span></div>' +
+    '</div>' +
+    '<button class="outline-button teacher-action" type="button">Ver perfil ' + icon('ArrowUpRight', 15) + '</button>' +
+    '</div>'
+  );
+}
+
 function teachersViewHTML() {
-  const cards = TEACHERS.map(
-    (t) =>
-      '<div class="teacher-card">' +
-      '<div class="teacher-top">' +
-      '<div class="teacher-avatar avatar-' + t.tone + '">' + esc(t.initials) + '</div>' +
-      '<span class="' + statusClass(t.status) + '">' + esc(t.status) + '</span>' +
-      '</div>' +
-      '<div class="teacher-body"><strong>' + esc(t.name) + '</strong><span class="teacher-subject">' + esc(t.subject) + '</span></div>' +
-      '<div class="teacher-meta">' +
-      '<div class="meta-row">' + icon('BookOpen', 14) + '<span>' + t.classes + ' cursos asignados</span></div>' +
-      '<div class="meta-row">' + icon('Mail', 14) + '<span class="cell-muted">' + esc(t.email) + '</span></div>' +
-      '<div class="meta-row">' + icon('Phone', 14) + '<span class="cell-muted">' + esc(t.phone) + '</span></div>' +
-      '</div>' +
-      '<button class="outline-button teacher-action" type="button">Ver perfil ' + icon('ArrowUpRight', 15) + '</button>' +
-      '</div>'
-  ).join('');
+  const filter = sectionFilters.Docentes;
+  const dir = sectionSortDirs.Docentes;
+  const ordered = demoSortByName(TEACHERS, dir);
+  // 'none' (default) = grilla; el resto agrupa con encabezado por valor.
+  const grid = filter === 'none'
+    ? '<div class="teacher-grid">' + ordered.map(teacherCardHTML).join('') + '</div>'
+    : '<div class="course-list-wrap">' +
+      demoGroupRows(ordered, filter, dir, teacherGroupKey)
+        .map((g) =>
+          demoGroupBlock(g.title, g.items.length, 'docentes', 'GraduationCap',
+            '<div class="teacher-grid">' + g.items.map(teacherCardHTML).join('') + '</div>'))
+        .join('') +
+      '</div>';
+  const title = SECTION_TITLES.Docentes[filter] || SECTION_TITLES.Docentes.none;
 
   return (
     '<div class="stats-grid">' +
@@ -355,85 +538,215 @@ function teachersViewHTML() {
     statCard('Clock', 'En licencia', '4', '2,3%', 'ausencias temporales', 'orange') +
     statCard('CheckCircle2', 'Disponibilidad', '95,3%', '1,8%', 'este mes', 'violet') +
     '</div>' +
-    '<div class="card-grid-heading"><div><h2>Equipo docente</h2><p>Personal académico del establecimiento</p></div></div>' +
-    '<div class="teacher-grid">' + cards + '</div>'
+    '<div class="card-grid-heading"><div><h2>' + esc(title) + '</h2><p>Personal académico del establecimiento</p></div></div>' +
+    grid
   );
 }
 
 function coursesViewHTML() {
-  const cards = COURSES.map(
-    (c) =>
-      '<div class="course-card">' +
-      '<div class="course-top">' +
-      '<div class="course-emoji bg-' + c.tone + '">' + c.icon + '</div>' +
-      '<div class="course-top-right"><span class="course-level level-' + c.tone + '">' + esc(c.level) + '</span></div>' +
-      '</div>' +
-      '<div class="course-body"><strong>' + esc(c.name) + '</strong><span class="course-teacher">Dictado por ' + esc(c.teacher) + '</span></div>' +
-      '<div class="course-meta">' +
-      '<div class="meta-row">' + icon('Users', 14) + '<span>' + c.students + ' estudiantes</span></div>' +
-      '<div class="meta-row">' + icon('CalendarDays', 14) + '<span>' + esc(c.schedule) + '</span></div>' +
-      '</div>' +
-      '<button class="course-link" type="button">Ver detalles ' + icon('ChevronRight', 15) + '</button>' +
-      '</div>'
-  ).join('');
+  const filter = sectionFilters.Cursos;
+  const dir = sectionSortDirs.Cursos;
+  const ordered = demoSortCourses(COURSES, dir);
 
-  return (
+  const cards = ordered
+    .map(
+      (c) =>
+        '<div class="course-card">' +
+        '<div class="course-top">' +
+        '<div class="course-emoji bg-' + c.tone + '">' + c.icon + '</div>' +
+        '<div class="course-top-right"><span class="course-level level-' + c.tone + '">' + esc(c.level) + '</span></div>' +
+        '</div>' +
+        '<div class="course-body"><strong>' + esc(c.name) + '</strong><span class="course-teacher">Dictado por ' + esc(c.teacher) + '</span></div>' +
+        '<div class="course-meta">' +
+        '<div class="meta-row">' + icon('Users', 14) + '<span>' + c.students + ' estudiantes</span></div>' +
+        '<div class="meta-row">' + icon('CalendarDays', 14) + '<span>' + esc(c.schedule) + '</span></div>' +
+        (c.especialidad
+          ? '<div class="meta-row">' + icon('BookMarked', 14) + '<span>' + esc(c.especialidad) + '</span></div>'
+          : '') +
+        '</div>' +
+        '<button class="course-link" type="button">Ver detalles ' + icon('ChevronRight', 15) + '</button>' +
+        '</div>'
+    )
+    .join('');
+
+  const stats =
     '<div class="stats-grid">' +
     statCard('BookOpen', 'Cursos activos', '42', '8 nuevos', 'este ciclo lectivo', 'orange') +
     statCard('Users', 'Inscriptos totales', '1.248', '12,5%', 'estudiantes', 'blue') +
     statCard('GraduationCap', 'Docentes asignados', '86', '100%', 'cobertura', 'teal') +
     statCard('CalendarDays', 'Promedio por curso', '29,7', '2,1', 'estudiantes/curso', 'violet') +
-    '</div>' +
-    '<div class="card-grid-heading"><div><h2>Catálogo de cursos</h2><p>Materias y asignaciones del ciclo lectivo 2026</p></div></div>' +
-    '<div class="course-grid">' + cards + '</div>'
-  );
+    '</div>';
+
+  // 'none' (default) = grilla; el resto agrupa con un encabezado por valor,
+  // igual que la app real.
+  const head = COURSE_HEADINGS[filter] || COURSE_HEADINGS.none;
+  const heading =
+    '<div class="card-grid-heading"><div><h2>' + esc(head[0]) + '</h2><p>' + esc(head[1]) + '</p></div></div>';
+  const body = filter === 'none'
+    ? '<div class="course-grid">' + cards + '</div>'
+    : courseGroupedHTML(ordered);
+
+  return stats + heading + body;
 }
 
-function courseListViewHTML() {
-  const groups = COURSE_GROUPS.map((g) => {
-    const total = g.sections.reduce((acc, s) => acc + s.students, 0);
-    const cards = g.sections
-      .map(
-        (sec) =>
-          '<div class="course-section-card">' +
-          '<div class="section-card-top"><div class="section-badge">' + esc(sec.name) + '</div><span class="section-count">' + sec.students + '</span></div>' +
-          '<div class="section-card-body"><strong>' + sec.students + ' estudiantes</strong>' +
-          '<span class="cell-muted">' + icon('Users', 13) + esc(sec.teacher) + '</span></div>' +
-          '<button class="section-link" type="button">Ver listado ' + icon('ArrowUpRight', 14) + '</button>' +
-          '</div>'
-      )
-      .join('');
-    return (
-      '<div class="course-group">' +
-      '<div class="course-group-header">' +
-      '<div class="group-icon">' + icon('ClipboardList', 18) + '</div>' +
-      '<div><strong>' + esc(g.level) + '</strong><span>' + g.sections.length + ' divisiones · ' + total + ' estudiantes</span></div>' +
-      '</div>' +
-      '<div class="course-sections-grid">' + cards + '</div>' +
-      '</div>'
-    );
-  }).join('');
+const COURSE_HEADINGS = {
+  none: ['Catálogo de cursos', 'Materias y asignaciones del ciclo lectivo 2026'],
+  anio: ['Nóminas por curso', 'Agrupadas por año de cursada'],
+  especialidad: ['Cursos por especialidad', 'Agrupadas por especialidad (orientación)'],
+  turno: ['Cursos por turno', 'Agrupadas por turno de cursada'],
+};
+
+function courseGroupedHTML(ordered) {
+  const groups = demoGroupCourses(ordered, sectionFilters.Cursos, sectionSortDirs.Cursos)
+    .map((g) => {
+      const total = g.items.reduce((acc, c) => acc + c.students, 0);
+      const cards = g.items
+        .map(
+          (c) =>
+            '<div class="course-section-card">' +
+            '<div class="section-card-top"><div class="section-badge">' + esc(c.level) + '</div><span class="section-count">' + esc(c.turno || '') + '</span></div>' +
+            '<div class="section-card-body"><strong>' + esc(c.name) + '</strong>' +
+            '<span class="cell-muted">' + icon('Users', 13) + ' ' + esc(c.teacher) + '</span></div>' +
+            '<button class="section-link" type="button">Ver nómina ' + icon('ArrowUpRight', 14) + '</button>' +
+            '</div>'
+        )
+        .join('');
+      return (
+        '<div class="course-group">' +
+        '<div class="course-group-header">' +
+        '<div class="group-icon">' + icon('ClipboardList', 18) + '</div>' +
+        '<div><strong>' + esc(g.title) + '</strong><span>' + g.items.length + ' divisiones · ' + total + ' estudiantes</span></div>' +
+        '</div>' +
+        '<div class="course-sections-grid">' + cards + '</div>' +
+        '</div>'
+      );
+    })
+    .join('');
 
   return '<div class="course-list-wrap">' + groups + '</div>';
 }
 
+function demoMenuItem(val, label, active) {
+  return (
+    '<button class="filter-menu-item' + (active ? ' active' : '') + '" data-set="filter" data-val="' + esc(val) + '" type="button" role="menuitem">' +
+    '<span class="filter-menu-mark">' + (active ? '✓' : '') + '</span>' +
+    esc(label) +
+    '</button>'
+  );
+}
+
+function menuPanel(section) {
+  const list = SECTION_FILTERS[section] || SECTION_FILTERS.Cursos;
+  const active = sectionFilters[section] || 'none';
+  return (
+    '<div class="filter-menu-panel" role="menu">' +
+    list.map((f) => demoMenuItem(f.v, f.l, active === f.v)).join('') +
+    '</div>'
+  );
+}
+
+// courseDirLabel / sectionFilterLabel: rótulos del toolbar (paridad con
+// main.js).
+function courseDirLabel(isDesc) {
+  return 'Ordenar: ' + (isDesc ? 'Descendente ↓' : 'Ascendente ↑');
+}
+
+function sectionFilterLabel(section) {
+  const list = SECTION_FILTERS[section] || SECTION_FILTERS.Cursos;
+  const active = sectionFilters[section] || 'none';
+  const filter = list.find((f) => f.v === active) || list[0];
+  return 'Filtrar por: ' + filter.l;
+}
+
+// Menú de filtro + botón que solo alterna la dirección del orden (↑/↓), por
+// sección. El botón de orden no lleva 'active': se ve igual en ↑ y ↓.
+function sectionToolbarHTML(section) {
+  const isDesc = sectionSortDirs[section] === 'desc';
+  const isActive = (sectionFilters[section] || 'none') !== 'none';
+  return (
+    '<div class="filter-menu">' +
+    '<button class="filter-button' + (isActive ? ' active' : '') + '" data-menu="filter" type="button" aria-haspopup="true" aria-expanded="' + (openMenu === 'filter') + '">' +
+    icon('Filter', 16) + ' ' + esc(sectionFilterLabel(section)) + icon('ChevronDown', 15) + '</button>' +
+    (openMenu === 'filter' ? menuPanel(section) : '') +
+    '</div>' +
+    '<button class="filter-button" data-dir-toggle type="button" aria-pressed="' + isDesc + '">' +
+    icon('ArrowUpDown', 16) + ' ' + courseDirLabel(isDesc) + '</button>'
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Refresco parcial de la sección activa: actualiza solo el cuerpo y los
+// rótulos del toolbar para no reconstruir toda la sección (evita re-disparar
+// su animación).
+// ---------------------------------------------------------------------------
+
+function sectionDom(state) {
+  if (!SECTION_FILTERS[state.section]) return null;
+  const content = state.root.querySelector('[data-content]');
+  if (!content) return null;
+  const body = content.querySelector('[data-view-body]');
+  const dirBtn = content.querySelector('[data-dir-toggle]');
+  const filterBtn = content.querySelector('[data-menu="filter"]');
+  if (!body || !dirBtn || !filterBtn) return null;
+  return { body: body, dirBtn: dirBtn, filterBtn: filterBtn };
+}
+
+function syncSectionToolbar(state, dom) {
+  const d = dom || sectionDom(state);
+  if (!d) return false;
+  const section = state.section;
+  const isDesc = sectionSortDirs[section] === 'desc';
+  d.dirBtn.innerHTML = icon('ArrowUpDown', 16) + ' ' + courseDirLabel(isDesc);
+  d.dirBtn.setAttribute('aria-pressed', String(isDesc));
+  d.filterBtn.innerHTML = icon('Filter', 16) + ' ' + esc(sectionFilterLabel(section)) + icon('ChevronDown', 15);
+  d.filterBtn.classList.toggle('active', (sectionFilters[section] || 'none') !== 'none');
+  d.filterBtn.setAttribute('aria-expanded', String(openMenu === 'filter'));
+  return true;
+}
+
+function refreshSection(state) {
+  const dom = sectionDom(state);
+  if (!dom) return false;
+  dom.body.innerHTML = sectionBodyHTML(state.section);
+  return syncSectionToolbar(state, dom);
+}
+
+function setSectionMenu(state, open) {
+  const dom = sectionDom(state);
+  if (!dom) return false;
+  const wrap = dom.filterBtn.parentNode;
+  if (!wrap || !wrap.classList.contains('filter-menu')) return false;
+  const panel = wrap.querySelector('.filter-menu-panel');
+  if (open && !panel) {
+    wrap.insertAdjacentHTML('beforeend', menuPanel(state.section));
+  } else if (!open && panel) {
+    panel.remove();
+  }
+  openMenu = open ? 'filter' : null;
+  syncSectionToolbar(state, dom);
+  return true;
+}
+
+function sectionBodyHTML(section) {
+  if (section === 'Estudiantes') return studentsViewHTML();
+  if (section === 'Docentes') return teachersViewHTML();
+  if (section === 'Cursos') return coursesViewHTML();
+  return '';
+}
+
 function sectionViewHTML(section) {
   const meta = sectionMeta(section);
-  let body = '';
-  if (section === 'Estudiantes') body = studentsViewHTML();
-  else if (section === 'Docentes') body = teachersViewHTML();
-  else if (section === 'Cursos') body = coursesViewHTML();
-  else if (section === 'Listado por Cursos') body = courseListViewHTML();
-  else body = '';
+  const body = sectionBodyHTML(section);
 
   const agregar =
-    section === 'Listado por Cursos'
-      ? 'listado'
-      : section === 'Estudiantes'
+    section === 'Estudiantes'
       ? 'estudiante'
       : section === 'Docentes'
       ? 'docente'
       : 'curso';
+
+  // Menús de filtro y orden en las secciones con criterios.
+  const controls = SECTION_FILTERS[section] ? sectionToolbarHTML(section) : '';
 
   return (
     '<section class="section-view">' +
@@ -447,11 +760,12 @@ function sectionViewHTML(section) {
     '<button class="primary-button" type="button">' + icon('Plus', 18) + ' Agregar ' + esc(agregar) + '</button>' +
     '</div>' +
     '<div class="view-toolbar">' +
+    controls +
     '<button class="filter-button" type="button">' + icon('Filter', 16) + ' Filtros</button>' +
     '<button class="filter-button" type="button">' + icon('CalendarDays', 17) + ' Este ciclo lectivo</button>' +
-    '<button class="filter-button" type="button">' + icon('Download', 16) + ' Exportar</button>' +
+    '<button class="filter-button" type="button">' + icon('Download', 16) + ' Exportar' + '</button>' +
     '</div>' +
-    body +
+    '<div data-view-body>' + body + '</div>' +
     '</section>'
   );
 }
@@ -463,7 +777,7 @@ function sectionViewHTML(section) {
 function navItems(activeSection) {
   const home = navButton('layout-dashboard', 'Inicio', 'Panel principal', activeSection === 'Inicio', null);
   const items = SECTIONS.map((s) =>
-    navButton(s.icon, s.label, s.label, activeSection === s.label, s.label === 'Listado por Cursos' ? 8 : null)
+    navButton(s.icon, s.label, s.label, activeSection === s.label, s.label === 'Cursos' ? 8 : null)
   ).join('');
   return home + items;
 }
@@ -528,9 +842,24 @@ function buildContentHTML(section) {
 // Interacción (equivalente al estado de interfaz.ts)
 // ---------------------------------------------------------------------------
 
+// Estado de los menús del mockup por sección: criterio de agrupación ('none'
+// = vista plana), dirección del orden y menú abierto. En la app real esto vive
+// en main.js con persistencia en localStorage.
+const sectionFilters = { Estudiantes: 'none', Docentes: 'none', Cursos: 'none' };
+const sectionSortDirs = { Estudiantes: 'asc', Docentes: 'asc', Cursos: 'asc' };
+let openMenu = null;
+
+// renderSection: repinta solo el contenido (toolbar + cuerpo) de la sección
+// actual, usado al abrir/uso de los menús de filtro y orden.
+function renderSection(state) {
+  const content = state.root.querySelector('[data-content]');
+  if (content) content.innerHTML = buildContentHTML(state.section);
+}
+
 function navigate(api, section) {
   if (!section || api.section === section) return;
   api.section = section;
+  openMenu = null;
 
   const navButtons = api.root.querySelectorAll('.nav-item[data-section]');
   navButtons.forEach((b) => {
@@ -583,6 +912,40 @@ export function initInterfaz(root, opts) {
   };
 
   root.addEventListener('click', (e) => {
+    // Cerrar el menú de filtro si se hace clic fuera de él (sin re-render).
+    if (openMenu && !e.target.closest('.filter-menu') && !setSectionMenu(state, false)) {
+      openMenu = null;
+      renderSection(state);
+    }
+    // Orden: solo alterna la dirección (asc ↔ desc), sin criterios.
+    const dirToggle = e.target.closest('[data-dir-toggle]');
+    if (dirToggle) {
+      const sortSection = state.section;
+      sectionSortDirs[sortSection] = sectionSortDirs[sortSection] === 'desc' ? 'asc' : 'desc';
+      if (!refreshSection(state)) renderSection(state);
+      return;
+    }
+    // Menú de filtro de la sección activa.
+    const menuBtn = e.target.closest('[data-menu]');
+    if (menuBtn) {
+      const which = menuBtn.getAttribute('data-menu');
+      const open = openMenu !== which;
+      if (!setSectionMenu(state, open)) {
+        openMenu = open ? which : null;
+        renderSection(state);
+      }
+      return;
+    }
+    const set = e.target.closest('[data-set]');
+    if (set) {
+      const val = set.getAttribute('data-val');
+      const filterSection = state.section;
+      const list = SECTION_FILTERS[filterSection] || [];
+      if (list.some((f) => f.v === val)) sectionFilters[filterSection] = val;
+      setSectionMenu(state, false);
+      if (!refreshSection(state)) renderSection(state);
+      return;
+    }
     const target = e.target.closest('[data-section]');
     if (target) {
       navigate(state, target.getAttribute('data-section'));

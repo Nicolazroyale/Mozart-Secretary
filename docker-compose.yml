@@ -25,4 +25,7 @@ services:
       - BACKUP_KEEP_MONTHS=${BACKUP_KEEP_MONTHS:-12}
     volumes:
       - ./data:/data
+      # Bind mounts para desarrollo: editar web/ y templates/ sin rebuild.
+      - ./web:/srv/web
+      - ./web/templates:/srv/templates
     restart: unless-stopped

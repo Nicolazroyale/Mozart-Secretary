@@ -18,7 +18,6 @@ const (
 	permVerDocentes     = "ver_docentes"
 	permVerCursos       = "ver_cursos"
 	permVerMaterias     = "ver_materias"
-	permVerNomina       = "ver_nomina"
 	permVerUsuarios     = "ver_usuarios"
 	permVerAuditoria    = "ver_auditoria"
 	permVerBackups      = "ver_backups"
@@ -33,7 +32,7 @@ const (
 
 // permisosDatosLectura: lectura sobre los módulos académicos (acceso por defecto).
 var permisosDatosLectura = []string{
-	permVerEstudiantes, permVerDocentes, permVerCursos, permVerMaterias, permVerNomina, permExportar,
+	permVerEstudiantes, permVerDocentes, permVerCursos, permVerMaterias, permExportar,
 }
 
 // permisosDatosEscritura: alta/edición/baja de los módulos académicos.
@@ -127,8 +126,10 @@ func viewPermForTable(table string) string {
 		return permVerCursos
 	case "materias":
 		return permVerMaterias
+	// Nóminas y docentes por curso: desde la fusión con "Listado por Cursos"
+	// viven en la sección Cursos, que se rige por ver_cursos.
 	case "nomina", "docentes_por_curso":
-		return permVerNomina
+		return permVerCursos
 	case "usuarios":
 		return permVerUsuarios
 	case "audit_log":

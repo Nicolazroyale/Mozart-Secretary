@@ -27,21 +27,50 @@ function courseShortName(c) {
   return isSet(c.division) ? c.anio + '°' + c.division + '°' : c.nombre;
 }
 
-function groupCoursesByYear(courses) {
-  const map = {};
-  (courses || []).forEach((c) => {
-    const anio = Number(c.anio);
-    if (!map[anio]) map[anio] = [];
-    map[anio].push(c);
+const TURNO_ORDER = { 'Mañana': 0, 'Tarde': 1, 'Noche': 2 };
+
+function sortCourses(courses, dir) {
+  const rows = (courses || []).slice();
+  rows.sort((a, b) => {
+    let d = (Number(a.anio) || 0) - (Number(b.anio) || 0);
+    if (d === 0) d = (Number(a.division) || 0) - (Number(b.division) || 0);
+    if (d === 0) d = String(a.turno || '').localeCompare(String(b.turno || ''), 'es');
+    return d;
   });
-  return Object.keys(map)
-    .map(Number)
-    .sort((a, b) => a - b)
-    .map((anio) => ({
-      anio,
-      title: anio + '° Año',
-      items: map[anio].slice().sort((a, b) => (Number(a.division) || 0) - (Number(b.division) || 0)),
-    }));
+  if (dir === 'desc') rows.reverse();
+  return rows;
+}
+
+function groupCoursesBy(courses, criterio, dir) {
+  const key = criterio === 'turno' || criterio === 'especialidad' ? criterio : 'anio';
+  const buckets = [];
+  const index = {};
+  (courses || []).forEach((c) => {
+    let id;
+    let title;
+    if (key === 'turno') {
+      id = String(c.turno || '') || 'Sin turno';
+      title = id;
+    } else if (key === 'especialidad') {
+      id = String(c.especialidad || '') || 'Sin especialidad';
+      title = id;
+    } else {
+      id = Number(c.anio) || 0;
+      title = id + '° Año';
+    }
+    if (!index[id]) {
+      index[id] = { id: id, title: title, items: [] };
+      buckets.push(index[id]);
+    }
+    index[id].items.push(c);
+  });
+  buckets.sort((a, b) => {
+    if (key === 'anio') return Number(a.id) - Number(b.id);
+    if (key === 'turno') return (isSet(TURNO_ORDER[a.id]) ? TURNO_ORDER[a.id] : 9) - (isSet(TURNO_ORDER[b.id]) ? TURNO_ORDER[b.id] : 9);
+    return String(a.title).localeCompare(String(b.title), 'es');
+  });
+  const ordered = dir === 'desc' ? buckets.slice().reverse() : buckets;
+  return ordered.map((g) => ({ title: g.title, items: g.items }));
 }
 
 function filterRows(rows, term, keys) {
@@ -73,7 +102,6 @@ const BASE_SECTIONS = [
   { label: 'Docentes', icon: 'GraduationCap', color: 'teal', desc: 'b' },
   { label: 'Cursos', icon: 'BookOpen', color: 'orange', desc: 'c' },
   { label: 'Materias', icon: 'ClipboardList', color: 'violet', desc: 'd' },
-  { label: 'Listado por Cursos', icon: 'CalendarDays', color: 'green', desc: 'e' },
 ];
 
 const ADMIN_GROUP = {
@@ -109,13 +137,12 @@ const SECTION_READ = {
   Docentes: 'ver_docentes',
   Cursos: 'ver_cursos',
   Materias: 'ver_materias',
-  'Listado por Cursos': 'ver_nomina',
   Usuarios: 'ver_usuarios',
   Backups: 'ver_backups',
   Auditoría: 'ver_auditoria',
 };
 
-const TODAS_LAS_LECTURAS = ['ver_estudiantes', 'ver_docentes', 'ver_cursos', 'ver_materias', 'ver_nomina'];
+const TODAS_LAS_LECTURAS = ['ver_estudiantes', 'ver_docentes', 'ver_cursos', 'ver_materias'];
 
 function visibleSections(state) {
   const base = BASE_SECTIONS.filter((s) => hasPerm(state, SECTION_READ[s.label]));
@@ -219,14 +246,202 @@ describe('main (lógica pura)', () => {
     expect(courseShortName({ nombre: 'Lengua' })).toBe('Lengua');
   });
 
-  test('groupCoursesByYear agrupa y ordena por año y división', () => {
-    const grupos = groupCoursesByYear([
-      { anio: 2, division: 2 },
-      { anio: 1, division: 3 },
-      { anio: 1, division: 1 },
-    ]);
-    expect(grupos.map((g) => g.title)).toEqual(['1° Año', '2° Año']);
-    expect(grupos[0].items.map((c) => c.division)).toEqual([1, 3]);
+  test('sortCourses ordena por año y división y solo alterna asc/desc', () => {
+    const rows = [
+      { anio: 1, division: 1, turno: 'Tarde', nombre: '1°1° (Básico) - Tarde', especialidad: '' },
+      { anio: 2, division: 1, turno: 'Mañana', nombre: '2°1° (Básico) - Mañana', especialidad: 'Electrónica' },
+      { anio: 1, division: 2, turno: 'Mañana', nombre: '1°2° (Superior) - Mañana', especialidad: 'Técnico en Informática' },
+    ];
+    expect(sortCourses(rows, 'asc').map((c) => c.anio + '-' + c.division)).toEqual(['1-1', '1-2', '2-1']);
+    expect(sortCourses(rows, 'desc').map((c) => c.anio + '-' + c.division)).toEqual(['2-1', '1-2', '1-1']);
+    expect(sortCourses(rows, 'otra-cosa').map((c) => c.anio + '-' + c.division)).toEqual(['1-1', '1-2', '2-1']);
+    expect(sortCourses(rows, 'asc')).toHaveLength(3);
+  });
+
+  test('botón de orden: etiqueta según dirección y sin clase active', () => {
+    // Espejo de courseDirLabel() + toolbarHTML() en main.js: el botón de
+    // dirección nunca lleva la clase 'active' (no cambia de color).
+    const courseDirLabel = (isDesc) => 'Ordenar: ' + (isDesc ? 'Descendente ↓' : 'Ascendente ↑');
+    const buttonHTML = (dir) => {
+      const isDesc = dir === 'desc';
+      return '<button class="filter-button" data-dir-toggle aria-pressed="' + isDesc + '">' + courseDirLabel(isDesc) + '</button>';
+    };
+    expect(courseDirLabel(false)).toBe('Ordenar: Ascendente ↑');
+    expect(courseDirLabel(true)).toBe('Ordenar: Descendente ↓');
+    expect(buttonHTML('asc')).toContain('Ascendente ↑');
+    expect(buttonHTML('desc')).toContain('Descendente ↓');
+    expect(buttonHTML('desc')).toContain('aria-pressed="true"');
+    expect(buttonHTML('desc')).not.toContain('active');
+    expect(buttonHTML('asc')).not.toContain('active');
+  });
+
+  test('groupCoursesBy agrupa por año, turno o especialidad', () => {
+    const rows = [
+      { anio: 2, division: 2, turno: 'Tarde', especialidad: '' },
+      { anio: 1, division: 3, turno: 'Mañana', especialidad: 'Electrónica' },
+      { anio: 1, division: 1, turno: 'Mañana', especialidad: '' },
+    ];
+    const porAnio = groupCoursesBy(sortCourses(rows, 'asc'), 'anio', 'asc');
+    expect(porAnio.map((g) => g.title)).toEqual(['1° Año', '2° Año']);
+    expect(porAnio[0].items.map((c) => c.division)).toEqual([1, 3]);
+
+    const porTurno = groupCoursesBy(sortCourses(rows, 'asc'), 'turno', 'asc');
+    expect(porTurno.map((g) => g.title)).toEqual(['Mañana', 'Tarde']);
+
+    const porEsp = groupCoursesBy(sortCourses(rows, 'asc'), 'especialidad', 'asc');
+    expect(porEsp.map((g) => g.title)).toEqual(['Electrónica', 'Sin especialidad']);
+
+    const invertido = groupCoursesBy(sortCourses(rows, 'asc'), 'turno', 'desc');
+    expect(invertido.map((g) => g.title)).toEqual(['Tarde', 'Mañana']);
+  });
+
+  test('SECTION_FILTERS tiene criterios propios por sección', () => {
+    // Espejo de SECTION_FILTERS en main.js.
+    const SECTION_FILTERS = {
+      Estudiantes: ['none', 'curso', 'anio', 'turno', 'ciclo', 'genero'],
+      Docentes: ['none', 'cargo', 'letra', 'anio_ingreso'],
+      Cursos: ['none', 'anio', 'especialidad', 'turno'],
+      Materias: ['none', 'letra', 'con_docente'],
+    };
+    expect(Object.keys(SECTION_FILTERS)).toHaveLength(4);
+    Object.keys(SECTION_FILTERS).forEach((s) => {
+      expect(SECTION_FILTERS[s][0]).toBe('none');
+    });
+    expect(SECTION_FILTERS.Estudiantes).toContain('turno');
+    expect(SECTION_FILTERS.Estudiantes).not.toContain('especialidad');
+    expect(SECTION_FILTERS.Docentes).toContain('cargo');
+    expect(SECTION_FILTERS.Materias).toEqual(['none', 'letra', 'con_docente']);
+  });
+
+  test('groupRowsBy ordena por rank numérico o alfabético y dir invierte', () => {
+    // Espejo de groupRowsBy() en main.js.
+    const groupRowsBy = (rows, dir, extract) => {
+      const buckets = [];
+      const index = Object.create(null);
+      (rows || []).forEach((r) => {
+        const g = extract(r);
+        if (!index[g.id]) {
+          index[g.id] = { id: g.id, title: g.title, rank: g.rank, items: [] };
+          buckets.push(index[g.id]);
+        }
+        index[g.id].items.push(r);
+      });
+      buckets.sort((a, b) => {
+        const ra = Number(a.rank);
+        const rb = Number(b.rank);
+        if (!isNaN(ra) && !isNaN(rb)) return ra - rb;
+        return String(a.title).localeCompare(String(b.title), 'es');
+      });
+      const ordered = dir === 'desc' ? buckets.slice().reverse() : buckets;
+      return ordered.map((g) => ({ title: g.title, items: g.items }));
+    };
+    const filas = [{ valor: 'Tarde' }, { valor: 'Mañana' }, { valor: 'Noche' }];
+    const porTurno = (r) => ({ id: r.valor, title: r.valor, rank: TURNO_ORDER[r.valor] !== undefined ? TURNO_ORDER[r.valor] : 9 });
+    const porLetra = (r) => ({ id: r.valor[0], title: r.valor[0], rank: NaN });
+
+    expect(groupRowsBy(filas, 'asc', porTurno).map((g) => g.title)).toEqual(['Mañana', 'Tarde', 'Noche']);
+    expect(groupRowsBy(filas, 'desc', porTurno).map((g) => g.title)).toEqual(['Noche', 'Tarde', 'Mañana']);
+    expect(groupRowsBy(filas, 'asc', porLetra).map((g) => g.title)).toEqual(['M', 'N', 'T']);
+    expect(groupRowsBy(filas, 'asc', porTurno)[0].items).toHaveLength(1);
+    expect(groupRowsBy([], 'asc', porTurno)).toEqual([]);
+  });
+
+  test('groupKeyFor cubre estudiantes, docentes y materias', () => {
+    // Espejo de groupKeyFor() en main.js.
+    const TURNO = { 'Mañana': 0, 'Tarde': 1, 'Noche': 2 };
+    const CICLO = { 'Básico': 0, 'Superior': 1 };
+    const str = (v) => (v === undefined || v === null ? '' : String(v));
+    const groupKeyFor = (section, criterio, r) => {
+      if (section === 'Estudiantes') {
+        const curso = str(r.curso) || 'Sin curso';
+        const parts = curso.split('°');
+        if (criterio === 'curso') {
+          return { id: curso, title: curso, rank: (Number(parts[0]) || 0) * 100 + (Number(parts[1]) || 0) };
+        }
+        if (criterio === 'turno') {
+          const id = str(r.turno) || 'Sin turno';
+          return { id: id, title: id, rank: TURNO[id] !== undefined ? TURNO[id] : 9 };
+        }
+        if (criterio === 'ciclo') {
+          const id = str(r.ciclo) || 'Sin ciclo';
+          return { id: id, title: id, rank: CICLO[id] !== undefined ? CICLO[id] : 9 };
+        }
+        if (criterio === 'genero') {
+          const id = str(r.genero) || 'Sin dato';
+          return { id: id, title: id, rank: NaN };
+        }
+        const anio = Number(r.anio) || Number(parts[0]) || 0;
+        return { id: anio, title: anio ? anio + '° Año' : 'Sin año', rank: anio };
+      }
+      if (section === 'Docentes') {
+        if (criterio === 'cargo') {
+          const id = str(r.cargo) || 'Sin cargo';
+          return { id: id, title: id, rank: NaN };
+        }
+        if (criterio === 'anio_ingreso') {
+          const id = str(r.anio_ingreso) || 'Sin dato';
+          const n = Number(r.anio_ingreso);
+          return { id: id, title: id, rank: isNaN(n) ? 9999 : n };
+        }
+        const letra = str(r.nombre).trim().charAt(0).toUpperCase();
+        return { id: letra, title: letra, rank: NaN };
+      }
+      if (section === 'Materias') {
+        if (criterio === 'con_docente') {
+          const con = Number(r.con_docente) === 1;
+          const id = con ? 'Con docente asignado' : 'Sin docente asignado';
+          return { id: id, title: id, rank: con ? 0 : 1 };
+        }
+        const letra = str(r.nombre).trim().charAt(0).toUpperCase();
+        return { id: letra, title: letra, rank: NaN };
+      }
+      return { id: '', title: '', rank: NaN };
+    };
+
+    const alumno = { curso: '1°2°', anio: 1, division: 2, turno: 'Mañana', ciclo: 'Básico', genero: 'Femenino' };
+    expect(groupKeyFor('Estudiantes', 'curso', alumno)).toEqual({ id: '1°2°', title: '1°2°', rank: 102 });
+    expect(groupKeyFor('Estudiantes', 'anio', alumno)).toEqual({ id: 1, title: '1° Año', rank: 1 });
+    expect(groupKeyFor('Estudiantes', 'turno', alumno).rank).toBe(0);
+    expect(groupKeyFor('Estudiantes', 'ciclo', alumno).rank).toBe(0);
+    expect(groupKeyFor('Estudiantes', 'genero', alumno).title).toBe('Femenino');
+    expect(groupKeyFor('Estudiantes', 'genero', { curso: '1°1°' }).title).toBe('Sin dato');
+    expect(groupKeyFor('Estudiantes', 'anio', { curso: '2°1°' }).title).toBe('2° Año');
+
+    const docente = { nombre: 'Perez, Pablo', cargo: 'Titular', anio_ingreso: '2010' };
+    expect(groupKeyFor('Docentes', 'cargo', docente).title).toBe('Titular');
+    expect(groupKeyFor('Docentes', 'letra', docente).title).toBe('P');
+    expect(groupKeyFor('Docentes', 'anio_ingreso', docente)).toEqual({ id: '2010', title: '2010', rank: 2010 });
+    expect(groupKeyFor('Docentes', 'anio_ingreso', { nombre: 'Sin datos' })).toEqual({ id: 'Sin dato', title: 'Sin dato', rank: 9999 });
+
+    expect(groupKeyFor('Materias', 'con_docente', { nombre: 'Matemática', con_docente: 1 }).title).toBe('Con docente asignado');
+    expect(groupKeyFor('Materias', 'con_docente', { nombre: 'Arte', con_docente: 0 }).rank).toBe(1);
+    expect(groupKeyFor('Materias', 'letra', { nombre: 'Matemática' }).title).toBe('M');
+  });
+
+  test('groupRowHTML emite encabezado con colspan y contador', () => {
+    // Espejo de groupRowHTML() en main.js.
+    const groupRowHTML = (title, count, colspan, unidad) =>
+      '<tr class="group-row"><th colspan="' + colspan + '">' + title +
+      '<span class="group-count">' + count + ' ' + unidad + '</span></th></tr>';
+    const html = groupRowHTML('Mañana', 3, 4, 'estudiantes');
+    expect(html).toContain('class="group-row"');
+    expect(html).toContain('colspan="4"');
+    expect(html).toContain('3 estudiantes');
+    // Mismo colspan que studentRowsHTML: 4 sin acciones, 5 si es editable.
+    expect(groupRowHTML('1° Año', 2, 4, 'estudiantes')).toContain('colspan="4"');
+    expect(groupRowHTML('1° Año', 2, 5, 'estudiantes')).toContain('colspan="5"');
+  });
+
+  test('storage por sección usa claves propias y conserva las de Cursos', () => {
+    // Espejo de filterKey()/sortKey() en main.js.
+    const slug = { Estudiantes: 'estudiantes', Docentes: 'docentes', Cursos: 'cursos', Materias: 'materias' };
+    const filterKey = (s) => 'mozart-' + slug[s] + '-filtro';
+    const sortKey = (s) => 'mozart-' + slug[s] + '-orden';
+    expect(filterKey('Estudiantes')).toBe('mozart-estudiantes-filtro');
+    expect(sortKey('Materias')).toBe('mozart-materias-orden');
+    // Cursos mantiene las claves viejas (nadie pierde su preferencia).
+    expect(filterKey('Cursos')).toBe('mozart-cursos-filtro');
+    expect(sortKey('Cursos')).toBe('mozart-cursos-orden');
   });
 
   test('filterRows filtra por las claves indicadas', () => {
@@ -264,14 +479,60 @@ describe('main (lógica pura)', () => {
     expect(counts.materias).toBe(12);
   });
 
-  test('visibleSections admin ve todas las secciones + Administración', () => {
-    const all = visibleSections({ esAdmin: true });
-    expect(all).toHaveLength(6);
-    expect(all.map((s) => s.label)).toContain('Administración');
+  test('Cursos: filtro por defecto "none" (grilla) y orden por defecto asc', () => {
+    // Espejo de getStoredCourseFilter()/getStoredCourseSortDir() en main.js.
+    const FILTERS = ['none', 'anio', 'especialidad', 'turno'];
+    const readFilter = (getItem) => {
+      try {
+        const v = getItem('mozart-cursos-filtro');
+        if (FILTERS.indexOf(v) !== -1) return v;
+        return getItem('mozart-cursos-vista') === 'year' ? 'anio' : 'none';
+      } catch (err) {
+        return 'none';
+      }
+    };
+    // Solo interesa la dirección; el valor guardado conserva el formato
+    // '<criterio>:<dir>' del menú anterior.
+    const readSortDir = (getItem) => {
+      try {
+        const raw = getItem('mozart-cursos-orden') || '';
+        const parts = raw.split(':');
+        return parts[parts.length - 1] === 'desc' ? 'desc' : 'asc';
+      } catch (err) {
+        return 'asc';
+      }
+    };
+    const store = new Map();
+    const getItem = (k) => (store.has(k) ? store.get(k) : null);
+
+    expect(readFilter(getItem)).toBe('none');
+    expect(readSortDir(getItem)).toBe('asc');
+
+    store.set('mozart-cursos-filtro', 'turno');
+    store.set('mozart-cursos-orden', 'anio:desc');
+    expect(readFilter(getItem)).toBe('turno');
+    expect(readSortDir(getItem)).toBe('desc');
+
+    // Valor guardado por el menú anterior con criterios: sigue leyéndose.
+    store.set('mozart-cursos-orden', 'nombre:desc');
+    expect(readSortDir(getItem)).toBe('desc');
+
+    // El toggle viejo grid/year se migra al criterio equivalente.
+    const legacy = new Map([['mozart-cursos-vista', 'year']]);
+    expect(readFilter((k) => (legacy.has(k) ? legacy.get(k) : null))).toBe('anio');
+    expect(readFilter(() => { throw new Error('sin storage'); })).toBe('none');
+    expect(readSortDir(() => { throw new Error('sin storage'); })).toBe('asc');
   });
 
-  test('visibleSections lectura con todas las lecturas ve 5 secciones sin Administración', () => {
-    expect(visibleSections({ esAdmin: false, perms: TODAS_LAS_LECTURAS })).toHaveLength(5);
+  test('visibleSections admin ve todas las secciones + Administración', () => {
+    const all = visibleSections({ esAdmin: true });
+    expect(all).toHaveLength(5);
+    expect(all.map((s) => s.label)).toContain('Administración');
+    expect(all.map((s) => s.label)).not.toContain('Listado por Cursos');
+  });
+
+  test('visibleSections lectura con todas las lecturas ve 4 secciones sin Administración', () => {
+    expect(visibleSections({ esAdmin: false, perms: TODAS_LAS_LECTURAS })).toHaveLength(4);
     expect(visibleSections({ esAdmin: false, perms: TODAS_LAS_LECTURAS }).some((s) => s.label === 'Administración')).toBe(false);
   });
 

@@ -10,9 +10,9 @@
  *   initMain(document.getElementById('app'), opts);
  */
 
-import { icon, esc, apiGet } from './interfaz.js?v=15';
-import { createCrud } from './crud.js?v=15';
-import { hasPerm, PERM, SECTION_READ, SECTION_WRITE } from './permissions.js?v=8';
+import { icon, esc, apiGet } from './interfaz.js?v=20';
+import { createCrud } from './crud.js?v=20';
+import { hasPerm, PERM, SECTION_READ, SECTION_WRITE } from './permissions.js?v=9';
 
 // ---------------------------------------------------------------------------
 // Configuración de secciones
@@ -21,9 +21,8 @@ import { hasPerm, PERM, SECTION_READ, SECTION_WRITE } from './permissions.js?v=8
 export const SECTIONS = [
   { label: 'Estudiantes', icon: 'Users', color: 'blue', desc: 'Gestiona matrículas y perfiles' },
   { label: 'Docentes', icon: 'GraduationCap', color: 'teal', desc: 'Administra el equipo académico' },
-  { label: 'Cursos', icon: 'BookOpen', color: 'orange', desc: 'Organiza la oferta educativa' },
+  { label: 'Cursos', icon: 'BookOpen', color: 'orange', desc: 'Organiza la oferta educativa y consultá nóminas' },
   { label: 'Materias', icon: 'BookMarked', color: 'violet', desc: 'Catálogo de materias del ciclo lectivo' },
-  { label: 'Listado por Cursos', icon: 'ClipboardList', color: 'blue', desc: 'Consulta nóminas por curso y división' },
 ];
 
 const TABLE_FOR = {
@@ -31,7 +30,6 @@ const TABLE_FOR = {
   Docentes: 'docentes',
   Cursos: 'lista_cursos',
   Materias: 'materias',
-  'Listado por Cursos': 'lista_cursos',
 };
 
 const EXPORT_FOR = {
@@ -39,7 +37,6 @@ const EXPORT_FOR = {
   Docentes: 'docentes',
   Cursos: 'cursos',
   Materias: 'materias',
-  'Listado por Cursos': 'cursos',
 };
 
 const ADMIN_GROUP = {
@@ -109,21 +106,316 @@ function getStoredTheme() {
   }
 }
 
-export function groupCoursesByYear(courses) {
-  const map = {};
-  (courses || []).forEach((c) => {
-    const anio = Number(c.anio);
-    if (!map[anio]) map[anio] = [];
-    map[anio].push(c);
+const LEGACY_VIEW_KEY = 'mozart-cursos-vista';
+
+// Cursos conserva siempre las claves viejas ('mozart-cursos-filtro' y
+// 'mozart-cursos-orden') para no perder lo ya elegido; el resto de las
+// secciones usa el mismo patrón con su propio slug.
+const SLUG_FOR = {
+  Estudiantes: 'estudiantes',
+  Docentes: 'docentes',
+  Cursos: 'cursos',
+  Materias: 'materias',
+};
+
+// Criterio por defecto del orden de cada sección: el botón solo alterna
+// ascendente/descendente y el valor se guarda como '<criterio>:<dir>' (formato
+// del menú anterior).
+const DEFAULT_SORT_CRITERION = {
+  Estudiantes: 'apellido',
+  Docentes: 'apellido',
+  Cursos: 'anio',
+  Materias: 'nombre',
+};
+
+function filterKey(section) {
+  return 'mozart-' + SLUG_FOR[section] + '-filtro';
+}
+
+function sortKey(section) {
+  return 'mozart-' + SLUG_FOR[section] + '-orden';
+}
+
+// Criterios del menú "Filtrar por" de cada sección: 'none' (default) muestra
+// la vista plana; el resto agrupa con un encabezado por valor.
+export const SECTION_FILTERS = {
+  Estudiantes: [
+    { v: 'none', l: 'Ninguno' },
+    { v: 'curso', l: 'Curso' },
+    { v: 'anio', l: 'Año' },
+    { v: 'turno', l: 'Turno' },
+    { v: 'ciclo', l: 'Ciclo' },
+    { v: 'genero', l: 'Género' },
+  ],
+  Docentes: [
+    { v: 'none', l: 'Ninguno' },
+    { v: 'cargo', l: 'Cargo' },
+    { v: 'letra', l: 'Letra' },
+    { v: 'anio_ingreso', l: 'Año de ingreso' },
+  ],
+  Cursos: [
+    { v: 'none', l: 'Ninguno' },
+    { v: 'anio', l: 'Año' },
+    { v: 'especialidad', l: 'Especialidad' },
+    { v: 'turno', l: 'Turno' },
+  ],
+  Materias: [
+    { v: 'none', l: 'Ninguno' },
+    { v: 'letra', l: 'Letra' },
+    { v: 'con_docente', l: 'Con docente asignado' },
+  ],
+};
+
+// Compatibilidad con el nombre anterior (criterios de Cursos).
+export const COURSE_FILTERS = SECTION_FILTERS.Cursos;
+
+// Encabezado de Cursos según el criterio de agrupación activo.
+const COURSE_HEADINGS = {
+  none: ['Catálogo de cursos', 'Hacé clic en "Ver nómina" para abrir la nómina'],
+  anio: ['Nóminas por curso', 'Seleccioná un curso para ver su nómina'],
+  especialidad: ['Cursos por especialidad', 'Agrupados por especialidad (orientación)'],
+  turno: ['Cursos por turno', 'Agrupados por turno de cursada'],
+};
+
+// Título de las secciones tabulares/listadas según el criterio activo (la
+// cantidad de registros se agrega aparte, en cada panel-heading).
+const SECTION_TITLES = {
+  Estudiantes: {
+    none: 'Registro de estudiantes',
+    curso: 'Estudiantes por curso',
+    anio: 'Estudiantes por año',
+    turno: 'Estudiantes por turno',
+    ciclo: 'Estudiantes por ciclo',
+    genero: 'Estudiantes por género',
+  },
+  Docentes: {
+    none: 'Equipo docente',
+    cargo: 'Docentes por cargo',
+    letra: 'Docentes por apellido',
+    anio_ingreso: 'Docentes por año de ingreso',
+  },
+  Materias: {
+    none: 'Materias del establecimiento',
+    letra: 'Materias por letra',
+    con_docente: 'Materias con y sin docente',
+  },
+};
+
+// isSectionFilter: el valor existe en el menú de esa sección.
+export function isSectionFilter(section, v) {
+  return (SECTION_FILTERS[section] || []).some((f) => f.v === v);
+}
+
+// getStoredFilter: criterio de agrupación de la sección, 'none' por defecto.
+// En Cursos se migra el toggle viejo grid/year para no dejar a nadie colgado
+// en la vista "por año".
+export function getStoredFilter(section) {
+  try {
+    const v = localStorage.getItem(filterKey(section));
+    if (isSectionFilter(section, v)) return v;
+    if (section === 'Cursos' && localStorage.getItem(LEGACY_VIEW_KEY) === 'year') return 'anio';
+    return 'none';
+  } catch (err) {
+    return 'none';
+  }
+}
+
+// getStoredSortDir: dirección del orden, 'asc' por defecto. El valor se guarda
+// como '<criterio>:<dir>' (formato del menú anterior) y solo interesa la
+// dirección.
+export function getStoredSortDir(section) {
+  try {
+    const raw = localStorage.getItem(sortKey(section)) || '';
+    const parts = raw.split(':');
+    const dir = parts[parts.length - 1];
+    return dir === 'desc' ? 'desc' : 'asc';
+  } catch (err) {
+    return 'asc';
+  }
+}
+
+// getStoredFilters / getStoredSortDirs: estado por sección al arrancar.
+export function getStoredFilters() {
+  const out = {};
+  Object.keys(SECTION_FILTERS).forEach((s) => { out[s] = getStoredFilter(s); });
+  return out;
+}
+
+export function getStoredSortDirs() {
+  const out = {};
+  Object.keys(SECTION_FILTERS).forEach((s) => { out[s] = getStoredSortDir(s); });
+  return out;
+}
+
+// Compatibilidad con los nombres anteriores (solo Cursos).
+export function getStoredCourseFilter() {
+  return getStoredFilter('Cursos');
+}
+
+export function getStoredCourseSortDir() {
+  return getStoredSortDir('Cursos');
+}
+
+function storeFilter(section, v) {
+  try {
+    localStorage.setItem(filterKey(section), v);
+  } catch (err) { /* sin almacenamiento */ }
+}
+
+function storeSortDir(section, dir) {
+  try {
+    localStorage.setItem(sortKey(section), (DEFAULT_SORT_CRITERION[section] || 'orden') + ':' + dir);
+  } catch (err) { /* sin almacenamiento */ }
+}
+
+// activeFilter / activeSortDir: valores de la sección activa (o de la indicada).
+export function activeFilter(state, section) {
+  const s = section || state.section;
+  return (state.filters && state.filters[s]) || 'none';
+}
+
+export function activeSortDir(state, section) {
+  const s = section || state.section;
+  return (state.sortDirs && state.sortDirs[s]) || 'asc';
+}
+
+const TURNO_ORDER = { 'Mañana': 0, 'Tarde': 1, 'Noche': 2 };
+
+function str(v) {
+  return v === undefined || v === null ? '' : String(v);
+}
+
+// sortCourses: ordena por año y división (desempate natural por turno).
+// dir='desc' invierte el resultado.
+export function sortCourses(courses, dir) {
+  const rows = (courses || []).slice();
+  rows.sort((a, b) => {
+    let d = (Number(a.anio) || 0) - (Number(b.anio) || 0);
+    if (d === 0) d = (Number(a.division) || 0) - (Number(b.division) || 0);
+    if (d === 0) d = str(a.turno).localeCompare(str(b.turno), 'es');
+    return d;
   });
-  return Object.keys(map)
-    .map(Number)
-    .sort((a, b) => a - b)
-    .map((anio) => ({
-      anio,
-      title: anio + '° Año',
-      items: map[anio].slice().sort((a, b) => (Number(a.division) || 0) - (Number(b.division) || 0)),
-    }));
+  if (dir === 'desc') rows.reverse();
+  return rows;
+}
+
+// groupRowsBy: agrupa filas por criterio con un extractor que devuelve
+// { id, title, rank }. Los grupos se ordenan por rank (numérico) o, si el rank
+// no es un número, por título (alfabético); dir='desc' invierte el orden final.
+export function groupRowsBy(rows, criterio, dir, extract) {
+  const buckets = [];
+  const index = Object.create(null);
+  (rows || []).forEach((r) => {
+    const g = extract(criterio, r) || {};
+    const id = g.id;
+    if (!index[id]) {
+      index[id] = { id: id, title: g.title, rank: g.rank, items: [] };
+      buckets.push(index[id]);
+    }
+    index[id].items.push(r);
+  });
+  buckets.sort((a, b) => {
+    const ra = Number(a.rank);
+    const rb = Number(b.rank);
+    if (!isNaN(ra) && !isNaN(rb)) return ra - rb;
+    return String(a.title).localeCompare(String(b.title), 'es');
+  });
+  const ordered = dir === 'desc' ? buckets.slice().reverse() : buckets;
+  return ordered.map((g) => ({ title: g.title, items: g.items }));
+}
+
+// sortRowsByName: orden natural (A→Z) por nombre; dir='desc' lo invierte.
+export function sortRowsByName(rows, dir) {
+  const out = (rows || []).slice();
+  out.sort((a, b) => str(a.nombre).localeCompare(str(b.nombre), 'es'));
+  if (dir === 'desc') out.reverse();
+  return out;
+}
+
+// letraDe: inicial del nombre (las filas de personas vienen como
+// "Apellido, Nombre"); lo que no sea letra cae en '#'.
+export function letraDe(nombre) {
+  const c = str(nombre).trim().charAt(0).toUpperCase();
+  return LETRA_RE.test(c) ? c : '#';
+}
+
+const LETRA_RE = /^[A-ZÁÉÍÓÚÜÑ]$/;
+const CICLO_ORDER = { 'Básico': 0, 'Superior': 1 };
+const CON_DOCENTE_ORDER = { 'Con docente asignado': 0, 'Sin docente asignado': 1 };
+
+// courseGroupKey: extractor de grupos de Cursos ((criterio, fila), igual que
+// el resto de los extractores). Mismo comportamiento que el agrupador
+// original: año numérico, turno por orden Mañana/Tarde/Noche y especialidad
+// alfabética.
+export function courseGroupKey(criterio, c) {
+  const key = criterio === 'turno' || criterio === 'especialidad' ? criterio : 'anio';
+  if (key === 'turno') {
+    const id = str(c.turno) || 'Sin turno';
+    return { id: id, title: id, rank: isSet(TURNO_ORDER[id]) ? TURNO_ORDER[id] : 9 };
+  }
+  if (key === 'especialidad') {
+    const id = str(c.especialidad) || 'Sin especialidad';
+    return { id: id, title: id, rank: NaN };
+  }
+  const id = Number(c.anio) || 0;
+  return { id: id, title: id + '° Año', rank: id };
+}
+
+// groupKeyFor: extractor de grupos por sección.
+export function groupKeyFor(section, criterio, r) {
+  if (section === 'Cursos') return courseGroupKey(criterio, r);
+  if (section === 'Estudiantes') {
+    const curso = str(r.curso) || 'Sin curso';
+    const parts = curso.split('°');
+    if (criterio === 'curso') {
+      const rank = (Number(parts[0]) || 0) * 100 + (Number(parts[1]) || 0);
+      return { id: curso, title: curso, rank: rank };
+    }
+    if (criterio === 'turno') {
+      const id = str(r.turno) || 'Sin turno';
+      return { id: id, title: id, rank: isSet(TURNO_ORDER[id]) ? TURNO_ORDER[id] : 9 };
+    }
+    if (criterio === 'ciclo') {
+      const id = str(r.ciclo) || 'Sin ciclo';
+      return { id: id, title: id, rank: isSet(CICLO_ORDER[id]) ? CICLO_ORDER[id] : 9 };
+    }
+    if (criterio === 'genero') {
+      const id = str(r.genero) || 'Sin dato';
+      return { id: id, title: id, rank: NaN };
+    }
+    const anio = Number(r.anio) || Number(parts[0]) || 0;
+    return { id: anio, title: anio ? anio + '° Año' : 'Sin año', rank: anio };
+  }
+  if (section === 'Docentes') {
+    if (criterio === 'cargo') {
+      const id = str(r.cargo) || 'Sin cargo';
+      return { id: id, title: id, rank: NaN };
+    }
+    if (criterio === 'anio_ingreso') {
+      const id = str(r.anio_ingreso) || 'Sin dato';
+      const n = Number(r.anio_ingreso);
+      return { id: id, title: id, rank: isNaN(n) ? 9999 : n };
+    }
+    const letra = letraDe(r.nombre);
+    return { id: letra, title: letra, rank: NaN };
+  }
+  if (section === 'Materias') {
+    if (criterio === 'con_docente') {
+      const con = Number(r.con_docente) === 1;
+      const id = con ? 'Con docente asignado' : 'Sin docente asignado';
+      return { id: id, title: id, rank: CON_DOCENTE_ORDER[id] };
+    }
+    const letra = letraDe(r.nombre);
+    return { id: letra, title: letra, rank: NaN };
+  }
+  return { id: '', title: '', rank: NaN };
+}
+
+// groupCoursesBy: agrupa por el criterio elegido. Los cursos deben llegar ya
+// ordenados (sortCourses) porque el orden relativo se respeta dentro de cada
+// grupo. Con dir='desc' se invierte también el orden de los grupos.
+export function groupCoursesBy(courses, criterio, dir) {
+  return groupRowsBy(courses, criterio, dir, courseGroupKey);
 }
 
 export function courseShortName(c) {
@@ -171,6 +463,73 @@ export function studentRowsHTML(rows, editable) {
         (editable && s.id_alumno ? rowActionsHTML('estudiantes', s.id_alumno, s.nombre) : '') +
         '</tr>'
     )
+    .join('');
+}
+
+// sectionTitle: título de la sección tabular/listada según el criterio activo.
+function sectionTitle(section, filter) {
+  const titles = SECTION_TITLES[section] || {};
+  return titles[filter] || titles.none || '';
+}
+
+// groupRowHTML: fila de encabezado de un grupo dentro de una tabla.
+export function groupRowHTML(title, count, colspan, unidad) {
+  return (
+    '<tr class="group-row">' +
+    '<th colspan="' + colspan + '">' + esc(title) +
+    '<span class="group-count">' + count + ' ' + esc(unidad) + '</span>' +
+    '</th></tr>'
+  );
+}
+
+// studentGroupsHTML: filas de estudiantes agrupadas con su encabezado.
+export function studentGroupsHTML(groups, editable) {
+  const colspan = editable ? 5 : 4;
+  if (!groups || groups.length === 0) return studentRowsHTML([], editable);
+  return groups
+    .map((g) => groupRowHTML(g.title, g.items.length, colspan, 'estudiantes') + studentRowsHTML(g.items, editable))
+    .join('');
+}
+
+// teacherGroupsHTML: tarjetas de docentes agrupadas con su encabezado.
+export function teacherGroupsHTML(groups, editable) {
+  if (!groups || groups.length === 0) return '<div class="table-empty">No hay docentes para mostrar.</div>';
+  return (
+    '<div class="course-list-wrap">' +
+    groups
+      .map(
+        (g) =>
+          '<div class="course-group">' +
+          '<div class="course-group-header">' +
+          '<div class="group-icon">' + icon('GraduationCap', 18) + '</div>' +
+          '<div><strong>' + esc(g.title) + '</strong><span>' + g.items.length + ' docentes</span></div>' +
+          '</div>' +
+          '<div class="teacher-grid">' + teacherCardsHTML(g.items, null, editable) + '</div>' +
+          '</div>'
+      )
+      .join('') +
+    '</div>'
+  );
+}
+
+// materiaGroupsHTML: filas de materias agrupadas con su encabezado. La
+// numeración de posición se mantiene global entre grupos.
+export function materiaGroupsHTML(groups, editable) {
+  if (!groups || groups.length === 0) return '<div class="table-empty">No hay materias para mostrar.</div>';
+  let offset = 0;
+  return groups
+    .map((g) => {
+      const html =
+        '<div class="course-group">' +
+        '<div class="course-group-header">' +
+        '<div class="group-icon">' + icon('BookMarked', 18) + '</div>' +
+        '<div><strong>' + esc(g.title) + '</strong><span>' + g.items.length + ' materias</span></div>' +
+        '</div>' +
+        '<div class="student-list">' + materiaRowsHTML(g.items, editable, offset) + '</div>' +
+        '</div>';
+      offset += g.items.length;
+      return html;
+    })
     .join('');
 }
 
@@ -224,6 +583,9 @@ export function courseCardsHTML(courses, editable) {
         '<span class="course-teacher">Turno ' + esc(c.turno || '—') + '</span></div>' +
         '<div class="course-meta">' +
         '<div class="meta-row">' + icon('CalendarDays', 14) + '<span>' + esc(c.nombre) + '</span></div>' +
+        (c.especialidad
+          ? '<div class="meta-row">' + icon('BookMarked', 14) + '<span>' + esc(c.especialidad) + '</span></div>'
+          : '') +
         '</div>' +
         '<button class="course-link" data-nomina="' + esc(c.id_curso) + '" data-nombre="' + esc(courseShortName(c)) + '" type="button">Ver nómina ' + icon('ChevronRight', 15) + '</button>' +
         '</div>'
@@ -232,17 +594,19 @@ export function courseCardsHTML(courses, editable) {
     .join('');
 }
 
-export function materiaRowsHTML(rows, editable) {
+export function materiaRowsHTML(rows, editable, startIndex) {
   if (!rows || rows.length === 0) {
     return '<div class="table-empty">No hay materias para mostrar.</div>';
   }
+  // startIndex mantiene la numeración global cuando la lista viene agrupada.
+  const base = Number(startIndex) || 0;
   return rows
     .map(
       (m, i) =>
         '<div class="student-row">' +
         '<div class="avatar avatar-violet">' + esc((String(m.nombre || 'M')[0]).toUpperCase()) + '</div>' +
         '<div class="student-info"><strong>' + esc(m.nombre) + '</strong><span>Materia del ciclo lectivo</span></div>' +
-        '<span class="course-level level-violet">' + (i + 1) + '</span>' +
+        '<span class="course-level level-violet">' + (base + i + 1) + '</span>' +
         (editable && m.id_materia
           ? '<div class="row-actions">' +
             '<button class="row-action action-edit" type="button" data-crud="edit" data-tipo="materias" data-id="' + esc(m.id_materia) + '" aria-label="Editar">' + icon('Pencil', 14) + '</button>' +
@@ -254,15 +618,19 @@ export function materiaRowsHTML(rows, editable) {
     .join('');
 }
 
-export function courseSectionCards(group) {
+export function courseSectionCards(group, editable) {
   if (!group || !group.items || group.items.length === 0) return '';
   return group.items
     .map(
       (c) =>
         '<div class="course-section-card">' +
         '<div class="section-card-top"><div class="section-badge">' + esc(courseShortName(c)) + '</div>' +
-        '<span class="section-count">' + esc(c.turno || '') + '</span></div>' +
-        '<div class="section-card-body"><strong>' + esc(c.ciclo || 'Curso') + '</strong>' +
+        '<span class="section-count">' + esc(c.turno || '') + '</span>' +
+        (editable && c.id_curso
+          ? '<button class="row-action action-edit" type="button" data-crud="edit" data-tipo="cursos" data-id="' + esc(c.id_curso) + '" aria-label="Editar curso">' + icon('Pencil', 14) + '</button>'
+          : '') +
+        '</div>' +
+        '<div class="section-card-body"><strong>' + esc(c.especialidad || c.ciclo || 'Curso') + '</strong>' +
         '<span class="cell-muted">' + icon('Users', 13) + ' ' + esc(c.nombre) + '</span></div>' +
         '<button class="section-link" data-nomina="' + esc(c.id_curso) + '" data-nombre="' + esc(courseShortName(c)) + '" type="button">Ver nómina ' + icon('ArrowUpRight', 14) + '</button>' +
         '</div>'
@@ -270,7 +638,7 @@ export function courseSectionCards(group) {
     .join('');
 }
 
-export function courseGroupsHTML(groups) {
+export function courseGroupsHTML(groups, editable) {
   if (!groups || groups.length === 0) {
     return '<div class="table-empty">No hay cursos para mostrar.</div>';
   }
@@ -282,7 +650,7 @@ export function courseGroupsHTML(groups) {
         '<div class="group-icon">' + icon('ClipboardList', 18) + '</div>' +
         '<div><strong>' + esc(g.title) + '</strong><span>' + g.items.length + ' divisiones</span></div>' +
         '</div>' +
-        '<div class="course-sections-grid">' + courseSectionCards(g) + '</div>' +
+        '<div class="course-sections-grid">' + courseSectionCards(g, editable) + '</div>' +
         '</div>'
     )
     .join('');
@@ -501,11 +869,126 @@ function toolbarHTML(state, section) {
     ? '<button class="filter-button" data-export="' + esc(EXPORT_FOR[section]) + '" type="button">' + icon('Download', 16) + ' PDF</button>' +
       '<button class="filter-button" data-export="' + esc(EXPORT_FOR[section]) + '" data-format="excel" type="button">' + icon('Download', 16) + ' Excel</button>'
     : '';
+  // Menú de filtro + botón de dirección (en las secciones con criterios); el
+  // orden solo se alterna entre ↑ y ↓ (sin criterios de orden).
+  let controls = '';
+  if (SECTION_FILTERS[section]) {
+    const isDesc = activeSortDir(state, section) === 'desc';
+    // El botón de orden no lleva 'active': se ve igual en ↑ y ↓.
+    controls =
+      '<div class="filter-menu">' +
+      '<button class="filter-button' + (activeFilter(state, section) !== 'none' ? ' active' : '') + '" data-menu="filter" type="button" aria-haspopup="true" aria-expanded="' + (state.openMenu === 'filter') + '">' +
+      icon('Filter', 16) + ' ' + esc(sectionFilterLabel(state, section)) + icon('ChevronDown', 15) + '</button>' +
+      (state.openMenu === 'filter' ? filterMenuPanel(state, section) : '') +
+      '</div>' +
+      '<button class="filter-button" data-dir-toggle type="button" aria-pressed="' + isDesc + '">' +
+      icon('ArrowUpDown', 16) + ' ' + courseDirLabel(isDesc) + '</button>';
+  }
   return (
     '<div class="view-toolbar">' +
+    controls +
     exports +
     '</div>'
   );
+}
+
+function menuItemHTML(set, val, label, active) {
+  return (
+    '<button class="filter-menu-item' + (active ? ' active' : '') + '" data-set="' + set + '" data-val="' + esc(val) + '" type="button" role="menuitem">' +
+    '<span class="filter-menu-mark">' + (active ? '✓' : '') + '</span>' +
+    esc(label) +
+    '</button>'
+  );
+}
+
+function filterMenuPanel(state, section) {
+  const list = SECTION_FILTERS[section] || SECTION_FILTERS.Cursos;
+  const active = activeFilter(state, section);
+  return (
+    '<div class="filter-menu-panel" role="menu">' +
+    list.map((f) => menuItemHTML('filter', f.v, f.l, active === f.v)).join('') +
+    '</div>'
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Refresco parcial de la sección activa: actualiza solo el cuerpo y los
+// rótulos del toolbar en el lugar, para no reconstruir toda la sección ni
+// re-disparar su animación de entrada (rise .35s).
+// ---------------------------------------------------------------------------
+
+// courseDirLabel: rótulo del botón de orden según la dirección activa.
+export function courseDirLabel(isDesc) {
+  return 'Ordenar: ' + (isDesc ? 'Descendente ↓' : 'Ascendente ↑');
+}
+
+// sectionFilterLabel: rótulo del botón de filtro según la sección y criterio
+// activos.
+export function sectionFilterLabel(state, section) {
+  const list = SECTION_FILTERS[section] || SECTION_FILTERS.Cursos;
+  const active = activeFilter(state, section);
+  const filter = list.find((f) => f.v === active) || list[0];
+  return 'Filtrar por: ' + filter.l;
+}
+
+// Compatibilidad con el nombre anterior (sección Cursos).
+export function courseFilterLabel(state) {
+  return sectionFilterLabel(state, 'Cursos');
+}
+
+// sectionDom: nodos del toolbar y del cuerpo de la sección activa. Devuelve
+// null si no hay vista parcial (sección sin menú, drill de nómina o carga).
+function sectionDom(state) {
+  if (state.drill) return null;
+  if (!SECTION_FILTERS[state.section]) return null;
+  const content = state.root.querySelector('[data-content]');
+  if (!content) return null;
+  const body = content.querySelector('[data-view-body]');
+  const dirBtn = content.querySelector('[data-dir-toggle]');
+  const filterBtn = content.querySelector('[data-menu="filter"]');
+  if (!body || !dirBtn || !filterBtn) return null;
+  return { body: body, dirBtn: dirBtn, filterBtn: filterBtn };
+}
+
+// syncSectionToolbar: escribe rótulos y atributos del toolbar sin tocar el resto.
+function syncSectionToolbar(state, dom) {
+  const d = dom || sectionDom(state);
+  if (!d) return false;
+  const isDesc = activeSortDir(state) === 'desc';
+  d.dirBtn.innerHTML = icon('ArrowUpDown', 16) + ' ' + courseDirLabel(isDesc);
+  d.dirBtn.setAttribute('aria-pressed', String(isDesc));
+  d.filterBtn.innerHTML = icon('Filter', 16) + ' ' + esc(sectionFilterLabel(state, state.section)) + icon('ChevronDown', 15);
+  d.filterBtn.classList.toggle('active', activeFilter(state) !== 'none');
+  d.filterBtn.setAttribute('aria-expanded', String(state.openMenu === 'filter'));
+  return true;
+}
+
+// refreshSection: repinta solo el cuerpo (el encabezado va dentro) + rótulos.
+// Devuelve false si hace falta un render completo de la sección.
+function refreshSection(state) {
+  const dom = sectionDom(state);
+  const rows = state.cache && state.cache[state.section];
+  if (!dom || !rows) return false;
+  dom.body.innerHTML = bodyFor(state, state.section, rows, '');
+  return syncSectionToolbar(state, dom);
+}
+
+// setSectionMenu: abre o cierra el menú de filtro insertando/quitando solo el
+// panel, sin re-render de la sección.
+function setSectionMenu(state, open) {
+  const dom = sectionDom(state);
+  if (!dom) return false;
+  const wrap = dom.filterBtn.parentNode;
+  if (!wrap || !wrap.classList.contains('filter-menu')) return false;
+  const panel = wrap.querySelector('.filter-menu-panel');
+  if (open && !panel) {
+    wrap.insertAdjacentHTML('beforeend', filterMenuPanel(state, state.section));
+  } else if (!open && panel) {
+    panel.remove();
+  }
+  state.openMenu = open ? 'filter' : null;
+  syncSectionToolbar(state, dom);
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -537,52 +1020,71 @@ function bodyFor(state, section, rows, query) {
   const q = String(query || '').trim().toLowerCase();
   const editable = hasPerm(state, SECTION_WRITE[section]);
   if (section === 'Estudiantes') {
-    const filtered = filterRows(rows, q, ['nombre', 'curso', 'dni', 'tutor']);
+    const dir = activeSortDir(state, section);
+    const filter = activeFilter(state, section);
+    const filtered = filterRows(rows, q, ['nombre', 'curso', 'dni', 'tutor', 'turno', 'ciclo', 'genero']);
+    const ordered = sortRowsByName(filtered, dir);
+    const body = filter === 'none'
+      ? studentRowsHTML(ordered, editable)
+      : studentGroupsHTML(groupRowsBy(ordered, filter, dir, (crit, r) => groupKeyFor('Estudiantes', crit, r)), editable);
     return (
       '<div class="data-panel">' +
-      '<div class="panel-heading"><div><h2>Registro de estudiantes</h2><p>' + filtered.length + ' registros</p></div>' +
+      '<div class="panel-heading"><div><h2>' + esc(sectionTitle('Estudiantes', filter)) + '</h2><p>' + filtered.length + ' registros</p></div>' +
       '<button class="text-button" type="button" disabled>Actualizado desde la base</button></div>' +
       '<div class="table-wrap"><table><thead><tr><th>Estudiante</th><th>Curso</th><th>DNI</th><th>Tutor</th>' + (editable ? '<th></th>' : '') + '</tr></thead><tbody>' +
-      studentRowsHTML(filtered, editable) + '</tbody></table></div>' +
+      body + '</tbody></table></div>' +
       '</div>'
     );
   }
   if (section === 'Docentes') {
-    const filtered = filterRows(rows, q, ['nombre', 'dni', 'cargo']);
+    const dir = activeSortDir(state, section);
+    const filter = activeFilter(state, section);
+    const filtered = filterRows(rows, q, ['nombre', 'dni', 'cargo', 'anio_ingreso']);
+    const ordered = sortRowsByName(filtered, dir);
+    const body = filter === 'none'
+      ? '<div class="teacher-grid">' + teacherCardsHTML(ordered, null, editable) + '</div>'
+      : teacherGroupsHTML(groupRowsBy(ordered, filter, dir, (crit, r) => groupKeyFor('Docentes', crit, r)), editable);
     return (
       '<div class="stats-grid">' +
       statCard('GraduationCap', 'Docentes', rows.length, 'en plantel', 'teal') +
       statCard('Users', 'Estudiantes', '', '', 'blue').replace(/<strong><\/strong>/, '<strong>—</strong>') +
       '</div>' +
-      '<div class="card-grid-heading"><div><h2>Equipo docente</h2><p>' + filtered.length + ' docentes</p></div></div>' +
-      '<div class="teacher-grid">' + teacherCardsHTML(filtered, null, editable) + '</div>'
+      '<div class="card-grid-heading"><div><h2>' + esc(sectionTitle('Docentes', filter)) + '</h2><p>' + filtered.length + ' docentes</p></div></div>' +
+      body
     );
   }
   if (section === 'Cursos') {
-    const filtered = filterRows(rows, q, ['nombre', 'turno', 'ciclo']);
+    const dir = activeSortDir(state, section);
+    const filter = activeFilter(state, section);
+    const filtered = filterRows(rows, q, ['nombre', 'turno', 'ciclo', 'especialidad']);
+    const ordered = sortCourses(filtered, dir);
+    const head = COURSE_HEADINGS[filter] || COURSE_HEADINGS.none;
+    const heading = '<div class="card-grid-heading"><div><h2>' + esc(head[0]) + '</h2><p>' + esc(head[1]) + '</p></div></div>';
+    const body = filter === 'none'
+      ? '<div class="course-grid">' + courseCardsHTML(ordered, editable) + '</div>'
+      : '<div class="course-list-wrap">' + courseGroupsHTML(groupCoursesBy(ordered, filter, dir), editable) + '</div>';
     return (
       '<div class="stats-grid">' +
       statCard('BookOpen', 'Cursos', rows.length, 'en el establecimiento', 'orange') +
       statCard('Users', 'Divisiones', '', '', 'blue').replace(/<strong><\/strong>/, '<strong>—</strong>') +
       '</div>' +
-      '<div class="card-grid-heading"><div><h2>Catálogo de cursos</h2><p>Hacé clic para abrir la nómina</p></div></div>' +
-      '<div class="course-grid">' + courseCardsHTML(filtered, editable) + '</div>'
+      heading +
+      body
     );
   }
   if (section === 'Materias') {
+    const dir = activeSortDir(state, section);
+    const filter = activeFilter(state, section);
     const filtered = filterRows(rows, q, ['nombre']);
+    const ordered = sortRowsByName(filtered, dir);
+    const body = filter === 'none'
+      ? materiaRowsHTML(ordered, editable)
+      : materiaGroupsHTML(groupRowsBy(ordered, filter, dir, (crit, r) => groupKeyFor('Materias', crit, r)), editable);
     return (
       '<div class="data-panel">' +
-      '<div class="panel-heading"><div><h2>Materias del establecimiento</h2><p>' + filtered.length + ' materias</p></div></div>' +
-      '<div class="student-list">' + materiaRowsHTML(filtered, editable) + '</div>' +
+      '<div class="panel-heading"><div><h2>' + esc(sectionTitle('Materias', filter)) + '</h2><p>' + filtered.length + ' materias</p></div></div>' +
+      '<div class="student-list">' + body + '</div>' +
       '</div>'
-    );
-  }
-  if (section === 'Listado por Cursos') {
-    const groups = groupCoursesByYear(rows);
-    return (
-      '<div class="card-grid-heading"><div><h2>Nóminas por curso</h2><p>Seleccioná un curso para ver su nómina</p></div></div>' +
-      '<div class="course-list-wrap">' + courseGroupsHTML(groups) + '</div>'
     );
   }
   if (section === 'Usuarios') {
@@ -716,6 +1218,7 @@ function showSection(state, section) {
   state.section = section;
   state.drill = null;
   state.results = null;
+  state.openMenu = null;
   updateNavActive(state, section);
   setBreadcrumb(state, section === 'Inicio' ? 'Panel principal' : section);
   renderCurrent(state);
@@ -788,9 +1291,10 @@ async function renderCurrent(state) {
 }
 
 async function openNomina(state, id, nombre) {
-  state.section = 'Listado por Cursos';
+  state.section = 'Cursos';
   state.drill = { id: id, nombre: nombre };
   state.results = null;
+  state.openMenu = null;
   setBreadcrumb(state, 'Nómina · ' + nombre);
   const content = state.root.querySelector('[data-content]');
   content.innerHTML = '<div class="panel" style="padding:48px 24px; text-align:center; color:#8a94a6;">Cargando nómina…</div>';
@@ -873,6 +1377,42 @@ function wireEvents(state) {
       showSection(state, qc.getAttribute('data-section'));
       return;
     }
+    // Cerrar el menú de filtro si se hace clic fuera de él (sin re-render).
+    if (state.openMenu && !e.target.closest('.filter-menu') && !setSectionMenu(state, false)) {
+      state.openMenu = null;
+      renderCurrent(state);
+    }
+    // Orden: solo alterna la dirección (asc ↔ desc), sin criterios.
+    const dirToggle = e.target.closest('[data-dir-toggle]');
+    if (dirToggle) {
+      const sortSection = state.section;
+      state.sortDirs[sortSection] = activeSortDir(state, sortSection) === 'desc' ? 'asc' : 'desc';
+      storeSortDir(sortSection, state.sortDirs[sortSection]);
+      if (!refreshSection(state)) renderCurrent(state);
+      return;
+    }
+    const menuBtn = e.target.closest('[data-menu]');
+    if (menuBtn) {
+      const which = menuBtn.getAttribute('data-menu');
+      const open = state.openMenu !== which;
+      if (!setSectionMenu(state, open)) {
+        state.openMenu = open ? which : null;
+        renderCurrent(state);
+      }
+      return;
+    }
+    const set = e.target.closest('[data-set]');
+    if (set) {
+      const val = set.getAttribute('data-val');
+      const filterSection = state.section;
+      if (set.getAttribute('data-set') === 'filter' && isSectionFilter(filterSection, val)) {
+        state.filters[filterSection] = val;
+        storeFilter(filterSection, val);
+      }
+      setSectionMenu(state, false);
+      if (!refreshSection(state)) renderCurrent(state);
+      return;
+    }
     const tt = e.target.closest('.theme-toggle');
     if (tt) {
       const next = state.theme === 'dark' ? 'light' : 'dark';
@@ -896,7 +1436,7 @@ function wireEvents(state) {
       return;
     }
     if (e.target.closest('[data-back]')) {
-      showSection(state, 'Listado por Cursos');
+      showSection(state, 'Cursos');
       return;
     }
     const exp = e.target.closest('[data-export]');
@@ -950,7 +1490,7 @@ async function loadAll(state) {
   const jobs = [];
   ['Estudiantes', 'Docentes', 'Cursos', 'Materias'].forEach((sec) => {
     if (!want[sec]) return;
-    const table = sec === 'Listado por Cursos' ? 'lista_cursos' : TABLE_FOR[sec];
+    const table = TABLE_FOR[sec];
     jobs.push(
       apiRows('api.php?table=' + encodeURIComponent(table) + '&limit=100').then((rows) => {
         tutors[sec] = rows;
@@ -963,7 +1503,6 @@ async function loadAll(state) {
     Estudiantes: tutors.Estudiantes || [],
     Docentes: tutors.Docentes || [],
     Cursos: tutors.Cursos || [],
-    'Listado por Cursos': tutors.Cursos || [],
     Materias: tutors.Materias || [],
   };
   for (const sec of ['Estudiantes', 'Docentes', 'Cursos', 'Materias']) {
@@ -977,7 +1516,6 @@ async function loadAll(state) {
     Docentes: tutors.Docentes === undefined ? undefined : tutors.Docentes.length,
     Cursos: tutors.Cursos === undefined ? undefined : tutors.Cursos.length,
     Materias: tutors.Materias === undefined ? undefined : tutors.Materias.length,
-    'Listado por Cursos': tutors.Cursos === undefined ? undefined : tutors.Cursos.length,
   };
 }
 
@@ -1003,7 +1541,7 @@ export async function refreshData(state, section) {
   const navCounts = await loadAll(state);
   updateNavCounts(state, navCounts);
   state.cache.Usuarios = null;
-  if (section === 'Listado por Cursos' && state.drill) {
+  if (section === 'Cursos' && state.drill) {
     await openNomina(state, state.drill.id, state.drill.nombre);
   } else {
     await renderCurrent(state);
@@ -1023,6 +1561,9 @@ export async function initMain(root, opts) {
     perms: (opts && Array.isArray(opts.permisos)) ? opts.permisos : [],
     ultimoBackup: (opts && opts.ultimoBackup) || '',
     theme: getStoredTheme(),
+    filters: getStoredFilters(),
+    sortDirs: getStoredSortDirs(),
+    openMenu: null,
     section: 'Inicio',
     drill: null,
     results: null,

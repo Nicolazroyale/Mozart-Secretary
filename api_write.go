@@ -42,7 +42,7 @@ var respFields = []string{
 
 var writeAllowedFields = map[string][]string{
 	"docentes":              {"apellido", "nombre", "dni", "fecha_inscripcion", "telefono", "email", "activo", "situacion_revista"},
-	"cursos":                {"anio", "division", "turno", "ciclo", "jornada"},
+	"cursos":                {"anio", "division", "turno", "ciclo", "jornada", "orientacion"},
 	"materias":              {"nombre"},
 	"docente_materia_curso": {"id_docente", "id_materia", "id_curso", "cargo", "horas_catedra", "dia_semana", "hora_inicio", "hora_fin", "ciclo_lectivo", "activo"},
 }

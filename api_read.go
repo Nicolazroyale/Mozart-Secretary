@@ -265,7 +265,8 @@ func (s *Server) handleApiGet(w http.ResponseWriter, r *http.Request) {
 
 	case "lista_cursos":
 		s.jsonRows(w,
-			`SELECT id_curso, anio, division, turno,
+			`SELECT id_curso, anio, division, turno, ciclo, jornada,
+			        COALESCE(orientacion, '') as especialidad,
 			        anio || '°' || division || '° (' || ciclo || ') - ' || turno as nombre
 			 FROM cursos ORDER BY anio, division`)
 
@@ -290,7 +291,12 @@ func (s *Server) handleApiGet(w http.ResponseWriter, r *http.Request) {
 		                a.apellido || ', ' || a.nombre as nombre,
 		                c.anio || '°' || c.division || '°' as curso,
 		                a.dni,
-		                r.apellido || ', ' || r.nombre as tutor
+		                r.apellido || ', ' || r.nombre as tutor,
+		                c.anio as anio,
+		                c.division as division,
+		                c.turno as turno,
+		                c.ciclo as ciclo,
+		                a.genero as genero
 		         FROM alumnos a
 		         JOIN cursos c ON a.id_curso = c.id_curso
 		         LEFT JOIN alumno_responsable ar ON a.id_alumno = ar.id_alumno AND ar.es_principal = 1
@@ -304,7 +310,9 @@ func (s *Server) handleApiGet(w http.ResponseWriter, r *http.Request) {
 			s.jsonRowOrArray(w, "SELECT * FROM docentes WHERE id_docente = ?", id)
 			return
 		}
-		base := `SELECT id_docente, apellido || ', ' || nombre as nombre, dni, situacion_revista as cargo
+		base := `SELECT id_docente, apellido || ', ' || nombre as nombre, dni,
+		                situacion_revista as cargo,
+		                substr(fecha_inscripcion, 1, 4) as anio_ingreso
 		         FROM docentes ORDER BY apellido, nombre`
 		s.jsonPage(w, base, nil, page, limit)
 
@@ -321,7 +329,13 @@ func (s *Server) handleApiGet(w http.ResponseWriter, r *http.Request) {
 			s.jsonRowOrArray(w, "SELECT * FROM materias WHERE id_materia = ?", id)
 			return
 		}
-		s.jsonRows(w, `SELECT id_materia, nombre, 'N/A' as curso FROM materias`)
+		s.jsonRows(w, `SELECT m.id_materia, m.nombre, 'N/A' as curso,
+		                     CASE WHEN EXISTS (
+		                       SELECT 1 FROM docente_materia_curso d
+		                       WHERE d.id_materia = m.id_materia AND d.activo = 1
+		                     ) THEN 1 ELSE 0 END as con_docente
+		              FROM materias m
+		              ORDER BY m.nombre`)
 
 	case "asignaciones":
 		if id != "" {

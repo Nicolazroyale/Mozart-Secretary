@@ -1,9 +1,11 @@
 import {
+  ArrowUpDown,
   ArrowUpRight,
   Bell,
   BookOpen,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   ClipboardList,
   Clock,
@@ -29,8 +31,188 @@ type Section =
   | 'Inicio'
   | 'Estudiantes'
   | 'Docentes'
-  | 'Cursos'
-  | 'Listado por Cursos';
+  | 'Cursos';
+
+type CourseFilter = 'none' | 'anio' | 'especialidad' | 'turno';
+type CourseDir = 'asc' | 'desc';
+
+// Valores de "Filtrar por" de todas las secciones del mockup.
+type FilterValue =
+  | CourseFilter
+  | 'estado'
+  | 'curso'
+  | 'materia'
+  | 'letra';
+
+// Menús "Filtrar por" de cada sección (mismo patrón que la app real; los
+// criterios se adaptan a los datos demo de cada vista).
+const SECTION_FILTERS: Record<
+  'Estudiantes' | 'Docentes' | 'Cursos',
+  { v: FilterValue; l: string }[]
+> = {
+  Estudiantes: [
+    { v: 'none', l: 'Ninguno' },
+    { v: 'estado', l: 'Estado' },
+    { v: 'curso', l: 'Curso' },
+    { v: 'anio', l: 'Año' },
+  ],
+  Docentes: [
+    { v: 'none', l: 'Ninguno' },
+    { v: 'estado', l: 'Estado' },
+    { v: 'materia', l: 'Materia' },
+    { v: 'letra', l: 'Letra' },
+  ],
+  Cursos: [
+    { v: 'none', l: 'Ninguno' },
+    { v: 'anio', l: 'Año' },
+    { v: 'especialidad', l: 'Especialidad' },
+    { v: 'turno', l: 'Turno' },
+  ],
+};
+
+// Título de las secciones según el criterio de agrupación activo.
+const SECTION_TITLES: Record<string, Record<string, string>> = {
+  Estudiantes: {
+    none: 'Registro de estudiantes',
+    estado: 'Estudiantes por estado',
+    curso: 'Estudiantes por curso',
+    anio: 'Estudiantes por año',
+  },
+  Docentes: {
+    none: 'Equipo docente',
+    estado: 'Docentes por estado',
+    materia: 'Docentes por materia',
+    letra: 'Docentes por apellido',
+  },
+};
+
+type Group<T> = { title: string; items: T[] };
+type GroupKey<T> = { id: string | number; title: string; rank: number };
+type Student = (typeof students)[number];
+type Teacher = (typeof teachers)[number];
+
+const ESTADO_ORDER: Record<string, number> = {
+  Activo: 0,
+  Pendiente: 1,
+  Licencia: 2,
+};
+
+const LETRA_RE = /^[A-ZÁÉÍÓÚÜÑ]$/;
+
+function estadoRank(status: string) {
+  return ESTADO_ORDER[status] !== undefined
+    ? ESTADO_ORDER[status]
+    : 9;
+}
+
+function letraDe(nombre: string) {
+  const c = nombre.trim().charAt(0).toUpperCase();
+  return LETRA_RE.test(c) ? c : '#';
+}
+
+function courseParts(course: string) {
+  const parts = String(course || '').split('°');
+  return {
+    anio: Number(parts[0]) || 0,
+    resto: String(parts[1] || '').trim(),
+  };
+}
+
+// sortByName: orden natural (A→Z) por nombre; dir='desc' lo invierte.
+function sortByName<T extends { name: string }>(
+  rows: T[],
+  dir: CourseDir
+): T[] {
+  const out = rows.slice();
+  out.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  if (dir === 'desc') out.reverse();
+  return out;
+}
+
+// groupRows: agrupador genérico ((criterio, fila) → { id, title, rank }),
+// paridad con groupRowsBy() de la app real.
+function groupRows<T>(
+  rows: T[],
+  criterio: FilterValue,
+  dir: CourseDir,
+  extract: (criterio: FilterValue, row: T) => GroupKey<T>
+): Group<T>[] {
+  const buckets: (GroupKey<T> & { items: T[] })[] = [];
+  const index: Record<string, GroupKey<T> & { items: T[] }> = {};
+  rows.forEach((r) => {
+    const g = extract(criterio, r);
+    const id = String(g.id);
+    if (!index[id]) {
+      index[id] = { ...g, items: [] };
+      buckets.push(index[id]);
+    }
+    index[id].items.push(r);
+  });
+  buckets.sort((a, b) => {
+    const ra = Number(a.rank);
+    const rb = Number(b.rank);
+    if (!isNaN(ra) && !isNaN(rb)) return ra - rb;
+    return a.title.localeCompare(b.title, 'es');
+  });
+  const ordered =
+    dir === 'desc' ? buckets.slice().reverse() : buckets;
+  return ordered.map((g) => ({
+    title: g.title,
+    items: g.items,
+  }));
+}
+
+function studentGroupKey(
+  criterio: FilterValue,
+  s: Student
+): GroupKey<Student> {
+  const p = courseParts(s.course);
+  if (criterio === 'curso') {
+    const id = s.course || 'Sin curso';
+    return {
+      id: id,
+      title: id,
+      rank:
+        p.anio * 100 +
+        (p.resto ? p.resto.charCodeAt(0) : 0),
+    };
+  }
+  if (criterio === 'anio') {
+    return {
+      id: p.anio,
+      title: p.anio ? `${p.anio}° Año` : 'Sin año',
+      rank: p.anio,
+    };
+  }
+  const id = s.status || 'Sin estado';
+  return { id: id, title: id, rank: estadoRank(s.status) };
+}
+
+function teacherGroupKey(
+  criterio: FilterValue,
+  t: Teacher
+): GroupKey<Teacher> {
+  if (criterio === 'materia') {
+    const id = t.subject || 'Sin materia';
+    return { id: id, title: id, rank: NaN };
+  }
+  if (criterio === 'letra') {
+    const letra = letraDe(t.name);
+    return { id: letra, title: letra, rank: NaN };
+  }
+  const id = t.status || 'Sin estado';
+  return { id: id, title: id, rank: estadoRank(t.status) };
+}
+
+const COURSE_HEADINGS: Record<CourseFilter, [string, string]> = {
+  none: ['Catálogo de cursos', 'Materias y asignaciones del ciclo lectivo 2026'],
+  anio: ['Nóminas por curso', 'Agrupadas por año de cursada'],
+  especialidad: [
+    'Cursos por especialidad',
+    'Agrupadas por especialidad (orientación)',
+  ],
+  turno: ['Cursos por turno', 'Agrupadas por turno de cursada'],
+};
 
 type SectionMeta = {
   icon: typeof Users;
@@ -55,14 +237,9 @@ const sections: SectionMeta[] = [
   {
     icon: BookOpen,
     label: 'Cursos',
-    description: 'Organiza la oferta educativa',
+    description:
+      'Organiza la oferta y consultá nóminas por división',
     color: 'orange',
-  },
-  {
-    icon: ClipboardList,
-    label: 'Listado por Cursos',
-    description: 'Consulta grupos y asignaciones',
-    color: 'violet',
   },
 ];
 
@@ -186,144 +363,31 @@ const teachers = [
   },
 ];
 
-const courses = [
-  {
-    name: 'Matemática',
-    level: '5° B',
-    students: 28,
-    teacher: 'Diego Pereyra',
-    schedule: 'Lun · Mié · Vie',
-    tone: 'orange',
-    icon: '📐',
-  },
-  {
-    name: 'Lengua y Literatura',
-    level: '3° A',
-    students: 31,
-    teacher: 'Laura Sánchez',
-    schedule: 'Mar · Jue',
-    tone: 'blue',
-    icon: '📖',
-  },
-  {
-    name: 'Física',
-    level: '5° A',
-    students: 24,
-    teacher: 'Marcos Fernández',
-    schedule: 'Lun · Vie',
-    tone: 'teal',
-    icon: '🔬',
-  },
-  {
-    name: 'Historia',
-    level: '2° B',
-    students: 33,
-    teacher: 'Carolina Ríos',
-    schedule: 'Mié · Jue',
-    tone: 'violet',
-    icon: '🏛️',
-  },
-  {
-    name: 'Biología',
-    level: '4° A',
-    students: 27,
-    teacher: 'Andrés Sosa',
-    schedule: 'Mar · Vie',
-    tone: 'teal',
-    icon: '🧬',
-  },
-  {
-    name: 'Geografía',
-    level: '1° C',
-    students: 30,
-    teacher: 'Patricia Núñez',
-    schedule: 'Lun · Mié',
-    tone: 'blue',
-    icon: '🌍',
-  },
-];
+type Course = {
+  name: string;
+  level: string;
+  students: number;
+  teacher: string;
+  schedule: string;
+  turno: string;
+  especialidad: string;
+  tone: string;
+  icon: string;
+};
 
-const courseGroups = [
-  {
-    level: '1° Año',
-    sections: [
-      {
-        name: '1° A',
-        students: 32,
-        teacher: 'Laura Sánchez',
-      },
-      {
-        name: '1° B',
-        students: 30,
-        teacher: 'Diego Pereyra',
-      },
-      {
-        name: '1° C',
-        students: 28,
-        teacher: 'Patricia Núñez',
-      },
-    ],
-  },
-  {
-    level: '2° Año',
-    sections: [
-      {
-        name: '2° A',
-        students: 29,
-        teacher: 'Marcos Fernández',
-      },
-      {
-        name: '2° B',
-        students: 33,
-        teacher: 'Carolina Ríos',
-      },
-    ],
-  },
-  {
-    level: '3° Año',
-    sections: [
-      {
-        name: '3° A',
-        students: 31,
-        teacher: 'Laura Sánchez',
-      },
-      {
-        name: '3° B',
-        students: 27,
-        teacher: 'Andrés Sosa',
-      },
-    ],
-  },
-  {
-    level: '4° Año',
-    sections: [
-      {
-        name: '4° A',
-        students: 26,
-        teacher: 'Andrés Sosa',
-      },
-      {
-        name: '4° B',
-        students: 30,
-        teacher: 'Diego Pereyra',
-      },
-    ],
-  },
-  {
-    level: '5° Año',
-    sections: [
-      {
-        name: '5° A',
-        students: 24,
-        teacher: 'Marcos Fernández',
-      },
-      {
-        name: '5° B',
-        students: 28,
-        teacher: 'Diego Pereyra',
-      },
-    ],
-  },
+// Cursos demo: cada entrada lleva turno y especialidad para que los menús
+// "Filtrar por" / "Ordenar" del mockup tengan datos reales que agrupar.
+const courses: Course[] = [
+  { name: 'Matemática', level: '5° B', students: 28, teacher: 'Diego Pereyra', schedule: 'Lun · Mié · Vie', turno: 'Mañana', especialidad: 'Técnico en Informática', tone: 'orange', icon: '📐' },
+  { name: 'Lengua y Literatura', level: '3° A', students: 31, teacher: 'Laura Sánchez', schedule: 'Mar · Jue', turno: 'Mañana', especialidad: '', tone: 'blue', icon: '📖' },
+  { name: 'Física', level: '5° A', students: 24, teacher: 'Marcos Fernández', schedule: 'Lun · Vie', turno: 'Tarde', especialidad: 'Electrónica', tone: 'teal', icon: '🔬' },
+  { name: 'Historia', level: '2° B', students: 33, teacher: 'Carolina Ríos', schedule: 'Mié · Jue', turno: 'Mañana', especialidad: 'Electrónica', tone: 'violet', icon: '🏛️' },
+  { name: 'Biología', level: '4° A', students: 27, teacher: 'Andrés Sosa', schedule: 'Mar · Vie', turno: 'Tarde', especialidad: 'Técnico en Informática', tone: 'teal', icon: '🧬' },
+  { name: 'Geografía', level: '1° C', students: 30, teacher: 'Patricia Núñez', schedule: 'Lun · Mié', turno: 'Mañana', especialidad: '', tone: 'blue', icon: '🌍' },
+  { name: 'Química', level: '3° B', students: 26, teacher: 'Marcos Fernández', schedule: 'Mar · Vie', turno: 'Tarde', especialidad: 'Electrónica', tone: 'violet', icon: '⚗️' },
+  { name: 'Programación', level: '5° A', students: 24, teacher: 'Diego Pereyra', schedule: 'Lun · Mié', turno: 'Mañana', especialidad: 'Técnico en Informática', tone: 'orange', icon: '💻' },
+  { name: 'Dibujo Técnico', level: '1° A', students: 32, teacher: 'Laura Sánchez', schedule: 'Jue', turno: 'Mañana', especialidad: '', tone: 'blue', icon: '📐' },
+  { name: 'Educación Física', level: '4° B', students: 29, teacher: 'Andrés Sosa', schedule: 'Vie', turno: 'Tarde', especialidad: '', tone: 'teal', icon: '⚽' },
 ];
 
 function App() {
@@ -396,7 +460,7 @@ function App() {
               <Icon size={19} />
               <span>{label}</span>
 
-              {label === 'Listado por Cursos' && (
+              {label === 'Cursos' && (
                 <span className="nav-count">8</span>
               )}
             </button>
@@ -634,7 +698,7 @@ function Dashboard({
             <Activity
               icon={ClipboardList}
               title="Listado exportado"
-              detail="Listado por Cursos · 2° ciclo"
+              detail="Cursos · nóminas · 2° ciclo"
               time="Ayer"
               color="violet"
             />
@@ -813,6 +877,37 @@ function SectionView({
 
   const Icon = meta.icon;
 
+  // Menús por sección: criterio de agrupación ('none' = vista plana),
+  // dirección del orden y menú abierto. En la app real se persiste en
+  // localStorage; aquí vive en el estado del componente.
+  const [filters, setFilters] = useState<
+    Record<string, FilterValue>
+  >({
+    Estudiantes: 'none',
+    Docentes: 'none',
+    Cursos: 'none',
+  });
+  const [sortDirs, setSortDirs] = useState<
+    Record<string, CourseDir>
+  >({
+    Estudiantes: 'asc',
+    Docentes: 'asc',
+    Cursos: 'asc',
+  });
+  const [openMenu, setOpenMenu] = useState<{
+    section: Section;
+    which: string;
+  } | null>(null);
+
+  const menuOpen =
+    openMenu !== null &&
+    openMenu.section === section &&
+    openMenu.which === 'filter';
+  const filterValue: FilterValue =
+    filters[section] ?? 'none';
+  const sortDir: CourseDir = sortDirs[section] ?? 'asc';
+  const menuItems = SECTION_FILTERS[section];
+
   return (
     <section className="section-view">
       <div className="view-hero">
@@ -840,9 +935,7 @@ function SectionView({
           <Plus size={18} />
 
           Agregar{' '}
-          {section === 'Listado por Cursos'
-            ? 'listado'
-            : section === 'Estudiantes'
+          {section === 'Estudiantes'
             ? 'estudiante'
             : section === 'Docentes'
             ? 'docente'
@@ -851,6 +944,83 @@ function SectionView({
       </div>
 
       <div className="view-toolbar">
+        {menuItems && (
+          <>
+            <div className="filter-menu">
+              <button
+                className={`filter-button${
+                  filterValue !== 'none'
+                    ? ' active'
+                    : ''
+                }`}
+                aria-expanded={menuOpen}
+                onClick={() =>
+                  setOpenMenu(
+                    menuOpen
+                      ? null
+                      : {
+                          section: section,
+                          which: 'filter',
+                        }
+                  )
+                }
+              >
+                <Filter size={16} />
+                {`Filtrar por: ${
+                  menuItems.find(
+                    (f) => f.v === filterValue
+                  )?.l ?? 'Ninguno'
+                }`}
+                <ChevronDown size={15} />
+              </button>
+
+              {menuOpen && (
+                <div className="filter-menu-panel">
+                  {menuItems.map((f) => (
+                    <button
+                      key={f.v}
+                      className={`filter-menu-item${
+                        filterValue === f.v
+                          ? ' active'
+                          : ''
+                      }`}
+                      onClick={() => {
+                        setFilters({
+                          ...filters,
+                          [section]: f.v,
+                        });
+                        setOpenMenu(null);
+                      }}
+                    >
+                      <span className="filter-menu-mark">
+                        {filterValue === f.v ? '✓' : ''}
+                      </span>
+                      {f.l}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              className="filter-button"
+              aria-pressed={sortDir === 'desc'}
+              onClick={() =>
+                setSortDirs({
+                  ...sortDirs,
+                  [section]:
+                    sortDir === 'desc' ? 'asc' : 'desc',
+                })
+              }
+            >
+              <ArrowUpDown size={16} />
+              {sortDir === 'desc'
+                ? 'Ordenar: Descendente ↓'
+                : 'Ordenar: Ascendente ↑'}
+            </button>
+          </>
+        )}
+
         <div className="local-search">
           <Search size={17} />
 
@@ -876,25 +1046,158 @@ function SectionView({
         </button>
       </div>
 
-      {section === 'Estudiantes' && <StudentsView />}
+      {section === 'Estudiantes' && (
+        <StudentsView
+          filter={filterValue}
+          dir={sortDir}
+        />
+      )}
 
-      {section === 'Docentes' && <TeachersView />}
+      {section === 'Docentes' && (
+        <TeachersView
+          filter={filterValue}
+          dir={sortDir}
+        />
+      )}
 
-      {section === 'Cursos' && <CoursesView />}
-
-      {section === 'Listado por Cursos' && (
-        <CourseListView />
+      {section === 'Cursos' && (
+        <CoursesView
+          filter={filterValue as CourseFilter}
+          dir={sortDir}
+        />
       )}
     </section>
   );
 }
 
-function StudentsView() {
+function StudentRow({ student }: { student: Student }) {
+  return (
+    <tr>
+      <td>
+        <div className="table-person">
+          <div
+            className={`avatar avatar-${student.tone}`}
+          >
+            {student.initials}
+          </div>
+
+          <strong>{student.name}</strong>
+        </div>
+      </td>
+
+      <td>{student.course}</td>
+
+      <td>
+        <span
+          className={`status ${
+            student.status === 'Activo'
+              ? 'status-active'
+              : 'status-pending'
+          }`}
+        >
+          {student.status}
+        </span>
+      </td>
+
+      <td>
+        <span className="cell-muted">
+          {student.email}
+        </span>
+      </td>
+
+      <td>
+        <span className="cell-muted">
+          {student.updated}
+        </span>
+      </td>
+
+      <td>
+        <button
+          className="row-action"
+          aria-label={`Abrir ${student.name}`}
+        >
+          <MoreHorizontal size={18} />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+// Fila de encabezado de grupo dentro de una tabla.
+function GroupHeaderRow({
+  title,
+  count,
+  unidad,
+  colspan,
+}: {
+  title: string;
+  count: number;
+  unidad: string;
+  colspan: number;
+}) {
+  return (
+    <tr className="group-row">
+      <th colSpan={colspan}>
+        {title}
+        <span className="group-count">
+          {count} {unidad}
+        </span>
+      </th>
+    </tr>
+  );
+}
+
+function StudentsView({
+  filter,
+  dir,
+}: {
+  filter: FilterValue;
+  dir: CourseDir;
+}) {
+  const ordered = sortByName(students, dir);
+  // 'none' (default) = filas planas; el resto agrupa con
+  // fila de encabezado por valor.
+  const rows =
+    filter === 'none'
+      ? ordered.map((student) => (
+          <StudentRow
+            key={student.name}
+            student={student}
+          />
+        ))
+      : groupRows(
+          ordered,
+          filter,
+          dir,
+          studentGroupKey
+        ).reduce(
+          (acc: any[], group) =>
+            acc.concat(
+              <GroupHeaderRow
+                key={`g-${group.title}`}
+                title={group.title}
+                count={group.items.length}
+                unidad="estudiantes"
+                colspan={6}
+              />,
+              group.items.map((student) => (
+                <StudentRow
+                  key={student.name}
+                  student={student}
+                />
+              ))
+            ),
+          []
+        );
+  const title =
+    SECTION_TITLES.Estudiantes[filter] ??
+    SECTION_TITLES.Estudiantes.none;
+
   return (
     <div className="data-panel">
       <div className="panel-heading">
         <div>
-          <h2>Registro de estudiantes</h2>
+          <h2>{title}</h2>
           <p>
             {students.length} registros encontrados
           </p>
@@ -919,65 +1222,125 @@ function StudentsView() {
             </tr>
           </thead>
 
-          <tbody>
-            {students.map((student) => (
-              <tr key={student.name}>
-                <td>
-                  <div className="table-person">
-                    <div
-                      className={`avatar avatar-${student.tone}`}
-                    >
-                      {student.initials}
-                    </div>
-
-                    <strong>{student.name}</strong>
-                  </div>
-                </td>
-
-                <td>{student.course}</td>
-
-                <td>
-                  <span
-                    className={`status ${
-                      student.status === 'Activo'
-                        ? 'status-active'
-                        : 'status-pending'
-                    }`}
-                  >
-                    {student.status}
-                  </span>
-                </td>
-
-                <td>
-                  <span className="cell-muted">
-                    {student.email}
-                  </span>
-                </td>
-
-                <td>
-                  <span className="cell-muted">
-                    {student.updated}
-                  </span>
-                </td>
-
-                <td>
-                  <button
-                    className="row-action"
-                    aria-label={`Abrir ${student.name}`}
-                  >
-                    <MoreHorizontal size={18} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          <tbody>{rows}</tbody>
         </table>
       </div>
     </div>
   );
 }
 
-function TeachersView() {
+function TeacherCard({ teacher }: { teacher: Teacher }) {
+  return (
+    <div className="teacher-card">
+      <div className="teacher-top">
+        <div
+          className={`teacher-avatar avatar-${teacher.tone}`}
+        >
+          {teacher.initials}
+        </div>
+
+        <span
+          className={`status ${
+            teacher.status === 'Activo'
+              ? 'status-active'
+              : 'status-leave'
+          }`}
+        >
+          {teacher.status}
+        </span>
+      </div>
+
+      <div className="teacher-body">
+        <strong>{teacher.name}</strong>
+        <span className="teacher-subject">
+          {teacher.subject}
+        </span>
+      </div>
+
+      <div className="teacher-meta">
+        <div className="meta-row">
+          <BookOpen size={14} />
+          <span>{teacher.classes} cursos asignados</span>
+        </div>
+
+        <div className="meta-row">
+          <Mail size={14} />
+          <span className="cell-muted">
+            {teacher.email}
+          </span>
+        </div>
+
+        <div className="meta-row">
+          <Phone size={14} />
+          <span className="cell-muted">
+            {teacher.phone}
+          </span>
+        </div>
+      </div>
+
+      <button className="outline-button teacher-action">
+        Ver perfil
+        <ArrowUpRight size={15} />
+      </button>
+    </div>
+  );
+}
+
+function TeachersView({
+  filter,
+  dir,
+}: {
+  filter: FilterValue;
+  dir: CourseDir;
+}) {
+  const ordered = sortByName(teachers, dir);
+  // 'none' (default) = grilla; el resto agrupa con
+  // encabezado por valor.
+  const grid =
+    filter === 'none' ? (
+      <div className="teacher-grid">
+        {ordered.map((teacher) => (
+          <TeacherCard
+            key={teacher.name}
+            teacher={teacher}
+          />
+        ))}
+      </div>
+    ) : (
+      <div className="course-list-wrap">
+        {groupRows(
+          ordered,
+          filter,
+          dir,
+          teacherGroupKey
+        ).map((group) => (
+          <div className="course-group" key={group.title}>
+            <div className="course-group-header">
+              <div className="group-icon">
+                <GraduationCap size={18} />
+              </div>
+              <div>
+                <strong>{group.title}</strong>
+                <span>{group.items.length} docentes</span>
+              </div>
+            </div>
+
+            <div className="teacher-grid">
+              {group.items.map((teacher) => (
+                <TeacherCard
+                  key={teacher.name}
+                  teacher={teacher}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  const title =
+    SECTION_TITLES.Docentes[filter] ??
+    SECTION_TITLES.Docentes.none;
+
   return (
     <>
       <div className="stats-grid">
@@ -1020,79 +1383,28 @@ function TeachersView() {
 
       <div className="card-grid-heading">
         <div>
-          <h2>Equipo docente</h2>
+          <h2>{title}</h2>
+
           <p>
             Personal académico del establecimiento
           </p>
         </div>
       </div>
 
-      <div className="teacher-grid">
-        {teachers.map((teacher) => (
-          <div
-            className="teacher-card"
-            key={teacher.name}
-          >
-            <div className="teacher-top">
-              <div
-                className={`teacher-avatar avatar-${teacher.tone}`}
-              >
-                {teacher.initials}
-              </div>
-
-              <span
-                className={`status ${
-                  teacher.status === 'Activo'
-                    ? 'status-active'
-                    : 'status-leave'
-                }`}
-              >
-                {teacher.status}
-              </span>
-            </div>
-
-            <div className="teacher-body">
-              <strong>{teacher.name}</strong>
-              <span className="teacher-subject">
-                {teacher.subject}
-              </span>
-            </div>
-
-            <div className="teacher-meta">
-              <div className="meta-row">
-                <BookOpen size={14} />
-                <span>
-                  {teacher.classes} cursos asignados
-                </span>
-              </div>
-
-              <div className="meta-row">
-                <Mail size={14} />
-                <span className="cell-muted">
-                  {teacher.email}
-                </span>
-              </div>
-
-              <div className="meta-row">
-                <Phone size={14} />
-                <span className="cell-muted">
-                  {teacher.phone}
-                </span>
-              </div>
-            </div>
-
-            <button className="outline-button teacher-action">
-              Ver perfil
-              <ArrowUpRight size={15} />
-            </button>
-          </div>
-        ))}
-      </div>
+      {grid}
     </>
   );
 }
 
-function CoursesView() {
+function CoursesView({
+  filter,
+  dir,
+}: {
+  filter: CourseFilter;
+  dir: CourseDir;
+}) {
+  const ordered = sortCourses(courses, dir);
+  const head = COURSE_HEADINGS[filter] ?? COURSE_HEADINGS.none;
   return (
     <>
       <div className="stats-grid">
@@ -1135,15 +1447,15 @@ function CoursesView() {
 
       <div className="card-grid-heading">
         <div>
-          <h2>Catálogo de cursos</h2>
-          <p>
-            Materias y asignaciones del ciclo lectivo 2026
-          </p>
+          <h2>{head[0]}</h2>
+
+          <p>{head[1]}</p>
         </div>
       </div>
 
+      {filter === 'none' ? (
       <div className="course-grid">
-        {courses.map((course) => (
+        {ordered.map((course) => (
           <div
             className="course-card"
             key={`${course.name}-${course.level}`}
@@ -1193,73 +1505,145 @@ function CoursesView() {
           </div>
         ))}
       </div>
+      ) : (
+        <CourseGroupedView
+          rows={ordered}
+          filter={filter}
+          dir={dir}
+        />
+      )}
     </>
   );
 }
 
-function CourseListView() {
+const TURNO_ORDER: Record<string, number> = {
+  Mañana: 1,
+  Tarde: 2,
+  Noche: 3,
+};
+
+function courseYear(course: Course) {
+  const m = /^(\d+)/.exec(course.level);
+  return m ? Number(m[1]) : 0;
+}
+
+// Orden siempre por año y división; solo cambia la dirección.
+function sortCourses(rows: Course[], dir: CourseDir): Course[] {
+  const out = rows.slice();
+  out.sort((a, b) => {
+    let d = courseYear(a) - courseYear(b);
+    if (d === 0) d = a.level.localeCompare(b.level, 'es');
+    return d;
+  });
+  return dir === 'desc' ? out.reverse() : out;
+}
+
+type CourseGroup = { title: string; items: Course[] };
+
+function groupCourses(
+  rows: Course[],
+  filter: CourseFilter,
+  dir: CourseDir
+): CourseGroup[] {
+  const key =
+    filter === 'turno' || filter === 'especialidad'
+      ? filter
+      : 'anio';
+  const buckets: CourseGroup[] = [];
+  const index: Record<string, CourseGroup> = {};
+  rows.forEach((c) => {
+    let id: string;
+    let title: string;
+    if (key === 'turno') {
+      id = c.turno || 'Sin turno';
+      title = id;
+    } else if (key === 'especialidad') {
+      id = c.especialidad || 'Sin especialidad';
+      title = id;
+    } else {
+      id = String(courseYear(c));
+      title = id + '° Año';
+    }
+    if (!index[id]) {
+      index[id] = { title: title, items: [] };
+      buckets.push(index[id]);
+    }
+    index[id].items.push(c);
+  });
+  buckets.sort((a, b) => {
+    if (key === 'anio')
+      return courseYear(a.items[0]) - courseYear(b.items[0]);
+    if (key === 'turno')
+      return (TURNO_ORDER[a.title] ?? 9) - (TURNO_ORDER[b.title] ?? 9);
+    return a.title.localeCompare(b.title, 'es');
+  });
+  return dir === 'desc' ? buckets.slice().reverse() : buckets;
+}
+
+// Vista agrupada de Cursos: un encabezado por el valor del criterio elegido
+// (igual que groupCoursesBy() de la app real).
+function CourseGroupedView({
+  rows,
+  filter,
+  dir,
+}: {
+  rows: Course[];
+  filter: CourseFilter;
+  dir: CourseDir;
+}) {
+  const groups = groupCourses(rows, filter, dir);
   return (
     <div className="course-list-wrap">
-      {courseGroups.map((group) => (
-        <div
-          className="course-group"
-          key={group.level}
-        >
-          <div className="course-group-header">
-            <div className="group-icon">
-              <ClipboardList size={18} />
-            </div>
-
-            <div>
-              <strong>{group.level}</strong>
-
-              <span>
-                {group.sections.length} divisiones ·{' '}
-                {group.sections.reduce(
-                  (acc, s) => acc + s.students,
-                  0
-                )}{' '}
-                estudiantes
-              </span>
-            </div>
-          </div>
-
-          <div className="course-sections-grid">
-            {group.sections.map((sec) => (
-              <div
-                className="course-section-card"
-                key={sec.name}
-              >
-                <div className="section-card-top">
-                  <div className="section-badge">
-                    {sec.name}
-                  </div>
-
-                  <span className="section-count">
-                    {sec.students}
-                  </span>
-                </div>
-
-                <div className="section-card-body">
-                  <strong>
-                    {sec.students} estudiantes
-                  </strong>
-
-                  <span className="cell-muted">
-                    <Users size={13} />
-                    {sec.teacher}
-                  </span>
-                </div>
-
-                <button className="section-link">
-                  Ver listado
-                  <ArrowUpRight size={14} />
-                </button>
+      {groups.map((group) => {
+        const total = group.items.reduce(
+          (acc, c) => acc + c.students,
+          0
+        );
+        return (
+          <div className="course-group" key={group.title}>
+            <div className="course-group-header">
+              <div className="group-icon">
+                <ClipboardList size={18} />
               </div>
-            ))}
+              <div>
+                <strong>{group.title}</strong>
+                <span>
+                  {group.items.length} divisiones · {total}{' '}
+                  estudiantes
+                </span>
+              </div>
+            </div>
+            <div className="course-sections-grid">
+              {group.items.map((c) => (
+                <div
+                  className="course-section-card"
+                  key={c.name}
+                >
+                  <div className="section-card-top">
+                    <div className="section-badge">
+                      {c.level}
+                    </div>
+                    <span className="section-count">
+                      {c.turno}
+                    </span>
+                  </div>
+                  <div className="section-card-body">
+                    <strong>{c.name}</strong>
+                    <span className="cell-muted">
+                      <Users size={13} />
+                      {c.teacher}
+                    </span>
+                  </div>
+                  <button className="section-link">
+                    Ver nómina
+                    <ArrowUpRight size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

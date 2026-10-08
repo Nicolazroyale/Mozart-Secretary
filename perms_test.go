@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"html"
 	"html/template"
 	"net/http"
@@ -169,8 +170,11 @@ func TestMapeosDeTablas(t *testing.T) {
 	if viewPermForTable("materias") != permVerMaterias {
 		t.Fatal("materias → ver_materias")
 	}
-	if viewPermForTable("nomina") != permVerNomina {
-		t.Fatal("nomina → ver_nomina")
+	if viewPermForTable("nomina") != permVerCursos {
+		t.Fatal("nomina → ver_cursos (sección unificada con Cursos)")
+	}
+	if viewPermForTable("docentes_por_curso") != permVerCursos {
+		t.Fatal("docentes_por_curso → ver_cursos")
 	}
 	if viewPermForTable("desconocida") != "" {
 		t.Fatal("tabla desconocida sin permiso")
@@ -232,6 +236,57 @@ func TestEnsureSchemaMigraPermisos(t *testing.T) {
 	if _, err := conn.Exec(`INSERT INTO usuarios (username, password, nombre_completo, rol, permisos) VALUES (?,?,?,?,?)`,
 		"lect", "hash", "Lector", "lectura", `["ver_materias","modificar_estudiantes"]`); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestMigraVerNominaACursos verifica que la migración de arranque reescribe
+// ver_nomina → ver_cursos en usuarios.permisos (deduplicando cuando el usuario
+// ya tenía ver_cursos) y que es idempotente.
+func TestMigraVerNominaACursos(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "migra.db"), testKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if err := db.EnsureSchema(conn); err != nil {
+		t.Fatalf("EnsureSchema: %v", err)
+	}
+
+	casos := []struct {
+		id    int
+		antes string
+		tras  string
+	}{
+		{1, `["ver_nomina"]`, `["ver_cursos"]`},
+		{2, `["ver_cursos","ver_nomina"]`, `["ver_cursos"]`},
+		{3, `["ver_nomina","exportar","ver_nomina"]`, `["ver_cursos","exportar"]`},
+		{4, `["ver_materias"]`, `["ver_materias"]`},
+	}
+	for _, c := range casos {
+		if _, err := conn.Exec(
+			`INSERT INTO usuarios (id_usuario, username, password, nombre_completo, rol, permisos) VALUES (?,?,'h','U','lectura',?)`,
+			c.id, fmt.Sprintf("u%d", c.id), c.antes); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Segunda pasada de EnsureSchema = migración sobre una base ya poblada.
+	if err := db.EnsureSchema(conn); err != nil {
+		t.Fatalf("EnsureSchema (2º): %v", err)
+	}
+	// Tercera pasada: idempotente.
+	if err := db.EnsureSchema(conn); err != nil {
+		t.Fatalf("EnsureSchema (3º): %v", err)
+	}
+
+	for _, c := range casos {
+		var got string
+		if err := conn.QueryRow(`SELECT permisos FROM usuarios WHERE id_usuario = ?`, c.id).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got != c.tras {
+			t.Errorf("usuario %d: permisos = %s, want %s", c.id, got, c.tras)
+		}
 	}
 }
 

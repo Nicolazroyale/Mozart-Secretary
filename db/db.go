@@ -4,8 +4,10 @@ package db
 import (
 	"database/sql"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -58,6 +60,69 @@ func EnsureSchema(conn *sql.DB) error {
 func migrate(conn *sql.DB) error {
 	if err := ensureColumn(conn, "usuarios", "permisos", "TEXT NOT NULL DEFAULT '[]'"); err != nil {
 		return fmt.Errorf("migrando usuarios.permisos: %w", err)
+	}
+	if err := migratePermisos(conn); err != nil {
+		return fmt.Errorf("migrando usuarios.permisos (ver_nomina): %w", err)
+	}
+	return nil
+}
+
+// migratePermisos unifica ver_nomina en ver_cursos. Se fusionaron las secciones
+// "Cursos" y "Listado por Cursos": el acceso a las nóminas lo da ahora
+// ver_cursos, y ver_nomina dejó de existir en el catálogo. Idempotente: solo
+// toca las filas que aún contengan el token viejo, deduplicando si el usuario
+// ya tenía ver_cursos.
+func migratePermisos(conn *sql.DB) error {
+	rows, err := conn.Query(`SELECT id_usuario, permisos FROM usuarios WHERE permisos LIKE '%ver_nomina%'`)
+	if err != nil {
+		return err
+	}
+	type update struct {
+		id  int
+		raw string
+	}
+	var pending []update
+	for rows.Next() {
+		var id int
+		var raw string
+		if err := rows.Scan(&id, &raw); err != nil {
+			rows.Close()
+			return err
+		}
+		var perms []string
+		if err := json.Unmarshal([]byte(raw), &perms); err != nil {
+			continue // JSON inválido: se deja como está (lo filtra parsePerms al leer).
+		}
+		out := make([]string, 0, len(perms))
+		seen := map[string]bool{}
+		for _, p := range perms {
+			if p == "ver_nomina" {
+				p = "ver_cursos"
+			}
+			if seen[p] {
+				continue
+			}
+			seen[p] = true
+			out = append(out, p)
+		}
+		b, err := json.Marshal(out)
+		if err != nil {
+			rows.Close()
+			return err
+		}
+		pending = append(pending, update{id: id, raw: string(b)})
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, u := range pending {
+		if _, err := conn.Exec(`UPDATE usuarios SET permisos = ? WHERE id_usuario = ?`, u.raw, u.id); err != nil {
+			return err
+		}
+	}
+	if len(pending) > 0 {
+		log.Printf("permisos: %d usuario(s) migrado(s) de ver_nomina a ver_cursos", len(pending))
 	}
 	return nil
 }
