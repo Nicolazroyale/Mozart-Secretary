@@ -1827,3 +1827,28 @@ html.dark .course-link,
 html.dark .section-link {
   color: #63a5f0;
 }
+
+/* Vista cuadrícula de materias */
+.materia-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  padding: 4px 0 0;
+}
+.materia-card {
+  border: 1px solid #e8edf4;
+  border-radius: 12px;
+  padding: 16px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.materia-card strong {
+  font-size: 15px;
+}
+.materia-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
