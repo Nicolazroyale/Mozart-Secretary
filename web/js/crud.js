@@ -918,8 +918,9 @@ export function createCrud(state) {
     const d = await res.json();
     const rows = Array.isArray(d) ? d : (d && d.data) || [];
     const meta = d && d.data ? d : { total: rows.length, page: 1, pages: 1 };
-    const pag = '<div class="crud-paginado"><span>' + meta.total + ' movimientos</span>' +
-      '<span>' + (meta.page || 1) + '/' + (meta.pages || 1) + '</span></div>';
+    const totalFmt = Number(meta.total || 0).toLocaleString('es-AR');
+    const pag = '<div class="crud-paginado"><span>' + totalFmt + ' movimientos</span>' +
+      '<span>Página ' + (meta.page || 1) + ' de ' + (meta.pages || 1) + '</span></div>';
     return '<div class="data-panel">' +
       '<div class="panel-heading"><div><h2>Registro de auditoría</h2><p>Operaciones de alta, edición y baja</p></div>' +
       '<div class="crud-filters"><select class="crud-select" data-crud-filtro aria-label="Filtrar por tabla">' +

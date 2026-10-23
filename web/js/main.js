@@ -11,7 +11,7 @@
  */
 
 import { icon, esc, apiGet } from './interfaz.js?v=22';
-import { createCrud } from './crud.js?v=22';
+import { createCrud } from './crud.js?v=23';
 import { hasPerm, PERM, SECTION_READ, SECTION_WRITE } from './permissions.js?v=9';
 
 // ---------------------------------------------------------------------------
@@ -832,7 +832,18 @@ function downloadExport(table, id, format) {
 
 function sectionMeta(state, label) {
   const sections = visibleSections(state);
-  const m = sections.find((s) => s.label === label);
+  let m = sections.find((s) => s.label === label);
+  if (!m) {
+    for (const s of sections) {
+      if (s.items) {
+        m = s.items.find((it) => it.label === label);
+        if (m) break;
+      }
+    }
+  }
+  if (!m && label === 'Backups') {
+    m = ADMIN_GROUP.items.find((it) => it.label === 'Backups');
+  }
   return m || SECTIONS[0];
 }
 

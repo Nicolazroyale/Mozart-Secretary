@@ -123,7 +123,10 @@ button {
 .nav-item:hover {
   color: #fff;
   background: #1d3455;
-  transform: translateX(2px);
+}
+
+.main-nav {
+  overflow-x: hidden;
 }
 
 .nav-item.active {
