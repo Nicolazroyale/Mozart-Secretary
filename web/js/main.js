@@ -672,6 +672,12 @@ export function teacherCardsHTML(rows, extra, editable) {
     .join('');
 }
 
+export function teacherGroupsListHTML(groups, editable) {
+  const colspan = editable ? 5 : 4;
+  if (!groups || groups.length === 0) return teacherRowsHTML([], editable);
+  return groups.map((g) => groupRowHTML(g.title, colspan) + teacherRowsHTML(g.items, editable)).join('');
+}
+
 export function teacherRowsHTML(rows, editable) {
   if (!rows || rows.length === 0) {
     return '<tr><td colspan="' + (editable ? 5 : 4) + '" class="table-empty">No hay docentes para mostrar.</td></tr>';
@@ -720,6 +726,18 @@ export function courseCardsHTML(courses, editable) {
     .join('');
 }
 
+export function courseGroupsListHTML(groups, editable) {
+  if (!groups || groups.length === 0) {
+    return '<div class="table-empty">No hay cursos para mostrar.</div>';
+  }
+  return groups.map((g) =>
+    '<div class="course-group">' +
+    '<div class="course-group-header"><div class="group-icon">' + icon('ClipboardList', 18) + '</div><div><strong>' + esc(g.title) + '</strong></div></div>' +
+    '<div class="table-wrap"><table><thead><tr><th>Curso</th><th>Ciclo</th><th>Turno</th><th>Orientación</th>' + (editable ? '<th></th>' : '') + '</tr></thead><tbody>' + courseRowsHTML(g.items, editable) + '</tbody></table></div>' +
+    '</div>'
+  ).join('');
+}
+
 export function courseRowsHTML(courses, editable) {
   if (!courses || courses.length === 0) {
     return '<tr><td colspan="' + (editable ? 5 : 4) + '" class="table-empty">No hay cursos para mostrar.</td></tr>';
@@ -760,6 +778,13 @@ export function materiaRowsHTML(rows, editable) {
     .join('');
 }
 
+export function materiaGroupsCardsHTML(groups, editable) {
+  if (!groups || groups.length === 0) return '<div class="materia-grid">' + materiaCardsHTML([], editable) + '</div>';
+  return groups.map((g) =>
+    '<div class="materia-group"><div class="group-heading">' + esc(g.title) + '</div><div class="materia-grid">' + materiaCardsHTML(g.items, editable) + '</div></div>'
+  ).join('');
+}
+
 export function materiaCardsHTML(rows, editable) {
   if (!rows || rows.length === 0) {
     return '<div class="table-empty">No hay materias para mostrar.</div>';
@@ -768,9 +793,12 @@ export function materiaCardsHTML(rows, editable) {
     const con = Number(m.con_docente) === 1;
     return (
       '<div class="materia-card">' +
-      '<div class="materia-card-top"><div class="avatar avatar-violet">' + esc(initials(m.nombre)) + '</div>' +
-      '<span class="status ' + (con ? 'status-active' : 'status-pending') + '">' + (con ? 'Con docente' : 'Sin docente') + '</span></div>' +
-      '<strong>' + esc(m.nombre) + '</strong>' +
+      '<div class="materia-card-top">' +
+      '<div class="materia-card-icon">' + icon('BookMarked', 20) + '</div>' +
+      '<span class="status ' + (con ? 'status-active' : 'status-pending') + '">' + (con ? 'Con docente' : 'Sin docente') + '</span>' +
+      '</div>' +
+      '<div class="materia-card-body"><strong>' + esc(m.nombre) + '</strong>' +
+      '<span class="materia-card-sub">' + (con ? 'Asignada' : 'Pendiente de asignación') + '</span></div>' +
       (editable && m.id_materia ? rowActionsHTML('materias', m.id_materia, m.nombre) : '') +
       '</div>'
     );
@@ -1221,11 +1249,14 @@ function bodyFor(state, section, rows, query) {
     const slice = pageSlice(ordered, activeLimit(state, section), activePage(state, section));
     if (state.pages) state.pages[section] = slice.page;
     const isList = activeViewMode(state, section) === 'list';
+    const grouped = groupRowsBy(slice.rows, filter, dir, (crit, r) => groupKeyFor('Docentes', crit, r));
     const body = isList
-      ? '<div class="table-wrap"><table><thead><tr><th>Docente</th><th>Cargo</th><th>DNI</th><th>Teléfono</th>' + (editable ? '<th></th>' : '') + '</tr></thead><tbody>' + teacherRowsHTML(slice.rows, editable) + '</tbody></table></div>'
+      ? (filter === 'none'
+        ? '<div class="table-wrap"><table><thead><tr><th>Docente</th><th>Cargo</th><th>DNI</th><th>Teléfono</th>' + (editable ? '<th></th>' : '') + '</tr></thead><tbody>' + teacherRowsHTML(slice.rows, editable) + '</tbody></table></div>'
+        : '<div class="table-wrap"><table><thead><tr><th>Docente</th><th>Cargo</th><th>DNI</th><th>Teléfono</th>' + (editable ? '<th></th>' : '') + '</tr></thead><tbody>' + teacherGroupsListHTML(grouped, editable) + '</tbody></table></div>')
       : (filter === 'none'
         ? '<div class="teacher-grid">' + teacherCardsHTML(slice.rows, null, editable) + '</div>'
-        : teacherGroupsHTML(groupRowsBy(slice.rows, filter, dir, (crit, r) => groupKeyFor('Docentes', crit, r)), editable));
+        : teacherGroupsHTML(grouped, editable));
     return (
       '<div class="card-grid-heading"><div><h2>' + esc(sectionTitle('Docentes', filter)) + '</h2></div></div>' +
       body +
@@ -1242,11 +1273,14 @@ function bodyFor(state, section, rows, query) {
     const head = COURSE_HEADINGS[filter] || COURSE_HEADINGS.none;
     const heading = '<div class="card-grid-heading"><div><h2>' + esc(head[0]) + '</h2><p>' + esc(head[1]) + '</p></div></div>';
     const isList = activeViewMode(state, section) === 'list';
+    const grouped = groupCoursesBy(slice.rows, filter, dir);
     const body = isList
-      ? '<div class="table-wrap"><table><thead><tr><th>Curso</th><th>Ciclo</th><th>Turno</th><th>Orientación</th>' + (editable ? '<th></th>' : '') + '</tr></thead><tbody>' + courseRowsHTML(slice.rows, editable) + '</tbody></table></div>'
+      ? (filter === 'none'
+        ? '<div class="table-wrap"><table><thead><tr><th>Curso</th><th>Ciclo</th><th>Turno</th><th>Orientación</th>' + (editable ? '<th></th>' : '') + '</tr></thead><tbody>' + courseRowsHTML(slice.rows, editable) + '</tbody></table></div>'
+        : '<div class="course-list-wrap">' + courseGroupsListHTML(grouped, editable) + '</div>')
       : (filter === 'none'
         ? '<div class="course-grid">' + courseCardsHTML(slice.rows, editable) + '</div>'
-        : '<div class="course-list-wrap">' + courseGroupsHTML(groupCoursesBy(slice.rows, filter, dir), editable) + '</div>');
+        : '<div class="course-list-wrap">' + courseGroupsHTML(grouped, editable) + '</div>');
     return (
       heading +
       body +
@@ -1261,11 +1295,14 @@ function bodyFor(state, section, rows, query) {
     const slice = pageSlice(ordered, activeLimit(state, section), activePage(state, section));
     if (state.pages) state.pages[section] = slice.page;
     const isGrid = activeViewMode(state, section) === 'grid';
+    const grouped = groupRowsBy(slice.rows, filter, dir, (crit, r) => groupKeyFor('Materias', crit, r));
     const body = isGrid
-      ? '<div class="materia-grid">' + materiaCardsHTML(slice.rows, editable) + '</div>'
+      ? (filter === 'none'
+        ? '<div class="materia-grid">' + materiaCardsHTML(slice.rows, editable) + '</div>'
+        : '<div class="materia-groups">' + materiaGroupsCardsHTML(grouped, editable) + '</div>')
       : (filter === 'none'
         ? materiaRowsHTML(slice.rows, editable)
-        : materiaGroupsHTML(groupRowsBy(slice.rows, filter, dir, (crit, r) => groupKeyFor('Materias', crit, r)), editable));
+        : materiaGroupsHTML(grouped, editable));
     return isGrid
       ? ('<div class="data-panel">' +
         '<div class="panel-heading"><div><h2>' + esc(sectionTitle('Materias', filter)) + '</h2></div>' +
