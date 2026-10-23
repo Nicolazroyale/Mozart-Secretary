@@ -794,7 +794,7 @@ export function materiaCardsHTML(rows, editable) {
     return (
       '<div class="materia-card">' +
       '<div class="materia-card-top">' +
-      '<div class="materia-card-icon">' + icon('BookMarked', 20) + '</div>' +
+      '<div class="avatar avatar-violet">' + esc(initials(m.nombre)) + '</div>' +
       '<span class="status ' + (con ? 'status-active' : 'status-pending') + '">' + (con ? 'Con docente' : 'Sin docente') + '</span>' +
       '</div>' +
       '<div class="materia-card-body"><strong>' + esc(m.nombre) + '</strong>' +

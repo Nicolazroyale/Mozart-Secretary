@@ -1831,9 +1831,8 @@ html.dark .section-link {
 /* Vista cuadrícula de materias */
 .materia-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
   gap: 16px;
-  padding: 4px 0 0;
 }
 .materia-group {
   display: flex;
@@ -1841,43 +1840,35 @@ html.dark .section-link {
   gap: 10px;
 }
 .materia-card {
-  border: 1px solid #d9e6f7;
-  border-radius: 14px;
-  padding: 18px;
-  background: linear-gradient(135deg, #f5f9ff 0%, #ffffff 100%);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 6px 18px rgba(36, 111, 190, .08);
-  transition: .2s ease;
+  padding: 22px;
+  border: 1px solid #e8edf4;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 5px 20px rgba(39, 62, 96, .035);
+  transition: .22s ease;
 }
 .materia-card:hover {
   border-color: #b9d9fb;
-  box-shadow: 0 10px 24px rgba(36, 111, 190, .14);
-  transform: translateY(-2px);
-}
-.materia-card strong {
-  font-size: 16px;
-  color: #1f3b63;
+  box-shadow: 0 12px 28px rgba(36, 111, 190, .1);
+  transform: translateY(-3px);
 }
 .materia-card-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-.materia-card-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  background: linear-gradient(135deg, #2a83e8, #4fa3f7);
+  margin-bottom: 16px;
 }
 .materia-card-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.materia-card-body strong {
+  font-size: 16px;
+  color: #1f3b63;
 }
 .materia-card-sub {
   font-size: 12px;
