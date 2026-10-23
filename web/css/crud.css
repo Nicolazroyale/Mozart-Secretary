@@ -371,8 +371,9 @@
 
 .row-actions {
   display: flex;
+  flex-direction: row;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 10px;
 }
 
 .row-actions .row-action {
