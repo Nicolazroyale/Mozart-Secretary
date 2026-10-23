@@ -975,3 +975,22 @@ html.dark .backups-status.err {
 html.dark .crud-link {
   color: #7fb4f4;
 }
+
+.crud-user-avatar {
+  position: relative;
+  overflow: hidden;
+}
+.crud-user-avatar .avatar-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+.crud-user-avatar .avatar-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

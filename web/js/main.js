@@ -12,6 +12,10 @@
 
 import { icon, esc, apiGet } from './interfaz.js?v=22';
 import { createCrud } from './crud.js?v=23';
+
+function dicebearUrl(style, seed) {
+  return 'https://api.dicebear.com/7.x/' + encodeURIComponent(style) + '/svg?seed=' + encodeURIComponent(seed || 'seed');
+}
 import { hasPerm, PERM, SECTION_READ, SECTION_WRITE } from './permissions.js?v=9';
 
 // ---------------------------------------------------------------------------
@@ -704,7 +708,10 @@ export function courseCardsHTML(courses, editable) {
       return (
         '<div class="course-card">' +
         '<div class="course-top">' +
-        '<div class="avatar avatar-' + tone + '">' + icon('BookOpen', 18) + '</div>' +
+        '<div class="avatar avatar-' + tone + '" style="position:relative; overflow:hidden;">' +
+        '<span class="avatar-fallback">' + esc(courseShortName(c).slice(0, 2).toUpperCase()) + '</span>' +
+        '<img class="avatar-img" src="' + esc(dicebearUrl('shapes', courseShortName(c))) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'" />' +
+        '</div>' +
         '<div class="course-top-right"><span class="course-level level-' + tone + '">' + esc(c.ciclo || c.turno || '') + '</span>' +
         (editable && c.id_curso
           ? '<div style="display:inline-flex; gap:8px;">' +
@@ -812,7 +819,10 @@ export function materiaCardsHTML(rows, editable) {
     return (
       '<div class="materia-card tone-' + tone + '">' +
       '<div class="materia-card-top">' +
-      '<div class="avatar avatar-' + tone + '">' + esc(initials(m.nombre)) + '</div>' +
+      '<div class="avatar avatar-' + tone + '" style="position:relative; overflow:hidden;">' +
+      '<span class="avatar-fallback">' + esc(initials(m.nombre)) + '</span>' +
+      '<img class="avatar-img" src="' + esc(dicebearUrl('squircle', m.nombre)) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'" />' +
+      '</div>' +
       '<span class="status ' + (con ? 'status-active' : 'status-pending') + '">' + (con ? 'Con docente' : 'Sin docente') + '</span>' +
       '</div>' +
       '<div class="materia-card-body"><strong>' + esc(m.nombre) + '</strong>' +
@@ -1228,7 +1238,10 @@ export function usuarioRowsHTML(rows) {
     .map(
       (u) =>
         '<tr>' +
-        '<td><div class="table-person"><div class="crud-user-avatar">' + esc(initials(u.nombre_completo || u.username)) + '</div>' +
+        '<td><div class="table-person"><div class="crud-user-avatar" style="position:relative; overflow:hidden;">' +
+        '<span class="avatar-fallback">' + esc(initials(u.nombre_completo || u.username)) + '</span>' +
+        '<img class="avatar-img" src="' + esc(dicebearUrl('glyphs', u.username || u.nombre_completo)) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'" />' +
+        '</div>' +
         '<div><strong>' + esc(u.username) + '</strong><span class="cell-muted">' + esc(u.nombre_completo || '') + '</span></div></div></td>' +
         '<td><span class="crud-role-badge' + (u.rol === 'admin' ? ' admin' : '') + '">' + esc(u.rol === 'admin' ? 'Administrador' : 'Lectura') + '</span></td>' +
         '<td><span class="' + (Number(u.activo) === 1 ? 'status status-active' : 'status status-pending') + '">' + (Number(u.activo) === 1 ? 'Activo' : 'Inactivo') + '</span></td>' +
