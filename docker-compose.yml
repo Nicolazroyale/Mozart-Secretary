@@ -3,6 +3,7 @@ services:
     build: .
     image: mozart:latest
     container_name: mozart
+    init: true
     ports:
       - "443:443"
       - "127.0.0.1:8081:8081"
@@ -29,3 +30,10 @@ services:
       - ./web:/srv/web
       - ./web/templates:/srv/templates
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          memory: 256M

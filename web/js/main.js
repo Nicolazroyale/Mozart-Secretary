@@ -10,8 +10,8 @@
  *   initMain(document.getElementById('app'), opts);
  */
 
-import { icon, esc, apiGet } from './interfaz.js?v=20';
-import { createCrud } from './crud.js?v=20';
+import { icon, esc, apiGet } from './interfaz.js?v=22';
+import { createCrud } from './crud.js?v=22';
 import { hasPerm, PERM, SECTION_READ, SECTION_WRITE } from './permissions.js?v=9';
 
 // ---------------------------------------------------------------------------
@@ -134,6 +134,20 @@ function filterKey(section) {
 
 function sortKey(section) {
   return 'mozart-' + SLUG_FOR[section] + '-orden';
+}
+
+function limitKey(section) {
+  return 'mozart-' + SLUG_FOR[section] + '-limite';
+}
+
+// Opciones del selector de límite de entradas y su valor por defecto.
+export const PAGE_SIZES = [15, 30, 50, 100];
+const DEFAULT_PAGE_SIZE = 15;
+
+// normalizePageSize: cualquier valor fuera de la lista cae en el default.
+export function normalizePageSize(v) {
+  const n = Number(v);
+  return PAGE_SIZES.indexOf(n) !== -1 ? n : DEFAULT_PAGE_SIZE;
 }
 
 // Criterios del menú "Filtrar por" de cada sección: 'none' (default) muestra
@@ -268,6 +282,28 @@ function storeSortDir(section, dir) {
   } catch (err) { /* sin almacenamiento */ }
 }
 
+// getStoredLimit / getStoredLimits: límite de entradas visibles por sección
+// (15/30/50/100, 15 por defecto).
+export function getStoredLimit(section) {
+  try {
+    return normalizePageSize(localStorage.getItem(limitKey(section)));
+  } catch (err) {
+    return DEFAULT_PAGE_SIZE;
+  }
+}
+
+export function getStoredLimits() {
+  const out = {};
+  Object.keys(SLUG_FOR).forEach((s) => { out[s] = getStoredLimit(s); });
+  return out;
+}
+
+function storeLimit(section, v) {
+  try {
+    localStorage.setItem(limitKey(section), String(normalizePageSize(v)));
+  } catch (err) { /* sin almacenamiento */ }
+}
+
 // activeFilter / activeSortDir: valores de la sección activa (o de la indicada).
 export function activeFilter(state, section) {
   const s = section || state.section;
@@ -330,6 +366,63 @@ export function sortRowsByName(rows, dir) {
   out.sort((a, b) => str(a.nombre).localeCompare(str(b.nombre), 'es'));
   if (dir === 'desc') out.reverse();
   return out;
+}
+
+// activeLimit / activePage: límite y página activos de una sección.
+export function activeLimit(state, section) {
+  return normalizePageSize((state.limits && state.limits[section]) || DEFAULT_PAGE_SIZE);
+}
+
+export function activePage(state, section) {
+  return (state.pages && state.pages[section]) || 1;
+}
+
+// pageSlice: corta el conjunto ya filtrado y ordenado en la página activa.
+// Clampéa la página contra la cantidad total y devuelve el rango para el pie.
+export function pageSlice(rows, limit, page) {
+  const size = normalizePageSize(limit);
+  const total = (rows || []).length;
+  const pages = Math.max(1, Math.ceil(total / size));
+  const p = Math.min(Math.max(1, Number(page) || 1), pages);
+  const start = (p - 1) * size;
+  return {
+    rows: (rows || []).slice(start, start + size),
+    size: size,
+    total: total,
+    pages: pages,
+    page: p,
+    from: total === 0 ? 0 : start + 1,
+    to: Math.min(start + size, total),
+  };
+}
+
+// listFooterHTML: pie de la lista con el selector de límite (15/30/50/100), la
+// cantidad de entradas al lado y la navegación ‹ ›. Siempre visible: con 0
+// entradas queda en "Sin entradas" y los botones deshabilitados.
+export function listFooterHTML(section, slice) {
+  const options = PAGE_SIZES.map((n) =>
+    '<option value="' + n + '"' + (n === slice.size ? ' selected' : '') + '>' + n + '</option>'
+  ).join('');
+  const cuenta = slice.total === 0
+    ? 'Sin entradas para mostrar'
+    : 'Mostrando ' + slice.from + '–' + slice.to + ' de ' + slice.total + ' entradas';
+  const prev = slice.page <= 1 ? ' disabled' : '';
+  const next = slice.page >= slice.pages ? ' disabled' : '';
+  return (
+    '<div class="list-footer">' +
+    '<div class="list-footer-left">' +
+    '<label class="limit-label">Mostrar ' +
+    '<select class="limit-select" data-limit-select aria-label="Entradas por página de ' + esc(section) + '">' + options + '</select>' +
+    ' entradas</label>' +
+    '<span class="entry-count">' + esc(cuenta) + '</span>' +
+    '</div>' +
+    '<div class="list-footer-right">' +
+    '<button class="page-btn" data-page-prev type="button" aria-label="Página anterior"' + prev + '>' + icon('ChevronLeft', 16) + '</button>' +
+    '<span class="page-info">Página ' + slice.page + ' de ' + slice.pages + '</span>' +
+    '<button class="page-btn" data-page-next type="button" aria-label="Página siguiente"' + next + '>' + icon('ChevronRight', 16) + '</button>' +
+    '</div>' +
+    '</div>'
+  );
 }
 
 // letraDe: inicial del nombre (las filas de personas vienen como
@@ -473,11 +566,10 @@ function sectionTitle(section, filter) {
 }
 
 // groupRowHTML: fila de encabezado de un grupo dentro de una tabla.
-export function groupRowHTML(title, count, colspan, unidad) {
+export function groupRowHTML(title, colspan) {
   return (
     '<tr class="group-row">' +
     '<th colspan="' + colspan + '">' + esc(title) +
-    '<span class="group-count">' + count + ' ' + esc(unidad) + '</span>' +
     '</th></tr>'
   );
 }
@@ -487,7 +579,7 @@ export function studentGroupsHTML(groups, editable) {
   const colspan = editable ? 5 : 4;
   if (!groups || groups.length === 0) return studentRowsHTML([], editable);
   return groups
-    .map((g) => groupRowHTML(g.title, g.items.length, colspan, 'estudiantes') + studentRowsHTML(g.items, editable))
+    .map((g) => groupRowHTML(g.title, colspan) + studentRowsHTML(g.items, editable))
     .join('');
 }
 
@@ -502,7 +594,7 @@ export function teacherGroupsHTML(groups, editable) {
           '<div class="course-group">' +
           '<div class="course-group-header">' +
           '<div class="group-icon">' + icon('GraduationCap', 18) + '</div>' +
-          '<div><strong>' + esc(g.title) + '</strong><span>' + g.items.length + ' docentes</span></div>' +
+          '<div><strong>' + esc(g.title) + '</strong></div>' +
           '</div>' +
           '<div class="teacher-grid">' + teacherCardsHTML(g.items, null, editable) + '</div>' +
           '</div>'
@@ -512,24 +604,13 @@ export function teacherGroupsHTML(groups, editable) {
   );
 }
 
-// materiaGroupsHTML: filas de materias agrupadas con su encabezado. La
-// numeración de posición se mantiene global entre grupos.
+// materiaGroupsHTML: filas de materias agrupadas con su encabezado, igual que
+// Estudiantes (el grupo es una fila más de la tabla, no un bloque aparte).
 export function materiaGroupsHTML(groups, editable) {
-  if (!groups || groups.length === 0) return '<div class="table-empty">No hay materias para mostrar.</div>';
-  let offset = 0;
+  const colspan = editable ? 3 : 2;
+  if (!groups || groups.length === 0) return materiaRowsHTML([], editable);
   return groups
-    .map((g) => {
-      const html =
-        '<div class="course-group">' +
-        '<div class="course-group-header">' +
-        '<div class="group-icon">' + icon('BookMarked', 18) + '</div>' +
-        '<div><strong>' + esc(g.title) + '</strong><span>' + g.items.length + ' materias</span></div>' +
-        '</div>' +
-        '<div class="student-list">' + materiaRowsHTML(g.items, editable, offset) + '</div>' +
-        '</div>';
-      offset += g.items.length;
-      return html;
-    })
+    .map((g) => groupRowHTML(g.title, colspan) + materiaRowsHTML(g.items, editable))
     .join('');
 }
 
@@ -594,27 +675,24 @@ export function courseCardsHTML(courses, editable) {
     .join('');
 }
 
-export function materiaRowsHTML(rows, editable, startIndex) {
+// materiaRowsHTML: filas de materias con el mismo diseño de tabla que
+// Estudiantes: persona con avatar, celda con el estado del docente y acciones.
+export function materiaRowsHTML(rows, editable) {
   if (!rows || rows.length === 0) {
-    return '<div class="table-empty">No hay materias para mostrar.</div>';
+    return '<tr><td colspan="' + (editable ? 3 : 2) + '" class="table-empty">No hay materias para mostrar.</td></tr>';
   }
-  // startIndex mantiene la numeración global cuando la lista viene agrupada.
-  const base = Number(startIndex) || 0;
   return rows
-    .map(
-      (m, i) =>
-        '<div class="student-row">' +
-        '<div class="avatar avatar-violet">' + esc((String(m.nombre || 'M')[0]).toUpperCase()) + '</div>' +
-        '<div class="student-info"><strong>' + esc(m.nombre) + '</strong><span>Materia del ciclo lectivo</span></div>' +
-        '<span class="course-level level-violet">' + (base + i + 1) + '</span>' +
-        (editable && m.id_materia
-          ? '<div class="row-actions">' +
-            '<button class="row-action action-edit" type="button" data-crud="edit" data-tipo="materias" data-id="' + esc(m.id_materia) + '" aria-label="Editar">' + icon('Pencil', 14) + '</button>' +
-            '<button class="row-action action-del" type="button" data-crud="del" data-tipo="materias" data-id="' + esc(m.id_materia) + '" data-label="' + esc(m.nombre) + '" aria-label="Eliminar">' + icon('Trash2', 14) + '</button>' +
-            '</div>'
-          : '') +
-        '</div>'
-    )
+    .map((m) => {
+      const con = Number(m.con_docente) === 1;
+      return (
+        '<tr>' +
+        '<td><div class="table-person"><div class="avatar avatar-violet">' + esc(initials(m.nombre)) + '</div><strong>' + esc(m.nombre) + '</strong></div></td>' +
+        '<td><span class="status ' + (con ? 'status-active' : 'status-pending') + '">' +
+        (con ? 'Con docente asignado' : 'Sin docente asignado') + '</span></td>' +
+        (editable && m.id_materia ? rowActionsHTML('materias', m.id_materia, m.nombre) : '') +
+        '</tr>'
+      );
+    })
     .join('');
 }
 
@@ -648,7 +726,7 @@ export function courseGroupsHTML(groups, editable) {
         '<div class="course-group">' +
         '<div class="course-group-header">' +
         '<div class="group-icon">' + icon('ClipboardList', 18) + '</div>' +
-        '<div><strong>' + esc(g.title) + '</strong><span>' + g.items.length + ' divisiones</span></div>' +
+        '<div><strong>' + esc(g.title) + '</strong></div>' +
         '</div>' +
         '<div class="course-sections-grid">' + courseSectionCards(g, editable) + '</div>' +
         '</div>'
@@ -1024,15 +1102,18 @@ function bodyFor(state, section, rows, query) {
     const filter = activeFilter(state, section);
     const filtered = filterRows(rows, q, ['nombre', 'curso', 'dni', 'tutor', 'turno', 'ciclo', 'genero']);
     const ordered = sortRowsByName(filtered, dir);
+    const slice = pageSlice(ordered, activeLimit(state, section), activePage(state, section));
+    if (state.pages) state.pages[section] = slice.page;
     const body = filter === 'none'
-      ? studentRowsHTML(ordered, editable)
-      : studentGroupsHTML(groupRowsBy(ordered, filter, dir, (crit, r) => groupKeyFor('Estudiantes', crit, r)), editable);
+      ? studentRowsHTML(slice.rows, editable)
+      : studentGroupsHTML(groupRowsBy(slice.rows, filter, dir, (crit, r) => groupKeyFor('Estudiantes', crit, r)), editable);
     return (
       '<div class="data-panel">' +
-      '<div class="panel-heading"><div><h2>' + esc(sectionTitle('Estudiantes', filter)) + '</h2><p>' + filtered.length + ' registros</p></div>' +
+      '<div class="panel-heading"><div><h2>' + esc(sectionTitle('Estudiantes', filter)) + '</h2></div>' +
       '<button class="text-button" type="button" disabled>Actualizado desde la base</button></div>' +
       '<div class="table-wrap"><table><thead><tr><th>Estudiante</th><th>Curso</th><th>DNI</th><th>Tutor</th>' + (editable ? '<th></th>' : '') + '</tr></thead><tbody>' +
       body + '</tbody></table></div>' +
+      listFooterHTML(section, slice) +
       '</div>'
     );
   }
@@ -1041,16 +1122,15 @@ function bodyFor(state, section, rows, query) {
     const filter = activeFilter(state, section);
     const filtered = filterRows(rows, q, ['nombre', 'dni', 'cargo', 'anio_ingreso']);
     const ordered = sortRowsByName(filtered, dir);
+    const slice = pageSlice(ordered, activeLimit(state, section), activePage(state, section));
+    if (state.pages) state.pages[section] = slice.page;
     const body = filter === 'none'
-      ? '<div class="teacher-grid">' + teacherCardsHTML(ordered, null, editable) + '</div>'
-      : teacherGroupsHTML(groupRowsBy(ordered, filter, dir, (crit, r) => groupKeyFor('Docentes', crit, r)), editable);
+      ? '<div class="teacher-grid">' + teacherCardsHTML(slice.rows, null, editable) + '</div>'
+      : teacherGroupsHTML(groupRowsBy(slice.rows, filter, dir, (crit, r) => groupKeyFor('Docentes', crit, r)), editable);
     return (
-      '<div class="stats-grid">' +
-      statCard('GraduationCap', 'Docentes', rows.length, 'en plantel', 'teal') +
-      statCard('Users', 'Estudiantes', '', '', 'blue').replace(/<strong><\/strong>/, '<strong>—</strong>') +
-      '</div>' +
-      '<div class="card-grid-heading"><div><h2>' + esc(sectionTitle('Docentes', filter)) + '</h2><p>' + filtered.length + ' docentes</p></div></div>' +
-      body
+      '<div class="card-grid-heading"><div><h2>' + esc(sectionTitle('Docentes', filter)) + '</h2></div></div>' +
+      body +
+      listFooterHTML(section, slice)
     );
   }
   if (section === 'Cursos') {
@@ -1058,18 +1138,17 @@ function bodyFor(state, section, rows, query) {
     const filter = activeFilter(state, section);
     const filtered = filterRows(rows, q, ['nombre', 'turno', 'ciclo', 'especialidad']);
     const ordered = sortCourses(filtered, dir);
+    const slice = pageSlice(ordered, activeLimit(state, section), activePage(state, section));
+    if (state.pages) state.pages[section] = slice.page;
     const head = COURSE_HEADINGS[filter] || COURSE_HEADINGS.none;
     const heading = '<div class="card-grid-heading"><div><h2>' + esc(head[0]) + '</h2><p>' + esc(head[1]) + '</p></div></div>';
     const body = filter === 'none'
-      ? '<div class="course-grid">' + courseCardsHTML(ordered, editable) + '</div>'
-      : '<div class="course-list-wrap">' + courseGroupsHTML(groupCoursesBy(ordered, filter, dir), editable) + '</div>';
+      ? '<div class="course-grid">' + courseCardsHTML(slice.rows, editable) + '</div>'
+      : '<div class="course-list-wrap">' + courseGroupsHTML(groupCoursesBy(slice.rows, filter, dir), editable) + '</div>';
     return (
-      '<div class="stats-grid">' +
-      statCard('BookOpen', 'Cursos', rows.length, 'en el establecimiento', 'orange') +
-      statCard('Users', 'Divisiones', '', '', 'blue').replace(/<strong><\/strong>/, '<strong>—</strong>') +
-      '</div>' +
       heading +
-      body
+      body +
+      listFooterHTML(section, slice)
     );
   }
   if (section === 'Materias') {
@@ -1077,13 +1156,18 @@ function bodyFor(state, section, rows, query) {
     const filter = activeFilter(state, section);
     const filtered = filterRows(rows, q, ['nombre']);
     const ordered = sortRowsByName(filtered, dir);
+    const slice = pageSlice(ordered, activeLimit(state, section), activePage(state, section));
+    if (state.pages) state.pages[section] = slice.page;
     const body = filter === 'none'
-      ? materiaRowsHTML(ordered, editable)
-      : materiaGroupsHTML(groupRowsBy(ordered, filter, dir, (crit, r) => groupKeyFor('Materias', crit, r)), editable);
+      ? materiaRowsHTML(slice.rows, editable)
+      : materiaGroupsHTML(groupRowsBy(slice.rows, filter, dir, (crit, r) => groupKeyFor('Materias', crit, r)), editable);
     return (
       '<div class="data-panel">' +
-      '<div class="panel-heading"><div><h2>' + esc(sectionTitle('Materias', filter)) + '</h2><p>' + filtered.length + ' materias</p></div></div>' +
-      '<div class="student-list">' + body + '</div>' +
+      '<div class="panel-heading"><div><h2>' + esc(sectionTitle('Materias', filter)) + '</h2></div>' +
+      '<button class="text-button" type="button" disabled>Actualizado desde la base</button></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>Materia</th><th>Docente</th>' + (editable ? '<th></th>' : '') + '</tr></thead><tbody>' +
+      body + '</tbody></table></div>' +
+      listFooterHTML(section, slice) +
       '</div>'
     );
   }
@@ -1219,6 +1303,7 @@ function showSection(state, section) {
   state.drill = null;
   state.results = null;
   state.openMenu = null;
+  if (state.pages) state.pages[section] = 1;
   updateNavActive(state, section);
   setBreadcrumb(state, section === 'Inicio' ? 'Panel principal' : section);
   renderCurrent(state);
@@ -1338,6 +1423,8 @@ function applyLocalFilter(state) {
   const term = input ? input.value : '';
   const body = state.root.querySelector('[data-view-body]');
   const rows = (state.cache && state.cache[state.section]) || [];
+  // La búsqueda rehace el conjunto: vuelve a la primera página.
+  if (state.pages) state.pages[state.section] = 1;
   if (body && state.section && (TABLE_FOR[state.section] || state.section === 'Usuarios')) {
     body.innerHTML = bodyFor(state, state.section, rows, term);
   }
@@ -1388,6 +1475,8 @@ function wireEvents(state) {
       const sortSection = state.section;
       state.sortDirs[sortSection] = activeSortDir(state, sortSection) === 'desc' ? 'asc' : 'desc';
       storeSortDir(sortSection, state.sortDirs[sortSection]);
+      // El orden cambia el conjunto: vuelve a la primera página.
+      if (state.pages) state.pages[sortSection] = 1;
       if (!refreshSection(state)) renderCurrent(state);
       return;
     }
@@ -1408,8 +1497,21 @@ function wireEvents(state) {
       if (set.getAttribute('data-set') === 'filter' && isSectionFilter(filterSection, val)) {
         state.filters[filterSection] = val;
         storeFilter(filterSection, val);
+        // El filtro rehace el conjunto: vuelve a la primera página.
+        if (state.pages) state.pages[filterSection] = 1;
       }
       setSectionMenu(state, false);
+      if (!refreshSection(state)) renderCurrent(state);
+      return;
+    }
+    // Paginación del pie: ‹ › cambian de página sin re-render de la sección.
+    const pageBtn = e.target.closest('[data-page-prev], [data-page-next]');
+    if (pageBtn) {
+      const pageSection = state.section;
+      const current = activePage(state, pageSection);
+      if (state.pages) {
+        state.pages[pageSection] = pageBtn.hasAttribute('data-page-prev') ? current - 1 : current + 1;
+      }
       if (!refreshSection(state)) renderCurrent(state);
       return;
     }
@@ -1462,6 +1564,18 @@ function wireEvents(state) {
     if (state.crud && state.crud.handleInput) {
       state.crud.handleInput(e);
     }
+  });
+
+  // Selector de límite de entradas del pie (15/30/50/100): rehace el cuerpo
+  // de la sección sin re-render de la vista.
+  state.root.addEventListener('change', (e) => {
+    const sel = e.target.closest('[data-limit-select]');
+    if (!sel) return;
+    const section = state.section;
+    if (state.limits) state.limits[section] = normalizePageSize(sel.value);
+    storeLimit(section, sel.value);
+    if (state.pages) state.pages[section] = 1;
+    if (!refreshSection(state)) renderCurrent(state);
   });
 
   state.root.addEventListener('submit', (e) => {
@@ -1563,6 +1677,8 @@ export async function initMain(root, opts) {
     theme: getStoredTheme(),
     filters: getStoredFilters(),
     sortDirs: getStoredSortDirs(),
+    limits: getStoredLimits(),
+    pages: {},
     openMenu: null,
     section: 'Inicio',
     drill: null,

@@ -226,4 +226,90 @@ describe('interfaz (lógica pura)', () => {
     expect(svg).toContain('stroke="currentColor"');
     expect(svg).toContain('fill="none"');
   });
+
+  test('demoGroupRowHTML no lleva contador (la cantidad vive en el pie)', () => {
+    // Espejo de demoGroupRowHTML() en interfaz.js.
+    const demoGroupRowHTML = (title, colspan) =>
+      '<tr class="group-row"><th colspan="' + colspan + '">' + title + '</th></tr>';
+    const html = demoGroupRowHTML('Mañana', 6);
+    expect(html).toContain('class="group-row"');
+    expect(html).toContain('colspan="6"');
+    expect(html).toContain('>Mañana<');
+    expect(html).not.toContain('group-count');
+    expect(html).not.toContain('estudiantes');
+  });
+
+  test('demoPageSlice corta el conjunto en la página activa y clampéa', () => {
+    // Espejo de demoPageSlice() en interfaz.js.
+    const demoPageSlice = (rows, limit, page) => {
+      const size = limit;
+      const total = rows.length;
+      const pages = Math.max(1, Math.ceil(total / size));
+      const p = Math.min(Math.max(1, Number(page) || 1), pages);
+      const start = (p - 1) * size;
+      return {
+        rows: rows.slice(start, start + size),
+        size: size,
+        total: total,
+        pages: pages,
+        page: p,
+        from: total === 0 ? 0 : start + 1,
+        to: Math.min(start + size, total),
+      };
+    };
+    // 20 estudiantes demo (16 docentes y 16 cursos) → 2 páginas con límite 15.
+    const estudiantes = Array.from({ length: 20 }, (_, i) => i + 1);
+    const docentes = Array.from({ length: 16 }, (_, i) => i + 1);
+
+    const p1 = demoPageSlice(estudiantes, 15, 1);
+    expect(p1.rows).toHaveLength(15);
+    expect(p1).toMatchObject({ pages: 2, page: 1, from: 1, to: 15 });
+
+    const p2 = demoPageSlice(estudiantes, 15, 2);
+    expect(p2.rows).toHaveLength(5);
+    expect(p2).toMatchObject({ from: 16, to: 20, page: 2 });
+
+    expect(demoPageSlice(docentes, 15, 9).page).toBe(2);
+    expect(demoPageSlice(estudiantes, 30, 1).rows).toHaveLength(20);
+    expect(demoPageSlice(estudiantes, 30, 1).pages).toBe(1);
+  });
+
+  test('demoListFooterHTML usa las mismas clases y atributos que el pie real', () => {
+    // Espejo de demoListFooterHTML() en interfaz.js: mismo marcado que
+    // listFooterHTML de main.js para que el CSS sea único para ambos.
+    const demoListFooterHTML = (section, slice) => {
+      const options = [15, 30, 50, 100].map((n) =>
+        '<option value="' + n + '"' + (n === slice.size ? ' selected' : '') + '>' + n + '</option>'
+      ).join('');
+      const cuenta = slice.total === 0
+        ? 'Sin entradas para mostrar'
+        : 'Mostrando ' + slice.from + '–' + slice.to + ' de ' + slice.total + ' entradas';
+      const prev = slice.page <= 1 ? ' disabled' : '';
+      const next = slice.page >= slice.pages ? ' disabled' : '';
+      return (
+        '<div class="list-footer">' +
+        '<select class="limit-select" data-limit-select aria-label="Entradas por página de ' + section + '">' + options + '</select>' +
+        '<span class="entry-count">' + cuenta + '</span>' +
+        '<button class="page-btn" data-page-prev' + prev + '></button>' +
+        '<span class="page-info">Página ' + slice.page + ' de ' + slice.pages + '</span>' +
+        '<button class="page-btn" data-page-next' + next + '></button>' +
+        '</div>'
+      );
+    };
+
+    const primera = demoListFooterHTML('Estudiantes', { size: 15, total: 20, from: 1, to: 15, page: 1, pages: 2 });
+    expect(primera).toContain('class="list-footer"');
+    expect(primera).toContain('class="limit-select" data-limit-select');
+    expect(primera).toContain('aria-label="Entradas por página de Estudiantes"');
+    expect(primera).toContain('<option value="15" selected>15</option>');
+    expect(primera).toContain('class="entry-count">Mostrando 1–15 de 20 entradas');
+    expect(primera).toContain('class="page-info">Página 1 de 2');
+    expect(primera).toMatch(/data-page-prev disabled/);
+    expect(primera).not.toMatch(/data-page-next disabled/);
+
+    const ultima = demoListFooterHTML('Docentes', { size: 15, total: 16, from: 16, to: 16, page: 2, pages: 2 });
+    expect(ultima).toContain('Mostrando 16–16 de 16 entradas');
+    expect(ultima).not.toMatch(/data-page-prev disabled/);
+    expect(ultima).toMatch(/data-page-next disabled/);
+  });
 });

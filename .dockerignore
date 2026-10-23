@@ -5,3 +5,8 @@ mozart
 .mozart.db
 *.log
 .git
+.env
+*.db
+*.db-wal
+*.db-shm
+secret.key

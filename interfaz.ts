@@ -6,9 +6,9 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   ClipboardList,
-  Clock,
   Download,
   Filter,
   GraduationCap,
@@ -214,6 +214,59 @@ const COURSE_HEADINGS: Record<CourseFilter, [string, string]> = {
   turno: ['Cursos por turno', 'Agrupadas por turno de cursada'],
 };
 
+// Límite de entradas y paginación (paridad con pageSlice/listFooterHTML de la
+// app real): el mockup pagina en memoria sobre sus datos demo.
+const PAGE_SIZES = [15, 30, 50, 100];
+const DEFAULT_PAGE_SIZE = 15;
+
+function normalizePageSize(value: number) {
+  return PAGE_SIZES.includes(value)
+    ? value
+    : DEFAULT_PAGE_SIZE;
+}
+
+type PageSlice<T> = {
+  rows: T[];
+  size: number;
+  total: number;
+  pages: number;
+  page: number;
+  from: number;
+  to: number;
+};
+
+function pageSlice<T>(
+  rows: T[],
+  limit: number,
+  page: number
+): PageSlice<T> {
+  const size = normalizePageSize(limit);
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / size));
+  const current = Math.min(
+    Math.max(1, page || 1),
+    pages
+  );
+  const start = (current - 1) * size;
+  return {
+    rows: rows.slice(start, start + size),
+    size,
+    total,
+    pages,
+    page: current,
+    from: total === 0 ? 0 : start + 1,
+    to: Math.min(start + size, total),
+  };
+}
+
+type Pager = {
+  limit: number;
+  page: number;
+  onLimit: (value: number) => void;
+  onPrev: () => void;
+  onNext: () => void;
+};
+
 type SectionMeta = {
   icon: typeof Users;
   label: Section;
@@ -298,6 +351,132 @@ const students = [
     email: 'tlopez@escuela.edu',
     updated: '08 sep, 10:22',
   },
+  {
+    name: 'Martina Benítez',
+    initials: 'MB',
+    course: '2° A',
+    status: 'Activo',
+    tone: 'violet',
+    email: 'mbenitez@escuela.edu',
+    updated: '08 sep, 09:41',
+  },
+  {
+    name: 'Joaquín Ferreira',
+    initials: 'JF',
+    course: '4° A',
+    status: 'Pendiente',
+    tone: 'teal',
+    email: 'jferreira@escuela.edu',
+    updated: '07 sep, 16:12',
+  },
+  {
+    name: 'Emilia Peralta',
+    initials: 'EP',
+    course: '1° B',
+    status: 'Activo',
+    tone: 'blue',
+    email: 'eperalta@escuela.edu',
+    updated: '07 sep, 14:05',
+  },
+  {
+    name: 'Bautista Cabrera',
+    initials: 'BC',
+    course: '5° C',
+    status: 'Activo',
+    tone: 'orange',
+    email: 'bcabrera@escuela.edu',
+    updated: '07 sep, 11:38',
+  },
+  {
+    name: 'Renata Álvarez',
+    initials: 'RA',
+    course: '3° B',
+    status: 'Activo',
+    tone: 'violet',
+    email: 'ralvarez@escuela.edu',
+    updated: '06 sep, 15:20',
+  },
+  {
+    name: 'Santino Morales',
+    initials: 'SM',
+    course: '2° C',
+    status: 'Activo',
+    tone: 'teal',
+    email: 'smorales@escuela.edu',
+    updated: '06 sep, 12:47',
+  },
+  {
+    name: 'Olivia Giménez',
+    initials: 'OG',
+    course: '4° C',
+    status: 'Pendiente',
+    tone: 'blue',
+    email: 'ogimenez@escuela.edu',
+    updated: '06 sep, 10:09',
+  },
+  {
+    name: 'Felipe Ocampo',
+    initials: 'FO',
+    course: '1° A',
+    status: 'Activo',
+    tone: 'orange',
+    email: 'focampo@escuela.edu',
+    updated: '05 sep, 17:33',
+  },
+  {
+    name: 'Delfina Vega',
+    initials: 'DV',
+    course: '5° A',
+    status: 'Activo',
+    tone: 'violet',
+    email: 'dvega@escuela.edu',
+    updated: '05 sep, 13:54',
+  },
+  {
+    name: 'Bruno Salinas',
+    initials: 'BS',
+    course: '3° C',
+    status: 'Activo',
+    tone: 'teal',
+    email: 'bsalinas@escuela.edu',
+    updated: '05 sep, 09:26',
+  },
+  {
+    name: 'Alma Rosas',
+    initials: 'AR',
+    course: '2° A',
+    status: 'Activo',
+    tone: 'blue',
+    email: 'arosas@escuela.edu',
+    updated: '04 sep, 16:48',
+  },
+  {
+    name: 'Tomás Aguirre',
+    initials: 'TA',
+    course: '4° B',
+    status: 'Activo',
+    tone: 'orange',
+    email: 'taguirre@escuela.edu',
+    updated: '04 sep, 12:15',
+  },
+  {
+    name: 'Josefa Ledesma',
+    initials: 'JL',
+    course: '1° C',
+    status: 'Pendiente',
+    tone: 'violet',
+    email: 'jledesma@escuela.edu',
+    updated: '03 sep, 15:02',
+  },
+  {
+    name: 'Ian Bustos',
+    initials: 'IB',
+    course: '5° B',
+    status: 'Activo',
+    tone: 'teal',
+    email: 'ibustos@escuela.edu',
+    updated: '03 sep, 10:44',
+  },
 ];
 
 const teachers = [
@@ -361,6 +540,106 @@ const teachers = [
     email: 'pnunez@escuela.edu',
     phone: '+54 11 5512-7765',
   },
+  {
+    name: 'Ramiro Castillo',
+    initials: 'RC',
+    subject: 'Química',
+    classes: 5,
+    status: 'Activo',
+    tone: 'orange',
+    email: 'rcastillo@escuela.edu',
+    phone: '+54 11 5561-4420',
+  },
+  {
+    name: 'Victoria Ferrer',
+    initials: 'VF',
+    subject: 'Historia',
+    classes: 4,
+    status: 'Activo',
+    tone: 'blue',
+    email: 'vferrer@escuela.edu',
+    phone: '+54 11 5577-2210',
+  },
+  {
+    name: 'Hugo Bravo',
+    initials: 'HB',
+    subject: 'Matemática',
+    classes: 6,
+    status: 'Activo',
+    tone: 'teal',
+    email: 'hbravo@escuela.edu',
+    phone: '+54 11 5548-9013',
+  },
+  {
+    name: 'Sofía Nogueira',
+    initials: 'SN',
+    subject: 'Biología',
+    classes: 3,
+    status: 'Licencia',
+    tone: 'violet',
+    email: 'snogueira@escuela.edu',
+    phone: '+54 11 5539-6672',
+  },
+  {
+    name: 'Nicolás Vera',
+    initials: 'NV',
+    subject: 'Educación Física',
+    classes: 5,
+    status: 'Activo',
+    tone: 'orange',
+    email: 'nvera@escuela.edu',
+    phone: '+54 11 5584-3391',
+  },
+  {
+    name: 'Trinidad Sosa',
+    initials: 'TS',
+    subject: 'Lengua y Literatura',
+    classes: 4,
+    status: 'Activo',
+    tone: 'blue',
+    email: 'tsosa@escuela.edu',
+    phone: '+54 11 5526-1147',
+  },
+  {
+    name: 'Federico Ibarra',
+    initials: 'FI',
+    subject: 'Física',
+    classes: 5,
+    status: 'Activo',
+    tone: 'teal',
+    email: 'fibarra@escuela.edu',
+    phone: '+54 11 5593-7758',
+  },
+  {
+    name: 'Abril Quiroga',
+    initials: 'AQ',
+    subject: 'Geografía',
+    classes: 3,
+    status: 'Activo',
+    tone: 'violet',
+    email: 'aquioga@escuela.edu',
+    phone: '+54 11 5557-4406',
+  },
+  {
+    name: 'Gonzalo Prieto',
+    initials: 'GP',
+    subject: 'Informática',
+    classes: 6,
+    status: 'Activo',
+    tone: 'orange',
+    email: 'gprieto@escuela.edu',
+    phone: '+54 11 5569-8823',
+  },
+  {
+    name: 'Malena Sandoval',
+    initials: 'MS',
+    subject: 'Música',
+    classes: 4,
+    status: 'Licencia',
+    tone: 'blue',
+    email: 'msandoval@escuela.edu',
+    phone: '+54 11 5518-2264',
+  },
 ];
 
 type Course = {
@@ -388,6 +667,12 @@ const courses: Course[] = [
   { name: 'Programación', level: '5° A', students: 24, teacher: 'Diego Pereyra', schedule: 'Lun · Mié', turno: 'Mañana', especialidad: 'Técnico en Informática', tone: 'orange', icon: '💻' },
   { name: 'Dibujo Técnico', level: '1° A', students: 32, teacher: 'Laura Sánchez', schedule: 'Jue', turno: 'Mañana', especialidad: '', tone: 'blue', icon: '📐' },
   { name: 'Educación Física', level: '4° B', students: 29, teacher: 'Andrés Sosa', schedule: 'Vie', turno: 'Tarde', especialidad: '', tone: 'teal', icon: '⚽' },
+  { name: 'Economía', level: '2° A', students: 27, teacher: 'Victoria Ferrer', schedule: 'Lun · Mié', turno: 'Tarde', especialidad: '', tone: 'blue', icon: '💰' },
+  { name: 'Inglés', level: '1° B', students: 31, teacher: 'Malena Sandoval', schedule: 'Mar · Jue', turno: 'Mañana', especialidad: '', tone: 'violet', icon: '🌐' },
+  { name: 'Robótica', level: '4° A', students: 25, teacher: 'Gonzalo Prieto', schedule: 'Mié', turno: 'Tarde', especialidad: 'Técnico en Informática', tone: 'teal', icon: '🤖' },
+  { name: 'Música', level: '2° D', students: 29, teacher: 'Malena Sandoval', schedule: 'Jue', turno: 'Mañana', especialidad: '', tone: 'orange', icon: '🎵' },
+  { name: 'Taller de Ciudadanía', level: '5° C', students: 26, teacher: 'Abril Quiroga', schedule: 'Vie', turno: 'Tarde', especialidad: '', tone: 'blue', icon: '🧭' },
+  { name: 'Historia del Arte', level: '3° C', students: 28, teacher: 'Victoria Ferrer', schedule: 'Lun', turno: 'Mañana', especialidad: '', tone: 'violet', icon: '🎨' },
 ];
 
 function App() {
@@ -894,10 +1179,33 @@ function SectionView({
     Docentes: 'asc',
     Cursos: 'asc',
   });
+  const [limits, setLimits] = useState<
+    Record<string, number>
+  >({
+    Estudiantes: DEFAULT_PAGE_SIZE,
+    Docentes: DEFAULT_PAGE_SIZE,
+    Cursos: DEFAULT_PAGE_SIZE,
+  });
+  const [pages, setPages] = useState<
+    Record<string, number>
+  >({
+    Estudiantes: 1,
+    Docentes: 1,
+    Cursos: 1,
+  });
   const [openMenu, setOpenMenu] = useState<{
     section: Section;
     which: string;
   } | null>(null);
+
+  // Al cambiar de sección se vuelve a su primera página (paridad con la app
+  // real, que resetea la página al navegar).
+  const [lastSection, setLastSection] =
+    useState<Section>(section);
+  if (lastSection !== section) {
+    setLastSection(section);
+    setPages((prev) => ({ ...prev, [section]: 1 }));
+  }
 
   const menuOpen =
     openMenu !== null &&
@@ -907,6 +1215,28 @@ function SectionView({
     filters[section] ?? 'none';
   const sortDir: CourseDir = sortDirs[section] ?? 'asc';
   const menuItems = SECTION_FILTERS[section];
+  const limit = limits[section] ?? DEFAULT_PAGE_SIZE;
+  const page = pages[section] ?? 1;
+
+  // Pie de lista: limitar/ordenar/filtrar vuelven a la primera página.
+  const pager: Pager = {
+    limit,
+    page,
+    onLimit: (value: number) => {
+      setLimits({
+        ...limits,
+        [section]: value,
+      });
+      setPages({ ...pages, [section]: 1 });
+    },
+    onPrev: () =>
+      setPages({
+        ...pages,
+        [section]: Math.max(1, page - 1),
+      }),
+    onNext: () =>
+      setPages({ ...pages, [section]: page + 1 }),
+  };
 
   return (
     <section className="section-view">
@@ -989,6 +1319,10 @@ function SectionView({
                           ...filters,
                           [section]: f.v,
                         });
+                        setPages({
+                          ...pages,
+                          [section]: 1,
+                        });
                         setOpenMenu(null);
                       }}
                     >
@@ -1005,13 +1339,17 @@ function SectionView({
             <button
               className="filter-button"
               aria-pressed={sortDir === 'desc'}
-              onClick={() =>
+              onClick={() => {
                 setSortDirs({
                   ...sortDirs,
                   [section]:
                     sortDir === 'desc' ? 'asc' : 'desc',
-                })
-              }
+                });
+                setPages({
+                  ...pages,
+                  [section]: 1,
+                });
+              }}
             >
               <ArrowUpDown size={16} />
               {sortDir === 'desc'
@@ -1050,6 +1388,7 @@ function SectionView({
         <StudentsView
           filter={filterValue}
           dir={sortDir}
+          pager={pager}
         />
       )}
 
@@ -1057,6 +1396,7 @@ function SectionView({
         <TeachersView
           filter={filterValue}
           dir={sortDir}
+          pager={pager}
         />
       )}
 
@@ -1064,6 +1404,7 @@ function SectionView({
         <CoursesView
           filter={filterValue as CourseFilter}
           dir={sortDir}
+          pager={pager}
         />
       )}
     </section>
@@ -1123,50 +1464,125 @@ function StudentRow({ student }: { student: Student }) {
   );
 }
 
-// Fila de encabezado de grupo dentro de una tabla.
+// Fila de encabezado de grupo dentro de una tabla (sin contadores: la
+// cantidad de entradas vive en el pie de la lista).
 function GroupHeaderRow({
   title,
-  count,
-  unidad,
   colspan,
 }: {
   title: string;
-  count: number;
-  unidad: string;
   colspan: number;
 }) {
   return (
     <tr className="group-row">
-      <th colSpan={colspan}>
-        {title}
-        <span className="group-count">
-          {count} {unidad}
-        </span>
-      </th>
+      <th colSpan={colspan}>{title}</th>
     </tr>
+  );
+}
+
+// Pie de lista: selector de límite (15/30/50/100), la cantidad de entradas
+// al lado y la navegación de páginas ‹ ›.
+function ListFooter({
+  section,
+  slice,
+  pager,
+}: {
+  section: string;
+  slice: PageSlice<unknown>;
+  pager: Pager;
+}) {
+  const cuenta =
+    slice.total === 0
+      ? 'Sin entradas para mostrar'
+      : `Mostrando ${slice.from}–${slice.to} de ${slice.total} entradas`;
+
+  return (
+    <div className="list-footer">
+      <div className="list-footer-left">
+        <label className="limit-label">
+          Mostrar{' '}
+
+          <select
+            className="limit-select"
+            value={slice.size}
+            aria-label={`Entradas por página de ${section}`}
+            onChange={(event) =>
+              pager.onLimit(
+                normalizePageSize(
+                  Number(event.target.value)
+                )
+              )
+            }
+          >
+            {PAGE_SIZES.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+
+          entradas
+        </label>
+
+        <span className="entry-count">{cuenta}</span>
+      </div>
+
+      <div className="list-footer-right">
+        <button
+          className="page-btn"
+          type="button"
+          aria-label="Página anterior"
+          disabled={slice.page <= 1}
+          onClick={pager.onPrev}
+        >
+          <ChevronLeft size={16} />
+        </button>
+
+        <span className="page-info">
+          Página {slice.page} de {slice.pages}
+        </span>
+
+        <button
+          className="page-btn"
+          type="button"
+          aria-label="Página siguiente"
+          disabled={slice.page >= slice.pages}
+          onClick={pager.onNext}
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
   );
 }
 
 function StudentsView({
   filter,
   dir,
+  pager,
 }: {
   filter: FilterValue;
   dir: CourseDir;
+  pager: Pager;
 }) {
   const ordered = sortByName(students, dir);
+  const slice = pageSlice(
+    ordered,
+    pager.limit,
+    pager.page
+  );
   // 'none' (default) = filas planas; el resto agrupa con
   // fila de encabezado por valor.
   const rows =
     filter === 'none'
-      ? ordered.map((student) => (
+      ? slice.rows.map((student) => (
           <StudentRow
             key={student.name}
             student={student}
           />
         ))
       : groupRows(
-          ordered,
+          slice.rows,
           filter,
           dir,
           studentGroupKey
@@ -1176,8 +1592,6 @@ function StudentsView({
               <GroupHeaderRow
                 key={`g-${group.title}`}
                 title={group.title}
-                count={group.items.length}
-                unidad="estudiantes"
                 colspan={6}
               />,
               group.items.map((student) => (
@@ -1198,9 +1612,6 @@ function StudentsView({
       <div className="panel-heading">
         <div>
           <h2>{title}</h2>
-          <p>
-            {students.length} registros encontrados
-          </p>
         </div>
 
         <button className="text-button">
@@ -1225,6 +1636,12 @@ function StudentsView({
           <tbody>{rows}</tbody>
         </table>
       </div>
+
+      <ListFooter
+        section="Estudiantes"
+        slice={slice}
+        pager={pager}
+      />
     </div>
   );
 }
@@ -1289,17 +1706,24 @@ function TeacherCard({ teacher }: { teacher: Teacher }) {
 function TeachersView({
   filter,
   dir,
+  pager,
 }: {
   filter: FilterValue;
   dir: CourseDir;
+  pager: Pager;
 }) {
   const ordered = sortByName(teachers, dir);
+  const slice = pageSlice(
+    ordered,
+    pager.limit,
+    pager.page
+  );
   // 'none' (default) = grilla; el resto agrupa con
   // encabezado por valor.
   const grid =
     filter === 'none' ? (
       <div className="teacher-grid">
-        {ordered.map((teacher) => (
+        {slice.rows.map((teacher) => (
           <TeacherCard
             key={teacher.name}
             teacher={teacher}
@@ -1309,7 +1733,7 @@ function TeachersView({
     ) : (
       <div className="course-list-wrap">
         {groupRows(
-          ordered,
+          slice.rows,
           filter,
           dir,
           teacherGroupKey
@@ -1321,7 +1745,6 @@ function TeachersView({
               </div>
               <div>
                 <strong>{group.title}</strong>
-                <span>{group.items.length} docentes</span>
               </div>
             </div>
 
@@ -1343,44 +1766,6 @@ function TeachersView({
 
   return (
     <>
-      <div className="stats-grid">
-        <StatCard
-          icon={GraduationCap}
-          label="Total docentes"
-          value="86"
-          trend="4,2%"
-          detail="plantel activo"
-          color="teal"
-        />
-
-        <StatCard
-          icon={BookOpen}
-          label="Materias asignadas"
-          value="112"
-          trend="6 nuevas"
-          detail="este ciclo"
-          color="blue"
-        />
-
-        <StatCard
-          icon={Clock}
-          label="En licencia"
-          value="4"
-          trend="2,3%"
-          detail="ausencias temporales"
-          color="orange"
-        />
-
-        <StatCard
-          icon={CheckCircle2}
-          label="Disponibilidad"
-          value="95,3%"
-          trend="1,8%"
-          detail="este mes"
-          color="violet"
-        />
-      </div>
-
       <div className="card-grid-heading">
         <div>
           <h2>{title}</h2>
@@ -1392,6 +1777,12 @@ function TeachersView({
       </div>
 
       {grid}
+
+      <ListFooter
+        section="Docentes"
+        slice={slice}
+        pager={pager}
+      />
     </>
   );
 }
@@ -1399,52 +1790,21 @@ function TeachersView({
 function CoursesView({
   filter,
   dir,
+  pager,
 }: {
   filter: CourseFilter;
   dir: CourseDir;
+  pager: Pager;
 }) {
   const ordered = sortCourses(courses, dir);
+  const slice = pageSlice(
+    ordered,
+    pager.limit,
+    pager.page
+  );
   const head = COURSE_HEADINGS[filter] ?? COURSE_HEADINGS.none;
   return (
     <>
-      <div className="stats-grid">
-        <StatCard
-          icon={BookOpen}
-          label="Cursos activos"
-          value="42"
-          trend="8 nuevos"
-          detail="este ciclo lectivo"
-          color="orange"
-        />
-
-        <StatCard
-          icon={Users}
-          label="Inscriptos totales"
-          value="1.248"
-          trend="12,5%"
-          detail="estudiantes"
-          color="blue"
-        />
-
-        <StatCard
-          icon={GraduationCap}
-          label="Docentes asignados"
-          value="86"
-          trend="100%"
-          detail="cobertura"
-          color="teal"
-        />
-
-        <StatCard
-          icon={CalendarDays}
-          label="Promedio por curso"
-          value="29,7"
-          trend="2,1"
-          detail="estudiantes/curso"
-          color="violet"
-        />
-      </div>
-
       <div className="card-grid-heading">
         <div>
           <h2>{head[0]}</h2>
@@ -1455,7 +1815,7 @@ function CoursesView({
 
       {filter === 'none' ? (
       <div className="course-grid">
-        {ordered.map((course) => (
+        {slice.rows.map((course) => (
           <div
             className="course-card"
             key={`${course.name}-${course.level}`}
@@ -1507,11 +1867,17 @@ function CoursesView({
       </div>
       ) : (
         <CourseGroupedView
-          rows={ordered}
+          rows={slice.rows}
           filter={filter}
           dir={dir}
         />
       )}
+
+      <ListFooter
+        section="Cursos"
+        slice={slice}
+        pager={pager}
+      />
     </>
   );
 }
@@ -1595,10 +1961,6 @@ function CourseGroupedView({
   return (
     <div className="course-list-wrap">
       {groups.map((group) => {
-        const total = group.items.reduce(
-          (acc, c) => acc + c.students,
-          0
-        );
         return (
           <div className="course-group" key={group.title}>
             <div className="course-group-header">
@@ -1607,10 +1969,6 @@ function CourseGroupedView({
               </div>
               <div>
                 <strong>{group.title}</strong>
-                <span>
-                  {group.items.length} divisiones · {total}{' '}
-                  estudiantes
-                </span>
               </div>
             </div>
             <div className="course-sections-grid">

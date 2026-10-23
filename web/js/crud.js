@@ -9,7 +9,7 @@
  * atados a un state del sistema.
  */
 
-import { icon, esc, apiGet } from './interfaz.js?v=20';
+import { icon, esc, apiGet } from './interfaz.js?v=22';
 import { hasPerm, PERM, PERM_GROUPS } from './permissions.js?v=9';
 
 function isSet(x) {

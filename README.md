@@ -19,7 +19,7 @@ cp .env.example .env
 docker compose up -d
 
 # 3. Acceder a la aplicación
-# http://localhost:8080
+# https://localhost:443  (o http://localhost:8081 para el túnel de Cloudflare)
 ```
 
 > **Nota:** El primer inicio tarda más porque debe inicializar la base de datos.
@@ -130,7 +130,7 @@ Mozart/
 │   └── templates/            # Plantillas HTML (index, login, interfaz)
 ├── tests/                    # Test suite del frontend (Jest)
 ├── docker-compose.yml        # Orquestación (servicio único Go)
-├── Dockerfile                # Imagen multi-stage (build + distroless estático)
+├── Dockerfile                # Imagen multi-stage (build + Debian trixie slim)
 └── .env.example              # Template de variables de entorno
 ```
 

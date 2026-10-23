@@ -212,6 +212,37 @@ function studentRowsHTML(rows, editable) {
     .join('');
 }
 
+// Espejos de materiaRowsHTML/materiaGroupsHTML: Materias usa el mismo diseño
+// de tabla que Estudiantes (avatar + nombre, badge de docente y acciones).
+function materiaRowsHTML(rows, editable) {
+  if (!rows || rows.length === 0) {
+    return '<tr><td colspan="' + (editable ? 3 : 2) + '" class="table-empty">Sin registros.</td></tr>';
+  }
+  return rows
+    .map((m) => {
+      const con = Number(m.con_docente) === 1;
+      return (
+        '<tr>' +
+        '<td><div class="table-person"><div class="avatar avatar-violet">' + m.nombre.slice(0, 1).toUpperCase() + '</div><strong>' + m.nombre + '</strong></div></td>' +
+        '<td><span class="status ' + (con ? 'status-active' : 'status-pending') + '">' +
+        (con ? 'Con docente asignado' : 'Sin docente asignado') + '</span></td>' +
+        (editable ? rowActionsHTML('materias', m.id_materia, m.nombre) : '') +
+        '</tr>'
+      );
+    })
+    .join('');
+}
+
+function materiaGroupsHTML(groups, editable) {
+  const colspan = editable ? 3 : 2;
+  if (!groups || groups.length === 0) return materiaRowsHTML([], editable);
+  return groups
+    .map((g) =>
+      '<tr class="group-row"><th colspan="' + colspan + '">' + g.title + '</th></tr>' +
+      materiaRowsHTML(g.items, editable))
+    .join('');
+}
+
 function usuarioRowsHTML(rows) {
   if (!rows || rows.length === 0) {
     return '<tr><td colspan="4" class="table-empty">No hay usuarios registrados.</td></tr>';
@@ -418,30 +449,145 @@ describe('main (lógica pura)', () => {
     expect(groupKeyFor('Materias', 'letra', { nombre: 'Matemática' }).title).toBe('M');
   });
 
-  test('groupRowHTML emite encabezado con colspan y contador', () => {
+  test('groupRowHTML emite encabezado con colspan y sin contadores', () => {
     // Espejo de groupRowHTML() en main.js.
-    const groupRowHTML = (title, count, colspan, unidad) =>
-      '<tr class="group-row"><th colspan="' + colspan + '">' + title +
-      '<span class="group-count">' + count + ' ' + unidad + '</span></th></tr>';
-    const html = groupRowHTML('Mañana', 3, 4, 'estudiantes');
+    const groupRowHTML = (title, colspan) =>
+      '<tr class="group-row"><th colspan="' + colspan + '">' + title + '</th></tr>';
+    const html = groupRowHTML('Mañana', 4);
     expect(html).toContain('class="group-row"');
     expect(html).toContain('colspan="4"');
-    expect(html).toContain('3 estudiantes');
+    expect(html).toContain('>Mañana<');
+    // Los contadores (badges de grupo y subtítulos) se eliminaron.
+    expect(html).not.toContain('group-count');
+    expect(html).not.toContain('estudiantes');
     // Mismo colspan que studentRowsHTML: 4 sin acciones, 5 si es editable.
-    expect(groupRowHTML('1° Año', 2, 4, 'estudiantes')).toContain('colspan="4"');
-    expect(groupRowHTML('1° Año', 2, 5, 'estudiantes')).toContain('colspan="5"');
+    expect(groupRowHTML('1° Año', 4)).toContain('colspan="4"');
+    expect(groupRowHTML('1° Año', 5)).toContain('colspan="5"');
+  });
+
+  test('PAGE_SIZES ofrece 15/30/50/100 y normaliza cualquier otro valor', () => {
+    // Espejo de PAGE_SIZES/normalizePageSize() en main.js.
+    const PAGE_SIZES = [15, 30, 50, 100];
+    const DEFAULT_PAGE_SIZE = 15;
+    const normalizePageSize = (v) => {
+      const n = Number(v);
+      return PAGE_SIZES.indexOf(n) !== -1 ? n : DEFAULT_PAGE_SIZE;
+    };
+    expect(PAGE_SIZES).toEqual([15, 30, 50, 100]);
+    expect(normalizePageSize(15)).toBe(15);
+    expect(normalizePageSize('30')).toBe(30);
+    expect(normalizePageSize(100)).toBe(100);
+    // Fuera de la lista (y basura) → el valor por defecto.
+    expect(normalizePageSize(20)).toBe(15);
+    expect(normalizePageSize(0)).toBe(15);
+    expect(normalizePageSize(null)).toBe(15);
+    expect(normalizePageSize('')).toBe(15);
+    expect(normalizePageSize(undefined)).toBe(15);
+  });
+
+  test('pageSlice corta el conjunto en la página activa y clampéa el rango', () => {
+    // Espejo de pageSlice() en main.js.
+    const pageSlice = (rows, limit, page) => {
+      const size = limit;
+      const total = rows.length;
+      const pages = Math.max(1, Math.ceil(total / size));
+      const p = Math.min(Math.max(1, Number(page) || 1), pages);
+      const start = (p - 1) * size;
+      return {
+        rows: rows.slice(start, start + size),
+        size: size,
+        total: total,
+        pages: pages,
+        page: p,
+        from: total === 0 ? 0 : start + 1,
+        to: Math.min(start + size, total),
+      };
+    };
+    const rows = Array.from({ length: 40 }, (_, i) => i + 1);
+
+    const primera = pageSlice(rows, 15, 1);
+    expect(primera.rows).toHaveLength(15);
+    expect(primera.rows[0]).toBe(1);
+    expect(primera).toMatchObject({ size: 15, total: 40, pages: 3, page: 1, from: 1, to: 15 });
+
+    const ultima = pageSlice(rows, 15, 3);
+    expect(ultima.rows).toHaveLength(10);
+    expect(ultima.rows[0]).toBe(31);
+    expect(ultima).toMatchObject({ from: 31, to: 40 });
+
+    // Página más allá del final → última;0 o negativa → primera.
+    expect(pageSlice(rows, 15, 9).page).toBe(3);
+    expect(pageSlice(rows, 15, 0).page).toBe(1);
+    expect(pageSlice(rows, 15, -4).page).toBe(1);
+
+    // Conjunto vacío → una página sin filas y rango en0.
+    expect(pageSlice([], 15, 7)).toMatchObject({ rows: [], pages: 1, page: 1, from: 0, to: 0 });
+
+    // Límite mayor que el total → todo en una sola página.
+    const chico = pageSlice(rows.slice(0, 6), 15, 2);
+    expect(chico).toMatchObject({ rows: expect.any(Array), pages: 1, page: 1, from: 1, to: 6 });
+    expect(chico.rows).toHaveLength(6);
+  });
+
+  test('listFooterHTML muestra el límite, la cantidad de entradas y ‹ ›', () => {
+    // Espejo de listFooterHTML() en main.js.
+    const listFooterHTML = (section, slice) => {
+      const options = [15, 30, 50, 100].map((n) =>
+        '<option value="' + n + '"' + (n === slice.size ? ' selected' : '') + '>' + n + '</option>'
+      ).join('');
+      const cuenta = slice.total === 0
+        ? 'Sin entradas para mostrar'
+        : 'Mostrando ' + slice.from + '–' + slice.to + ' de ' + slice.total + ' entradas';
+      const prev = slice.page <= 1 ? ' disabled' : '';
+      const next = slice.page >= slice.pages ? ' disabled' : '';
+      return (
+        '<div class="list-footer">' +
+        '<select data-limit-select aria-label="Entradas por página de ' + section + '">' + options + '</select>' +
+        '<span class="entry-count">' + cuenta + '</span>' +
+        '<button data-page-prev' + prev + '></button>' +
+        '<span class="page-info">Página ' + slice.page + ' de ' + slice.pages + '</span>' +
+        '<button data-page-next' + next + '></button>' +
+        '</div>'
+      );
+    };
+
+    const primera = listFooterHTML('Estudiantes', { size: 15, total: 40, from: 1, to: 15, page: 1, pages: 3 });
+    expect(primera).toContain('data-limit-select');
+    expect(primera).toContain('<option value="15" selected>15</option>');
+    expect(primera).toContain('<option value="100">100</option>');
+    expect(primera).toContain('Mostrando 1–15 de 40 entradas');
+    expect(primera).toContain('Página 1 de 3');
+    expect(primera).toMatch(/data-page-prev disabled/);
+    expect(primera).not.toMatch(/data-page-next disabled/);
+
+    // Página intermedia: ‹ y › activos.
+    const media = listFooterHTML('Docentes', { size: 30, total: 40, from: 31, to: 40, page: 2, pages: 2 });
+    expect(media).toContain('<option value="30" selected>30</option>');
+    expect(media).toContain('Mostrando 31–40 de 40 entradas');
+    expect(media).not.toMatch(/data-page-prev disabled/);
+    expect(media).toMatch(/data-page-next disabled/);
+
+    // Sin entradas: texto neutro y ambos botones deshabilitados.
+    const vacio = listFooterHTML('Cursos', { size: 15, total: 0, from: 0, to: 0, page: 1, pages: 1 });
+    expect(vacio).toContain('Sin entradas para mostrar');
+    expect(vacio).toMatch(/data-page-prev disabled/);
+    expect(vacio).toMatch(/data-page-next disabled/);
   });
 
   test('storage por sección usa claves propias y conserva las de Cursos', () => {
-    // Espejo de filterKey()/sortKey() en main.js.
+    // Espejo de filterKey()/sortKey()/limitKey() en main.js.
     const slug = { Estudiantes: 'estudiantes', Docentes: 'docentes', Cursos: 'cursos', Materias: 'materias' };
     const filterKey = (s) => 'mozart-' + slug[s] + '-filtro';
     const sortKey = (s) => 'mozart-' + slug[s] + '-orden';
+    const limitKey = (s) => 'mozart-' + slug[s] + '-limite';
     expect(filterKey('Estudiantes')).toBe('mozart-estudiantes-filtro');
     expect(sortKey('Materias')).toBe('mozart-materias-orden');
+    expect(limitKey('Estudiantes')).toBe('mozart-estudiantes-limite');
+    expect(limitKey('Docentes')).toBe('mozart-docentes-limite');
     // Cursos mantiene las claves viejas (nadie pierde su preferencia).
     expect(filterKey('Cursos')).toBe('mozart-cursos-filtro');
     expect(sortKey('Cursos')).toBe('mozart-cursos-orden');
+    expect(limitKey('Cursos')).toBe('mozart-cursos-limite');
   });
 
   test('filterRows filtra por las claves indicadas', () => {
@@ -590,6 +736,50 @@ describe('main (lógica pura)', () => {
     expect(editableHtml).toContain('data-crud="edit"');
     const readonlyHtml = studentRowsHTML([{ id_alumno: 1, nombre: 'X', curso: '1°1°', dni: '1', tutor: 'T' }], false);
     expect(readonlyHtml).not.toContain('data-crud');
+  });
+
+  test('materiaRowsHTML replica el diseño de tabla de Estudiantes', () => {
+    const empty = materiaRowsHTML([], false);
+    expect(empty).toContain('<tr>');
+    expect(empty).toContain('class="table-empty"');
+    // 2 columnas de datos (Materia/Docente) + acciones si es editable.
+    expect(empty).toContain('colspan="2"');
+    expect(materiaRowsHTML([], true)).toContain('colspan="3"');
+
+    const con = materiaRowsHTML([{ id_materia: 1, nombre: 'Matemática', con_docente: 1 }], true);
+    expect(con).toContain('table-person');
+    expect(con).toContain('avatar-violet');
+    expect(con).toContain('<strong>Matemática</strong>');
+    expect(con).toContain('status status-active');
+    expect(con).toContain('>Con docente asignado<');
+    expect(con).toContain('data-tipo="materias"');
+    expect(con).toContain('data-id="1"');
+
+    const sin = materiaRowsHTML([{ id_materia: 2, nombre: 'Arte', con_docente: 0 }], false);
+    expect(sin).toContain('status status-pending');
+    expect(sin).toContain('>Sin docente asignado<');
+    expect(sin).not.toContain('data-crud');
+    // Sin el diseño viejo de lista (fila con badge de numeración).
+    expect(sin).not.toContain('student-row');
+    expect(sin).not.toContain('course-level');
+  });
+
+  test('materiaGroupsHTML agrupa con group-row dentro de la tabla', () => {
+    const groups = [
+      { title: 'Con docente asignado', items: [{ id_materia: 1, nombre: 'Matemática', con_docente: 1 }] },
+      { title: 'Sin docente asignado', items: [{ id_materia: 2, nombre: 'Arte', con_docente: 0 }] },
+    ];
+    const html = materiaGroupsHTML(groups, true);
+    expect(html).toContain('class="group-row"');
+    expect(html).toContain('>Con docente asignado<');
+    expect(html).toContain('>Sin docente asignado<');
+    expect(html).toContain('colspan="3"');
+    expect(html).toContain('data-tipo="materias"');
+    // Los grupos son filas, no bloques .course-group como en Cursos/Docentes.
+    expect(html).not.toContain('course-group');
+    // Estado vacío con el colspan de la tabla.
+    expect(materiaGroupsHTML([], false)).toContain('colspan="2"');
+    expect(materiaGroupsHTML([], true)).toContain('colspan="3"');
   });
 
   test('usuarioRowsHTML renderiza rol y estado correctos', () => {

@@ -785,6 +785,79 @@ button {
   margin-bottom: 17px;
 }
 
+/* Pie de lista: selector de límite de entradas (15/30/50/100), la cantidad de
+   entradas al lado y la navegación de páginas ‹ ›. */
+.list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 13px 23px;
+  border-top: 1px solid #f0f2f6;
+}
+
+.list-footer-left,
+.list-footer-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.limit-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #718097;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.limit-select {
+  padding: 6px 9px;
+  border: 1px solid #e3e9f2;
+  border-radius: 9px;
+  background: #fff;
+  color: #2b3f5e;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.entry-count {
+  color: #8b98aa;
+  font-size: 11px;
+}
+
+.page-info {
+  color: #718097;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #e3e9f2;
+  border-radius: 9px;
+  background: #fff;
+  color: #2a83e8;
+  cursor: pointer;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: #2a83e8;
+  background: #f3f8ff;
+}
+
+.page-btn:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
 .local-search {
   width: 310px;
 }
@@ -909,16 +982,6 @@ tr.group-row th {
   background: linear-gradient(90deg, #f8fbff, #f3f7fd);
   border-top: 1px solid #e8edf4;
   font-size: 12px;
-  font-weight: 700;
-}
-
-.group-row .group-count {
-  margin-left: 10px;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: rgba(42, 131, 232, .12);
-  color: #2a83e8;
-  font-size: 10px;
   font-weight: 700;
 }
 
@@ -1258,11 +1321,22 @@ tr.group-row th {
   box-shadow: 0 6px 16px rgba(36, 111, 190, .08);
 }
 
+/* Fila cuadrado + turno: la separación es fija (28px del cuadrado al turno y
+   14px del turno al lápiz) y no depende del ancho de la tarjeta, así el turno
+   nunca queda pegado al cuadrado. */
 .section-card-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   margin-bottom: 12px;
+}
+
+.section-card-top .section-badge {
+  margin-right: 28px;
+}
+
+.section-card-top .section-count {
+  margin-right: 14px;
+  white-space: nowrap;
 }
 
 .section-badge {
@@ -1659,14 +1733,35 @@ html.dark tr.group-row th {
   border-top-color: #24344f;
 }
 
-html.dark .group-row .group-count {
-  background: rgba(42, 131, 232, .22);
-  color: #a9d2ff;
-}
-
 html.dark td {
   border-top-color: #24344f;
   color: #a5b4cd;
+}
+
+html.dark .list-footer {
+  border-top-color: #24344f;
+}
+
+html.dark .limit-label,
+html.dark .entry-count,
+html.dark .page-info {
+  color: #8ba0bd;
+}
+
+html.dark .limit-select,
+html.dark .page-btn {
+  border-color: #2a3b58;
+  background: #16233c;
+  color: #cfe1f7;
+}
+
+html.dark .page-btn {
+  color: #7fb4f4;
+}
+
+html.dark .page-btn:hover:not(:disabled) {
+  border-color: #4a6ea0;
+  background: #1c2c4a;
 }
 
 html.dark .filter-button,

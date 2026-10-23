@@ -42,6 +42,20 @@ const STUDENTS = [
   { name: 'Benjamín Torres', initials: 'BT', course: '1° C', status: 'Activo', tone: 'violet', email: 'btorres@escuela.edu', updated: '09 sep, 11:05' },
   { name: 'Isabella Vargas', initials: 'IV', course: '4° B', status: 'Activo', tone: 'blue', email: 'ivargas@escuela.edu', updated: '08 sep, 14:18' },
   { name: 'Thiago López', initials: 'TL', course: '3° A', status: 'Pendiente', tone: 'teal', email: 'tlopez@escuela.edu', updated: '08 sep, 10:22' },
+  { name: 'Martina Benítez', initials: 'MB', course: '2° A', status: 'Activo', tone: 'violet', email: 'mbenitez@escuela.edu', updated: '08 sep, 09:41' },
+  { name: 'Joaquín Ferreira', initials: 'JF', course: '4° A', status: 'Pendiente', tone: 'teal', email: 'jferreira@escuela.edu', updated: '07 sep, 16:12' },
+  { name: 'Emilia Peralta', initials: 'EP', course: '1° B', status: 'Activo', tone: 'blue', email: 'eperalta@escuela.edu', updated: '07 sep, 14:05' },
+  { name: 'Bautista Cabrera', initials: 'BC', course: '5° C', status: 'Activo', tone: 'orange', email: 'bcabrera@escuela.edu', updated: '07 sep, 11:38' },
+  { name: 'Renata Álvarez', initials: 'RA', course: '3° B', status: 'Activo', tone: 'violet', email: 'ralvarez@escuela.edu', updated: '06 sep, 15:20' },
+  { name: 'Santino Morales', initials: 'SM', course: '2° C', status: 'Activo', tone: 'teal', email: 'smorales@escuela.edu', updated: '06 sep, 12:47' },
+  { name: 'Olivia Giménez', initials: 'OG', course: '4° C', status: 'Pendiente', tone: 'blue', email: 'ogimenez@escuela.edu', updated: '06 sep, 10:09' },
+  { name: 'Felipe Ocampo', initials: 'FO', course: '1° A', status: 'Activo', tone: 'orange', email: 'focampo@escuela.edu', updated: '05 sep, 17:33' },
+  { name: 'Delfina Vega', initials: 'DV', course: '5° A', status: 'Activo', tone: 'violet', email: 'dvega@escuela.edu', updated: '05 sep, 13:54' },
+  { name: 'Bruno Salinas', initials: 'BS', course: '3° C', status: 'Activo', tone: 'teal', email: 'bsalinas@escuela.edu', updated: '05 sep, 09:26' },
+  { name: 'Alma Rosas', initials: 'AR', course: '2° A', status: 'Activo', tone: 'blue', email: 'arosas@escuela.edu', updated: '04 sep, 16:48' },
+  { name: 'Tomás Aguirre', initials: 'TA', course: '4° B', status: 'Activo', tone: 'orange', email: 'taguirre@escuela.edu', updated: '04 sep, 12:15' },
+  { name: 'Josefa Ledesma', initials: 'JL', course: '1° C', status: 'Pendiente', tone: 'violet', email: 'jledesma@escuela.edu', updated: '03 sep, 15:02' },
+  { name: 'Ian Bustos', initials: 'IB', course: '5° B', status: 'Activo', tone: 'teal', email: 'ibustos@escuela.edu', updated: '03 sep, 10:44' },
 ];
 
 const TEACHERS = [
@@ -51,6 +65,16 @@ const TEACHERS = [
   { name: 'Carolina Ríos', initials: 'CR', subject: 'Historia', classes: 4, status: 'Licencia', tone: 'violet', email: 'crios@escuela.edu', phone: '+54 11 5567-9087' },
   { name: 'Andrés Sosa', initials: 'AS', subject: 'Biología', classes: 5, status: 'Activo', tone: 'teal', email: 'asosa@escuela.edu', phone: '+54 11 5541-2236' },
   { name: 'Patricia Núñez', initials: 'PN', subject: 'Geografía', classes: 3, status: 'Activo', tone: 'blue', email: 'pnunez@escuela.edu', phone: '+54 11 5512-7765' },
+  { name: 'Ramiro Castillo', initials: 'RC', subject: 'Química', classes: 5, status: 'Activo', tone: 'orange', email: 'rcastillo@escuela.edu', phone: '+54 11 5561-4420' },
+  { name: 'Victoria Ferrer', initials: 'VF', subject: 'Historia', classes: 4, status: 'Activo', tone: 'blue', email: 'vferrer@escuela.edu', phone: '+54 11 5577-2210' },
+  { name: 'Hugo Bravo', initials: 'HB', subject: 'Matemática', classes: 6, status: 'Activo', tone: 'teal', email: 'hbravo@escuela.edu', phone: '+54 11 5548-9013' },
+  { name: 'Sofía Nogueira', initials: 'SN', subject: 'Biología', classes: 3, status: 'Licencia', tone: 'violet', email: 'snogueira@escuela.edu', phone: '+54 11 5539-6672' },
+  { name: 'Nicolás Vera', initials: 'NV', subject: 'Educación Física', classes: 5, status: 'Activo', tone: 'orange', email: 'nvera@escuela.edu', phone: '+54 11 5584-3391' },
+  { name: 'Trinidad Sosa', initials: 'TS', subject: 'Lengua y Literatura', classes: 4, status: 'Activo', tone: 'blue', email: 'tsosa@escuela.edu', phone: '+54 11 5526-1147' },
+  { name: 'Federico Ibarra', initials: 'FI', subject: 'Física', classes: 5, status: 'Activo', tone: 'teal', email: 'fibarra@escuela.edu', phone: '+54 11 5593-7758' },
+  { name: 'Abril Quiroga', initials: 'AQ', subject: 'Geografía', classes: 3, status: 'Activo', tone: 'violet', email: 'aquioga@escuela.edu', phone: '+54 11 5557-4406' },
+  { name: 'Gonzalo Prieto', initials: 'GP', subject: 'Informática', classes: 6, status: 'Activo', tone: 'orange', email: 'gprieto@escuela.edu', phone: '+54 11 5569-8823' },
+  { name: 'Malena Sandoval', initials: 'MS', subject: 'Música', classes: 4, status: 'Licencia', tone: 'blue', email: 'msandoval@escuela.edu', phone: '+54 11 5518-2264' },
 ];
 
 // Cursos demo: cada entrada lleva turno y especialidad para que los menús
@@ -66,6 +90,12 @@ const COURSES = [
   { name: 'Programación', level: '5° A', students: 24, teacher: 'Diego Pereyra', schedule: 'Lun · Mié', turno: 'Mañana', especialidad: 'Técnico en Informática', tone: 'orange', icon: '💻' },
   { name: 'Dibujo Técnico', level: '1° A', students: 32, teacher: 'Laura Sánchez', schedule: 'Jue', turno: 'Mañana', especialidad: '', tone: 'blue', icon: '📐' },
   { name: 'Educación Física', level: '4° B', students: 29, teacher: 'Andrés Sosa', schedule: 'Vie', turno: 'Tarde', especialidad: '', tone: 'teal', icon: '⚽' },
+  { name: 'Economía', level: '2° A', students: 27, teacher: 'Victoria Ferrer', schedule: 'Lun · Mié', turno: 'Tarde', especialidad: '', tone: 'blue', icon: '💰' },
+  { name: 'Inglés', level: '1° B', students: 31, teacher: 'Malena Sandoval', schedule: 'Mar · Jue', turno: 'Mañana', especialidad: '', tone: 'violet', icon: '🌐' },
+  { name: 'Robótica', level: '4° A', students: 25, teacher: 'Gonzalo Prieto', schedule: 'Mié', turno: 'Tarde', especialidad: 'Técnico en Informática', tone: 'teal', icon: '🤖' },
+  { name: 'Música', level: '2° D', students: 29, teacher: 'Malena Sandoval', schedule: 'Jue', turno: 'Mañana', especialidad: '', tone: 'orange', icon: '🎵' },
+  { name: 'Taller de Ciudadanía', level: '5° C', students: 26, teacher: 'Abril Quiroga', schedule: 'Vie', turno: 'Tarde', especialidad: '', tone: 'blue', icon: '🧭' },
+  { name: 'Historia del Arte', level: '3° C', students: 28, teacher: 'Victoria Ferrer', schedule: 'Lun', turno: 'Mañana', especialidad: '', tone: 'violet', icon: '🎨' },
 ];
 
 // Menús "Filtrar por" de cada sección del mockup (mismo patrón que la app
@@ -237,24 +267,84 @@ function demoSortByName(rows, dir) {
   return out;
 }
 
-// demoGroupRowHTML: fila de encabezado de grupo dentro de una tabla.
-function demoGroupRowHTML(title, count, colspan, unidad) {
+// demoGroupRowHTML: fila de encabezado de grupo dentro de una tabla (sin
+// contadores: la cantidad de entradas vive ahora en el pie de la lista).
+function demoGroupRowHTML(title, colspan) {
   return (
     '<tr class="group-row">' +
     '<th colspan="' + colspan + '">' + esc(title) +
-    '<span class="group-count">' + count + ' ' + esc(unidad) + '</span>' +
     '</th></tr>'
   );
 }
 
 // demoGroupBlock: bloque con encabezado + contenido (tarjetas o listas).
-function demoGroupBlock(title, count, unidad, iconName, inner) {
+function demoGroupBlock(title, iconName, inner) {
   return (
     '<div class="course-group">' +
     '<div class="course-group-header">' +
     '<div class="group-icon">' + icon(iconName, 18) + '</div>' +
-    '<div><strong>' + esc(title) + '</strong><span>' + count + ' ' + esc(unidad) + '</span></div>' +
+    '<div><strong>' + esc(title) + '</strong></div>' +
     '</div>' + inner +
+    '</div>'
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Límite de entradas y paginación (paridad con pageSlice/listFooterHTML de la
+// app real): el mockup pagina en memoria sobre sus datos demo.
+// ---------------------------------------------------------------------------
+
+const DEMO_PAGE_SIZES = [15, 30, 50, 100];
+const DEMO_DEFAULT_LIMIT = 15;
+
+function demoNormalizePageSize(v) {
+  const n = Number(v);
+  return DEMO_PAGE_SIZES.indexOf(n) !== -1 ? n : DEMO_DEFAULT_LIMIT;
+}
+
+// demoPageSlice: corta el conjunto ya ordenado en la página activa,
+// clampéa la página y devuelve el rango para el texto del pie.
+function demoPageSlice(rows, limit, page) {
+  const size = demoNormalizePageSize(limit);
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / size));
+  const p = Math.min(Math.max(1, Number(page) || 1), pages);
+  const start = (p - 1) * size;
+  return {
+    rows: rows.slice(start, start + size),
+    size: size,
+    total: total,
+    pages: pages,
+    page: p,
+    from: total === 0 ? 0 : start + 1,
+    to: Math.min(start + size, total),
+  };
+}
+
+// demoListFooterHTML: pie con el selector de límite (15/30/50/100), la cantidad
+// de entradas al lado y la navegación ‹ ›.
+function demoListFooterHTML(section, slice) {
+  const options = DEMO_PAGE_SIZES.map((n) =>
+    '<option value="' + n + '"' + (n === slice.size ? ' selected' : '') + '>' + n + '</option>'
+  ).join('');
+  const cuenta = slice.total === 0
+    ? 'Sin entradas para mostrar'
+    : 'Mostrando ' + slice.from + '–' + slice.to + ' de ' + slice.total + ' entradas';
+  const prev = slice.page <= 1 ? ' disabled' : '';
+  const next = slice.page >= slice.pages ? ' disabled' : '';
+  return (
+    '<div class="list-footer">' +
+    '<div class="list-footer-left">' +
+    '<label class="limit-label">Mostrar ' +
+    '<select class="limit-select" data-limit-select aria-label="Entradas por página de ' + esc(section) + '">' + options + '</select>' +
+    ' entradas</label>' +
+    '<span class="entry-count">' + esc(cuenta) + '</span>' +
+    '</div>' +
+    '<div class="list-footer-right">' +
+    '<button class="page-btn" data-page-prev type="button" aria-label="Página anterior"' + prev + '>' + icon('ChevronLeft', 16) + '</button>' +
+    '<span class="page-info">Página ' + slice.page + ' de ' + slice.pages + '</span>' +
+    '<button class="page-btn" data-page-next type="button" aria-label="Página siguiente"' + next + '>' + icon('ChevronRight', 16) + '</button>' +
+    '</div>' +
     '</div>'
   );
 }
@@ -274,6 +364,7 @@ const ICON_SVG = {
   CalendarDays: '<path d="M8 2v3" /><path d="M16 2v3" /><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M8 13h.01" /><path d="M12 13h.01" /><path d="M16 13h.01" /><path d="M8 17h.01" /><path d="M12 17h.01" /><path d="M16 17h.01" />',
   CheckCircle2: '<circle cx="12" cy="12" r="10" /><path d="m16 9-5.5 5.5L8 12" />',
   ChevronRight: '<path d="m9 18 6-6-6-6" />',
+  ChevronLeft: '<path d="m15 18-6-6 6-6" />',
   ChevronDown: '<path d="m6 9 6 6 6-6" />',
   ArrowUpDown: '<path d="m21 16-4 4-4-4" /><path d="M17 20V4" /><path d="m3 8 4-4 4 4" /><path d="M7 4v16" />',
   ClipboardList: '<rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M12 11h4" /><path d="M12 16h4" /><path d="M8 11h.01" /><path d="M8 16h.01" />',
@@ -476,23 +567,26 @@ function studentsViewHTML() {
   const filter = sectionFilters.Estudiantes;
   const dir = sectionSortDirs.Estudiantes;
   const ordered = demoSortByName(STUDENTS, dir);
+  const slice = demoPageSlice(ordered, sectionLimits.Estudiantes, sectionPages.Estudiantes);
+  sectionPages.Estudiantes = slice.page;
   // 'none' (default) = filas planas; el resto agrupa con fila de encabezado.
   const rows = filter === 'none'
-    ? ordered.map(studentRowHTML).join('')
-    : demoGroupRows(ordered, filter, dir, studentGroupKey)
-        .map((g) => demoGroupRowHTML(g.title, g.items.length, 6, 'estudiantes') + g.items.map(studentRowHTML).join(''))
+    ? slice.rows.map(studentRowHTML).join('')
+    : demoGroupRows(slice.rows, filter, dir, studentGroupKey)
+        .map((g) => demoGroupRowHTML(g.title, 6) + g.items.map(studentRowHTML).join(''))
         .join('');
   const title = SECTION_TITLES.Estudiantes[filter] || SECTION_TITLES.Estudiantes.none;
 
   return (
     '<div class="data-panel">' +
     '<div class="panel-heading">' +
-    '<div><h2>' + esc(title) + '</h2><p>' + STUDENTS.length + ' registros encontrados</p></div>' +
+    '<div><h2>' + esc(title) + '</h2></div>' +
     '<button class="text-button" type="button">Exportar ' + icon('ArrowUpRight', 15) + '</button>' +
     '</div>' +
     '<div class="table-wrap"><table><thead><tr>' +
     '<th>Estudiante</th><th>Curso</th><th>Estado</th><th>Correo</th><th>Última actualización</th><th></th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    demoListFooterHTML('Estudiantes', slice) +
     '</div>'
   );
 }
@@ -519,27 +613,24 @@ function teachersViewHTML() {
   const filter = sectionFilters.Docentes;
   const dir = sectionSortDirs.Docentes;
   const ordered = demoSortByName(TEACHERS, dir);
+  const slice = demoPageSlice(ordered, sectionLimits.Docentes, sectionPages.Docentes);
+  sectionPages.Docentes = slice.page;
   // 'none' (default) = grilla; el resto agrupa con encabezado por valor.
   const grid = filter === 'none'
-    ? '<div class="teacher-grid">' + ordered.map(teacherCardHTML).join('') + '</div>'
+    ? '<div class="teacher-grid">' + slice.rows.map(teacherCardHTML).join('') + '</div>'
     : '<div class="course-list-wrap">' +
-      demoGroupRows(ordered, filter, dir, teacherGroupKey)
+      demoGroupRows(slice.rows, filter, dir, teacherGroupKey)
         .map((g) =>
-          demoGroupBlock(g.title, g.items.length, 'docentes', 'GraduationCap',
+          demoGroupBlock(g.title, 'GraduationCap',
             '<div class="teacher-grid">' + g.items.map(teacherCardHTML).join('') + '</div>'))
         .join('') +
       '</div>';
   const title = SECTION_TITLES.Docentes[filter] || SECTION_TITLES.Docentes.none;
 
   return (
-    '<div class="stats-grid">' +
-    statCard('GraduationCap', 'Total docentes', '86', '4,2%', 'plantel activo', 'teal') +
-    statCard('BookOpen', 'Materias asignadas', '112', '6 nuevas', 'este ciclo', 'blue') +
-    statCard('Clock', 'En licencia', '4', '2,3%', 'ausencias temporales', 'orange') +
-    statCard('CheckCircle2', 'Disponibilidad', '95,3%', '1,8%', 'este mes', 'violet') +
-    '</div>' +
     '<div class="card-grid-heading"><div><h2>' + esc(title) + '</h2><p>Personal académico del establecimiento</p></div></div>' +
-    grid
+    grid +
+    demoListFooterHTML('Docentes', slice)
   );
 }
 
@@ -547,8 +638,10 @@ function coursesViewHTML() {
   const filter = sectionFilters.Cursos;
   const dir = sectionSortDirs.Cursos;
   const ordered = demoSortCourses(COURSES, dir);
+  const slice = demoPageSlice(ordered, sectionLimits.Cursos, sectionPages.Cursos);
+  sectionPages.Cursos = slice.page;
 
-  const cards = ordered
+  const cards = slice.rows
     .map(
       (c) =>
         '<div class="course-card">' +
@@ -569,24 +662,16 @@ function coursesViewHTML() {
     )
     .join('');
 
-  const stats =
-    '<div class="stats-grid">' +
-    statCard('BookOpen', 'Cursos activos', '42', '8 nuevos', 'este ciclo lectivo', 'orange') +
-    statCard('Users', 'Inscriptos totales', '1.248', '12,5%', 'estudiantes', 'blue') +
-    statCard('GraduationCap', 'Docentes asignados', '86', '100%', 'cobertura', 'teal') +
-    statCard('CalendarDays', 'Promedio por curso', '29,7', '2,1', 'estudiantes/curso', 'violet') +
-    '</div>';
-
   // 'none' (default) = grilla; el resto agrupa con un encabezado por valor,
-  // igual que la app real.
+  // igual que la app real. Las tarjetas KPI no van dentro de la sección.
   const head = COURSE_HEADINGS[filter] || COURSE_HEADINGS.none;
   const heading =
     '<div class="card-grid-heading"><div><h2>' + esc(head[0]) + '</h2><p>' + esc(head[1]) + '</p></div></div>';
   const body = filter === 'none'
     ? '<div class="course-grid">' + cards + '</div>'
-    : courseGroupedHTML(ordered);
+    : courseGroupedHTML(slice.rows);
 
-  return stats + heading + body;
+  return heading + body + demoListFooterHTML('Cursos', slice);
 }
 
 const COURSE_HEADINGS = {
@@ -599,7 +684,6 @@ const COURSE_HEADINGS = {
 function courseGroupedHTML(ordered) {
   const groups = demoGroupCourses(ordered, sectionFilters.Cursos, sectionSortDirs.Cursos)
     .map((g) => {
-      const total = g.items.reduce((acc, c) => acc + c.students, 0);
       const cards = g.items
         .map(
           (c) =>
@@ -615,7 +699,7 @@ function courseGroupedHTML(ordered) {
         '<div class="course-group">' +
         '<div class="course-group-header">' +
         '<div class="group-icon">' + icon('ClipboardList', 18) + '</div>' +
-        '<div><strong>' + esc(g.title) + '</strong><span>' + g.items.length + ' divisiones · ' + total + ' estudiantes</span></div>' +
+        '<div><strong>' + esc(g.title) + '</strong></div>' +
         '</div>' +
         '<div class="course-sections-grid">' + cards + '</div>' +
         '</div>'
@@ -843,10 +927,12 @@ function buildContentHTML(section) {
 // ---------------------------------------------------------------------------
 
 // Estado de los menús del mockup por sección: criterio de agrupación ('none'
-// = vista plana), dirección del orden y menú abierto. En la app real esto vive
-// en main.js con persistencia en localStorage.
+// = vista plana), dirección del orden, límite de entradas y página activa. En
+// la app real esto vive en main.js con persistencia en localStorage.
 const sectionFilters = { Estudiantes: 'none', Docentes: 'none', Cursos: 'none' };
 const sectionSortDirs = { Estudiantes: 'asc', Docentes: 'asc', Cursos: 'asc' };
+const sectionLimits = { Estudiantes: DEMO_DEFAULT_LIMIT, Docentes: DEMO_DEFAULT_LIMIT, Cursos: DEMO_DEFAULT_LIMIT };
+const sectionPages = { Estudiantes: 1, Docentes: 1, Cursos: 1 };
 let openMenu = null;
 
 // renderSection: repinta solo el contenido (toolbar + cuerpo) de la sección
@@ -860,6 +946,8 @@ function navigate(api, section) {
   if (!section || api.section === section) return;
   api.section = section;
   openMenu = null;
+  // Cambiar de sección vuelve a la primera página de la destino.
+  if (sectionPages[section] !== undefined) sectionPages[section] = 1;
 
   const navButtons = api.root.querySelectorAll('.nav-item[data-section]');
   navButtons.forEach((b) => {
@@ -922,6 +1010,8 @@ export function initInterfaz(root, opts) {
     if (dirToggle) {
       const sortSection = state.section;
       sectionSortDirs[sortSection] = sectionSortDirs[sortSection] === 'desc' ? 'asc' : 'desc';
+      // El orden cambia el conjunto: vuelve a la primera página.
+      if (sectionPages[sortSection] !== undefined) sectionPages[sortSection] = 1;
       if (!refreshSection(state)) renderSection(state);
       return;
     }
@@ -942,8 +1032,21 @@ export function initInterfaz(root, opts) {
       const filterSection = state.section;
       const list = SECTION_FILTERS[filterSection] || [];
       if (list.some((f) => f.v === val)) sectionFilters[filterSection] = val;
+      // El filtro rehace el conjunto: vuelve a la primera página.
+      if (sectionPages[filterSection] !== undefined) sectionPages[filterSection] = 1;
       setSectionMenu(state, false);
       if (!refreshSection(state)) renderSection(state);
+      return;
+    }
+    // Paginación del pie: ‹ › cambian de página sin re-render de la sección.
+    const pageBtn = e.target.closest('[data-page-prev], [data-page-next]');
+    if (pageBtn) {
+      const pageSection = state.section;
+      if (sectionPages[pageSection] !== undefined) {
+        const current = sectionPages[pageSection];
+        sectionPages[pageSection] = pageBtn.hasAttribute('data-page-prev') ? current - 1 : current + 1;
+        if (!refreshSection(state)) renderSection(state);
+      }
       return;
     }
     const target = e.target.closest('[data-section]');
@@ -966,9 +1069,25 @@ export function initInterfaz(root, opts) {
       openSidebar(state);
       return;
     }
+    if (e.target.closest('.quick-card[data-section]')) {
+      navigate(state, e.target.closest('.quick-card').getAttribute('data-section'));
+      return;
+    }
     if (e.target.closest('.close-sidebar') || e.target.closest('.sidebar-overlay')) {
       closeSidebar(state);
     }
+  });
+
+  // Selector de límite de entradas del pie (15/30/50/100): rehace el cuerpo de
+  // la sección sin re-render de la vista.
+  root.addEventListener('change', (e) => {
+    const sel = e.target.closest('[data-limit-select]');
+    if (!sel) return;
+    const section = state.section;
+    if (sectionLimits[section] === undefined) return;
+    sectionLimits[section] = demoNormalizePageSize(sel.value);
+    sectionPages[section] = 1;
+    if (!refreshSection(state)) renderSection(state);
   });
 
   return state;
