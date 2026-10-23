@@ -64,6 +64,16 @@ func migrate(conn *sql.DB) error {
 	if err := migratePermisos(conn); err != nil {
 		return fmt.Errorf("migrando usuarios.permisos (ver_nomina): %w", err)
 	}
+	for _, q := range []string{
+		"CREATE INDEX IF NOT EXISTS idx_alumnos_apellido_nombre ON alumnos (apellido, nombre)",
+		"CREATE INDEX IF NOT EXISTS idx_docentes_apellido_nombre ON docentes (apellido, nombre)",
+		"CREATE INDEX IF NOT EXISTS idx_dmc_curso_activo ON docente_materia_curso (id_curso, activo)",
+		"CREATE INDEX IF NOT EXISTS idx_alumnos_dni ON alumnos (tipo_dni, dni)",
+	} {
+		if _, err := conn.Exec(q); err != nil {
+			return fmt.Errorf("creando índice: %w", err)
+		}
+	}
 	return nil
 }
 

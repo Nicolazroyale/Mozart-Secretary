@@ -202,6 +202,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.handleDashboard(w, r, s.tplMejoras)
+	case path == "/healthz" || path == "/healthz/":
+		s.handleHealthz(w, r)
 	case isStatic(path):
 		s.serveStatic(w, r, path)
 	default:
@@ -241,6 +243,18 @@ type viewData struct {
 	EsAdmin      bool
 	Permisos     string
 	UltimoBackup string
+}
+
+func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		methodNotAllowed(w)
+		return
+	}
+	if err := s.dbs.Ping(); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "error", "detail": "db"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request, tpl *template.Template) {

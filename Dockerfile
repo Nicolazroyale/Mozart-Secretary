@@ -28,5 +28,5 @@ ENV WEB_ROOT=/srv/web \
     PORT=443
 EXPOSE 443
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -qO- --no-check-certificate https://127.0.0.1:443/ >/dev/null 2>&1 || exit 1
+  CMD wget -qO- --no-check-certificate https://127.0.0.1:443/healthz >/dev/null 2>&1 || exit 1
 ENTRYPOINT ["/usr/local/bin/mozart"]

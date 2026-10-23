@@ -191,3 +191,7 @@ CREATE INDEX IF NOT EXISTS idx_docentes_activo ON docentes (activo);
 CREATE INDEX IF NOT EXISTS idx_dmc_activo ON docente_materia_curso (activo);
 CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON usuarios (rol, activo);
 CREATE INDEX IF NOT EXISTS idx_materias_adeudadas_ciclo ON materias_adeudadas (ciclo_lectivo, aprobada);
+CREATE INDEX IF NOT EXISTS idx_alumnos_apellido_nombre ON alumnos (apellido, nombre);
+CREATE INDEX IF NOT EXISTS idx_docentes_apellido_nombre ON docentes (apellido, nombre);
+CREATE INDEX IF NOT EXISTS idx_dmc_curso_activo ON docente_materia_curso (id_curso, activo);
+CREATE INDEX IF NOT EXISTS idx_alumnos_dni ON alumnos (tipo_dni, dni);

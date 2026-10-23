@@ -116,7 +116,10 @@ func hasKey(input map[string]interface{}, key string) bool {
 func auditSanitize(data map[string]interface{}) map[string]interface{} {
 	out := make(map[string]interface{}, len(data))
 	for k, v := range data {
-		if k == "password" {
+		lk := strings.ToLower(k)
+		if lk == "password" || strings.Contains(lk, "password") ||
+			strings.Contains(lk, "secret") || strings.Contains(lk, "token") ||
+			strings.Contains(lk, "db_key") || lk == "key" {
 			out[k] = "[REDACTED]"
 		} else {
 			out[k] = v
