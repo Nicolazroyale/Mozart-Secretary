@@ -789,12 +789,14 @@ export function materiaCardsHTML(rows, editable) {
   if (!rows || rows.length === 0) {
     return '<div class="table-empty">No hay materias para mostrar.</div>';
   }
-  return rows.map((m) => {
+  const tones = ['blue', 'teal', 'orange', 'violet'];
+  return rows.map((m, i) => {
     const con = Number(m.con_docente) === 1;
+    const tone = tones[i % tones.length];
     return (
-      '<div class="materia-card">' +
+      '<div class="materia-card tone-' + tone + '">' +
       '<div class="materia-card-top">' +
-      '<div class="avatar avatar-violet">' + esc(initials(m.nombre)) + '</div>' +
+      '<div class="avatar avatar-' + tone + '">' + esc(initials(m.nombre)) + '</div>' +
       '<span class="status ' + (con ? 'status-active' : 'status-pending') + '">' + (con ? 'Con docente' : 'Sin docente') + '</span>' +
       '</div>' +
       '<div class="materia-card-body"><strong>' + esc(m.nombre) + '</strong>' +
