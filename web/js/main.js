@@ -779,10 +779,23 @@ export function materiaRowsHTML(rows, editable) {
 }
 
 export function materiaGroupsCardsHTML(groups, editable) {
-  if (!groups || groups.length === 0) return '<div class="materia-grid">' + materiaCardsHTML([], editable) + '</div>';
-  return groups.map((g) =>
-    '<div class="materia-group"><div class="group-heading">' + esc(g.title) + '</div><div class="materia-grid">' + materiaCardsHTML(g.items, editable) + '</div></div>'
-  ).join('');
+  if (!groups || groups.length === 0) return '<div class="table-empty">No hay materias para mostrar.</div>';
+  return (
+    '<div class="course-list-wrap">' +
+    groups
+      .map(
+        (g) =>
+          '<div class="course-group">' +
+          '<div class="course-group-header">' +
+          '<div class="group-icon">' + icon('BookMarked', 18) + '</div>' +
+          '<div><strong>' + esc(g.title) + '</strong></div>' +
+          '</div>' +
+          '<div class="materia-grid">' + materiaCardsHTML(g.items, editable) + '</div>' +
+          '</div>'
+      )
+      .join('') +
+    '</div>'
+  );
 }
 
 export function materiaCardsHTML(rows, editable) {
@@ -1301,24 +1314,15 @@ function bodyFor(state, section, rows, query) {
     const body = isGrid
       ? (filter === 'none'
         ? '<div class="materia-grid">' + materiaCardsHTML(slice.rows, editable) + '</div>'
-        : '<div class="materia-groups">' + materiaGroupsCardsHTML(grouped, editable) + '</div>')
+        : materiaGroupsCardsHTML(grouped, editable))
       : (filter === 'none'
         ? materiaRowsHTML(slice.rows, editable)
         : materiaGroupsHTML(grouped, editable));
-    return isGrid
-      ? ('<div class="data-panel">' +
-        '<div class="panel-heading"><div><h2>' + esc(sectionTitle('Materias', filter)) + '</h2></div>' +
-        '<button class="text-button" type="button" disabled>Actualizado desde la base</button></div>' +
-        body +
-        listFooterHTML(section, slice) +
-        '</div>')
-      : ('<div class="data-panel">' +
-        '<div class="panel-heading"><div><h2>' + esc(sectionTitle('Materias', filter)) + '</h2></div>' +
-        '<button class="text-button" type="button" disabled>Actualizado desde la base</button></div>' +
-        '<div class="table-wrap"><table><thead><tr><th>Materia</th><th>Docente</th>' + (editable ? '<th></th>' : '') + '</tr></thead><tbody>' +
-        body + '</tbody></table></div>' +
-        listFooterHTML(section, slice) +
-        '</div>');
+    return (
+      '<div class="card-grid-heading"><div><h2>' + esc(sectionTitle('Materias', filter)) + '</h2></div></div>' +
+      (isGrid ? body : ('<div class="table-wrap"><table><thead><tr><th>Materia</th><th>Docente</th>' + (editable ? '<th></th>' : '') + '</tr></thead><tbody>' + body + '</tbody></table></div>')) +
+      listFooterHTML(section, slice)
+    );
   }
   if (section === 'Usuarios') {
     const filtered = filterRows(rows, q, ['username', 'nombre_completo', 'rol']);
