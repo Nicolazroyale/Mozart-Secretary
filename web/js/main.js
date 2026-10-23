@@ -580,7 +580,10 @@ export function studentRowsHTML(rows, editable) {
     .map(
       (s) =>
         '<tr>' +
-        '<td><div class="table-person"><div class="avatar avatar-blue">' + esc(initials(shortName(s.apellido, s.nombre))) + '</div><strong>' + esc(s.nombre || shortName(s.apellido, s.nombre)) + '</strong></div></td>' +
+        '<td><div class="table-person"><div class="avatar avatar-blue" style="position:relative; overflow:hidden;">' +
+        '<span class="avatar-fallback">' + esc(initials(shortName(s.apellido, s.nombre))) + '</span>' +
+        '<img class="avatar-img" src="' + esc(dicebearUrl('initials', s.nombre || shortName(s.apellido, s.nombre))) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'" />' +
+        '</div><strong>' + esc(s.nombre || shortName(s.apellido, s.nombre)) + '</strong></div></td>' +
         '<td>' + esc(s.curso || (s.carrera ? s.carrera : '')) + '</td>' +
         '<td><span class="cell-muted">' + esc(s.dni || '—') + '</span></td>' +
         '<td><span class="cell-muted">' + esc(s.tutor || '—') + '</span></td>' +
@@ -657,7 +660,10 @@ export function teacherCardsHTML(rows, extra, editable) {
       (t) =>
         '<div class="teacher-card">' +
         '<div class="teacher-top">' +
-        '<div class="teacher-avatar avatar-teal">' + esc(initials(t.nombre)) + '</div>' +
+        '<div class="teacher-avatar avatar-teal" style="position:relative; overflow:hidden;">' +
+        '<span class="avatar-fallback">' + esc(initials(t.nombre)) + '</span>' +
+        '<img class="avatar-img" src="' + esc(dicebearUrl('initials', t.nombre)) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'" />' +
+        '</div>' +
         '<span class="status status-active">' + esc(t.cargo || (extra ? extra.cargo : '')) + '</span>' +
         '</div>' +
         '<div class="teacher-body"><strong>' + esc(t.nombre) + '</strong><span class="teacher-subject">' + esc(t.cargo || 'Cargo asignado') + '</span></div>' +
