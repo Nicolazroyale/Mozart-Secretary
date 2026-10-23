@@ -704,10 +704,13 @@ export function courseCardsHTML(courses, editable) {
       return (
         '<div class="course-card">' +
         '<div class="course-top">' +
-        '<div class="course-emoji bg-' + tone + '">' + icon('BookOpen', 22) + '</div>' +
+        '<div class="avatar avatar-' + tone + '">' + icon('BookOpen', 18) + '</div>' +
         '<div class="course-top-right"><span class="course-level level-' + tone + '">' + esc(c.ciclo || c.turno || '') + '</span>' +
         (editable && c.id_curso
-          ? '<button class="row-action action-edit" type="button" data-crud="edit" data-tipo="cursos" data-id="' + esc(c.id_curso) + '" aria-label="Editar curso">' + icon('Pencil', 14) + '</button>'
+          ? '<div style="display:inline-flex; gap:8px;">' +
+            '<button class="row-action action-edit" type="button" data-crud="edit" data-tipo="cursos" data-id="' + esc(c.id_curso) + '" aria-label="Editar curso">' + icon('Pencil', 14) + '</button>' +
+            '<button class="row-action action-del" type="button" data-crud="del" data-tipo="cursos" data-id="' + esc(c.id_curso) + '" data-label="' + esc(courseShortName(c)) + '" aria-label="Eliminar curso">' + icon('Trash2', 14) + '</button>' +
+            '</div>'
           : '') +
         '</div>' +
         '</div>' +

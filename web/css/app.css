@@ -1148,7 +1148,7 @@ tr.group-row th {
 .course-card {
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  padding: 22px;
   border: 1px solid #e8edf4;
   border-radius: 14px;
   background: white;
