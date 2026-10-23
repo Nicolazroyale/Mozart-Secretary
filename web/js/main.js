@@ -662,10 +662,10 @@ export function teacherCardsHTML(rows, extra, editable) {
         (t.dni ? '<div class="meta-row">' + icon('ClipboardList', 14) + '<span class="cell-muted">DNI ' + esc(t.dni) + '</span></div>' : '') +
         '</div>' +
         (editable && t.id_docente
-          ? '<div class="row-actions" style="padding:0; justify-content:flex-end; gap:10px;">' +
+          ? '<div style="display:flex; justify-content:flex-end;"><div style="display:inline-flex; gap:8px;">' +
             '<button class="row-action action-edit" type="button" data-crud="edit" data-tipo="docentes" data-id="' + esc(t.id_docente) + '" aria-label="Editar">' + icon('Pencil', 14) + '</button>' +
             '<button class="row-action action-del" type="button" data-crud="del" data-tipo="docentes" data-id="' + esc(t.id_docente) + '" data-label="' + esc(t.nombre) + '" aria-label="Eliminar">' + icon('Trash2', 14) + '</button>' +
-            '</div>'
+            '</div></div>'
           : '<button class="outline-button teacher-action" type="button" disabled>Sin acciones</button>') +
         '</div>'
     )
@@ -815,10 +815,10 @@ export function materiaCardsHTML(rows, editable) {
       '<div class="materia-card-body"><strong>' + esc(m.nombre) + '</strong>' +
       '<span class="materia-card-sub">' + (con ? 'Asignada' : 'Pendiente de asignación') + '</span></div>' +
       (editable && m.id_materia
-        ? '<div class="row-actions" style="justify-content:flex-end; gap:10px;">' +
+        ? '<div style="display:flex; justify-content:flex-end;"><div style="display:inline-flex; gap:8px;">' +
           '<button class="row-action action-edit" type="button" data-crud="edit" data-tipo="materias" data-id="' + esc(m.id_materia) + '" aria-label="Editar">' + icon('Pencil', 14) + '</button>' +
           '<button class="row-action action-del" type="button" data-crud="del" data-tipo="materias" data-id="' + esc(m.id_materia) + '" data-label="' + esc(m.nombre) + '" aria-label="Eliminar">' + icon('Trash2', 14) + '</button>' +
-          '</div>'
+          '</div></div>'
         : '') +
       '</div>'
     );
